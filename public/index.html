@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserva Floral</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #fdfaf6; color: #333; text-align: center; padding: 20px; }
+        h1 { color: #2c3e50; }
+        .catalogo { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 30px; }
+        .tarjeta { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 300px; text-align: left; }
+        .tarjeta h3 { margin-top: 0; color: #d6336c; }
+        .precio { font-weight: bold; font-size: 1.3em; color: #2c3e50; }
+    </style>
+</head>
+<body>
+
+    <h1>Colección Reserva Floral</h1>
+    <div class="catalogo" id="contenedor-arreglos">
+        <!-- Los arreglos se cargarán aquí automáticamente -->
+    </div>
+
+    <script>
+        async function cargarInventario() {
+            try {
+                const respuesta = await fetch('/api/catalogo');
+                const arreglos = await respuesta.json();
+                const contenedor = document.getElementById('contenedor-arreglos');
+
+                arreglos.forEach(arreglo => {
+                    const tarjeta = document.createElement('div');
+                    tarjeta.className = 'tarjeta';
+                    tarjeta.innerHTML = `
+                        <h3>${arreglo.nombre}</h3>
+                        <p>${arreglo.descripcion}</p>
+                        <p class="precio">$${arreglo.precio}</p>
+                    `;
+                    contenedor.appendChild(tarjeta);
+                });
+            } catch (error) {
+                console.error("Error cargando el catálogo", error);
+            }
+        }
+        
+        cargarInventario();
+    </script>
+</body>
+</html>
