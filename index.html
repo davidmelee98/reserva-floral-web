@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserva Floral | Boutique Botánica</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- Reset y Variables de Marca --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --rosa-intenso: #FF2D8F;
+            --marfil: #FFF2E9;
+            --texto-oscuro: #1A1A1A;
+            --texto-gris: #4A4A4A;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--marfil);
+            color: var(--texto-oscuro);
+            line-height: 1.6;
+        }
+
+        /* --- Barra de Navegación --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2.5rem 6%;
+            background-color: transparent;
+            position: absolute; /* Para que flote sobre la imagen principal */
+            width: 100%;
+            z-index: 10;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.6rem;
+            font-weight: 600;
+            letter-spacing: 3px;
+            color: var(--texto-oscuro);
+            text-decoration: none;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2.5rem;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: var(--texto-oscuro);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: color 0.3s ease;
+        }
+
+        nav a:hover {
+            color: var(--rosa-intenso);
+        }
+
+        /* --- Sección Principal (Hero) --- */
+        .hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0 5%;
+            /* Fondo con imagen de stock temporal y filtro marfil superpuesto */
+            background: linear-gradient(to bottom, rgba(255, 242, 233, 0.85), rgba(255, 242, 233, 0.3)), 
+                        url('https://images.unsplash.com/photo-1563241527-3004b7be0ffd?q=80&w=2000&auto=format&fit=crop') center/cover;
+        }
+
+        .hero-content {
+            max-width: 850px;
+            margin-top: 5rem;
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 4.5rem;
+            font-weight: 400;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            color: var(--texto-oscuro);
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            font-weight: 300;
+            margin-bottom: 3rem;
+            color: var(--texto-gris);
+            padding: 0 10%;
+        }
+
+        .btn-primario {
+            display: inline-block;
+            padding: 1.2rem 3rem;
+            background-color: var(--rosa-intenso);
+            color: white;
+            text-decoration: none;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-radius: 2px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .btn-primario:hover {
+            background-color: #d11c70; /* Un tono ligeramente más oscuro al pasar el mouse */
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="#" class="logo">RESERVA FLORAL</a>
+        <nav>
+            <ul>
+                <li><a href="#">Catálogo</a></li>
+                <li><a href="#">Ocasiones</a></li>
+                <li><a href="#">La Marca</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Arte botánico para momentos únicos</h1>
+            <p>Diseño floral exclusivo y de alta gama. Seleccionamos las mejores texturas y colores para crear piezas inolvidables con entrega directa en Ciudad Madero.</p>
+            <a href="#" class="btn-primario">Explorar Colección</a>
+        </div>
+    </section>
+
+</body>
+</html>
