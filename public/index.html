@@ -649,6 +649,36 @@ body.rf-mobile-menu-open{overflow:hidden}
         </div>
     </div>
 
+    <!-- Carrusel de productos por categoría -->
+    <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-12">
+        <div class="rf-trending-heading">
+            <h2 id="titulo-catalogo">Flores y regalos en tendencia</h2>
+        </div>
+
+        <div class="rf-trending-tabs" role="tablist" aria-label="Categorías de productos">
+            <button type="button" class="rf-trending-tab is-active" data-filter="best" role="tab" aria-selected="true">Más vendidos</button>
+            <button type="button" class="rf-trending-tab" data-filter="flores" role="tab" aria-selected="false">Flores</button>
+            <button type="button" class="rf-trending-tab" data-filter="globos" role="tab" aria-selected="false">Globos</button>
+            <button type="button" class="rf-trending-tab" data-filter="regalos" role="tab" aria-selected="false">Regalos</button>
+            <button type="button" class="rf-trending-tab" data-filter="plantas" role="tab" aria-selected="false">Plantas</button>
+            <button type="button" class="rf-trending-tab" data-filter="joyeria" role="tab" aria-selected="false">Joyería</button>
+            <button type="button" class="rf-trending-tab" data-filter="premium" role="tab" aria-selected="false">Línea Premium</button>
+            <button type="button" class="rf-trending-tab" data-filter="desde249" role="tab" aria-selected="false">Desde $249</button>
+        </div>
+
+        <div class="rf-favorites-carousel-wrap rf-trending-products-wrap">
+            <button type="button" class="rf-favorite-arrow rf-favorite-prev" aria-label="Ver productos anteriores">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div id="contenedor-arreglos" class="rf-favorites-track"></div>
+            <button type="button" class="rf-favorite-arrow rf-favorite-next" aria-label="Ver más productos">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
+    </main>
+
+
+
     <!-- Categorías Principales -->
     <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" aria-label="Categorías destacadas">
         <div class="text-center py-8">
@@ -697,35 +727,6 @@ body.rf-mobile-menu-open{overflow:hidden}
         </div>
     </section>
 
-
-    <!-- Carrusel de productos por categoría -->
-    <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-12">
-        <div class="rf-trending-heading">
-            <h2 id="titulo-catalogo">Flores y regalos en tendencia</h2>
-            <a href="/categoria/todos" class="rf-view-all-catalog">Ver todos</a>
-        </div>
-
-        <div class="rf-trending-tabs" role="tablist" aria-label="Categorías de productos">
-            <button type="button" class="rf-trending-tab is-active" data-filter="best" role="tab" aria-selected="true">Más vendidos</button>
-            <button type="button" class="rf-trending-tab" data-filter="flores" role="tab" aria-selected="false">Flores</button>
-            <button type="button" class="rf-trending-tab" data-filter="globos" role="tab" aria-selected="false">Globos</button>
-            <button type="button" class="rf-trending-tab" data-filter="regalos" role="tab" aria-selected="false">Regalos</button>
-            <button type="button" class="rf-trending-tab" data-filter="plantas" role="tab" aria-selected="false">Plantas</button>
-            <button type="button" class="rf-trending-tab" data-filter="joyeria" role="tab" aria-selected="false">Joyería</button>
-            <button type="button" class="rf-trending-tab" data-filter="premium" role="tab" aria-selected="false">Línea Premium</button>
-            <button type="button" class="rf-trending-tab" data-filter="desde249" role="tab" aria-selected="false">Desde $249</button>
-        </div>
-
-        <div class="rf-favorites-carousel-wrap rf-trending-products-wrap">
-            <button type="button" class="rf-favorite-arrow rf-favorite-prev" aria-label="Ver productos anteriores">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <div id="contenedor-arreglos" class="rf-favorites-track"></div>
-            <button type="button" class="rf-favorite-arrow rf-favorite-next" aria-label="Ver más productos">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-        </div>
-    </main>
 
     <!-- Ocasiones -->
     <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" aria-label="Ocasiones">
