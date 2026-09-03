@@ -292,9 +292,11 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                Sin esta regla, "overflow-y:auto" de arriba le ganaba al bloqueo y se
                podía seguir scrolleando la página de atrás con el menú abierto. */
             body.rf-product-open.rf-ubicacion-open { overflow: hidden !important; }
+            /* Mismo bloqueo de scroll para el nuevo modal de "Descripción". */
+            body.rf-product-open.rf-descripcion-open { overflow: hidden !important; }
             /* Al abrir un producto, ocultamos completamente la página que queda detrás.
                Solo permanecen visibles el header y la pantalla de producto. */
-            body.rf-product-open > *:not(header):not(#modal-producto):not(#rf-mobile-overlay):not(#rf-mobile-drawer):not(#carrito-lateral):not(#modal-ubicacion) {
+            body.rf-product-open > *:not(header):not(#modal-producto):not(#rf-mobile-overlay):not(#rf-mobile-drawer):not(#carrito-lateral):not(#modal-ubicacion):not(#panel-descripcion-producto) {
                 visibility: hidden !important;
                 pointer-events: none !important;
             }
@@ -405,6 +407,16 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                 z-index: 2147483647 !important;
             }
             body.rf-product-open #modal-ubicacion * {
+                pointer-events: auto !important;
+            }
+            /* Modal de "Descripción": mismo trato -- debe poder abrirse desde la
+               vista de producto sin quedar oculto detrás por la regla de arriba. */
+            body.rf-product-open #panel-descripcion-producto {
+                visibility: visible !important;
+                pointer-events: auto !important;
+                z-index: 2147483647 !important;
+            }
+            body.rf-product-open #panel-descripcion-producto * {
                 pointer-events: auto !important;
             }
             body.rf-product-open .rf-desktop-product-main {
@@ -1503,8 +1515,15 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             const panel = document.getElementById('panel-descripcion-producto');
             const content = document.getElementById('panel-descripcion-content');
             panel.classList.remove('hidden');
+            panel.classList.add('flex');
             panel.setAttribute('aria-hidden', 'false');
-            requestAnimationFrame(() => content.classList.remove('translate-x-full'));
+            document.body.classList.add('rf-descripcion-open');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                });
+            });
         }
 
         function abrirDescripcionProducto() {
@@ -1516,9 +1535,14 @@ body.rf-mobile-menu-open{overflow:hidden !important}
         function cerrarDescripcionProducto() {
             const panel = document.getElementById('panel-descripcion-producto');
             const content = document.getElementById('panel-descripcion-content');
-            content.classList.add('translate-x-full');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
             panel.setAttribute('aria-hidden', 'true');
-            setTimeout(() => panel.classList.add('hidden'), 300);
+            document.body.classList.remove('rf-descripcion-open');
+            setTimeout(() => {
+                panel.classList.remove('flex');
+                panel.classList.add('hidden');
+            }, 200);
         }
 
         function mostrarProducto(productoActual) {
@@ -2534,9 +2558,9 @@ body.rf-mobile-menu-open{overflow:hidden !important}
     </script>
 
     <!-- Panel lateral de descripción del producto -->
-    <div id="panel-descripcion-producto" class="fixed inset-0 z-[160] hidden" aria-hidden="true">
+    <div id="panel-descripcion-producto" class="fixed inset-0 z-[160] hidden items-center justify-center" aria-hidden="true">
         <div class="absolute inset-0 bg-black bg-opacity-40" onclick="cerrarDescripcionProducto()"></div>
-        <aside id="panel-descripcion-content" class="absolute top-0 right-0 h-full w-full max-w-[390px] bg-white shadow-2xl overflow-y-auto transform translate-x-full transition-transform duration-300" role="dialog" aria-modal="true" aria-labelledby="panel-descripcion-titulo">
+        <div id="panel-descripcion-content" class="relative bg-white w-full h-full md:h-auto md:max-h-[85vh] md:max-w-[480px] md:rounded-2xl shadow-2xl overflow-y-auto transform scale-95 opacity-0 transition-all duration-200" role="dialog" aria-modal="true" aria-labelledby="panel-descripcion-titulo">
             <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-5 flex items-center justify-between z-10">
                 <h2 id="panel-descripcion-titulo" class="text-lg font-semibold text-brandDark">Descripción</h2>
                 <button type="button" onclick="cerrarDescripcionProducto()" aria-label="Cerrar descripción" class="text-gray-500 hover:text-brandDark">
@@ -2558,7 +2582,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                     <div id="panel-seleccion" class="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden"></div>
                 </div>
             </div>
-        </aside>
+        </div>
     </div>
 
     <!-- Modal de Producto -->
