@@ -296,7 +296,8 @@ body.rf-mobile-menu-open{overflow:hidden}
             body.rf-product-open > header {
                 position: fixed !important;
                 top: 0; left: 0; right: 0;
-                z-index: 10001 !important;
+                z-index: 2147483645 !important;
+                isolation: isolate !important;
             }
             body.rf-product-open #modal-producto {
                 position: fixed !important;
@@ -349,14 +350,21 @@ body.rf-mobile-menu-open{overflow:hidden}
 
             /* Los controles globales del header siguen siendo interactivos
                aunque la vista de producto esté abierta. */
+            /* Los overlays del header deben vivir por encima de la pantalla de producto.
+               Usamos un nivel deliberadamente superior al modal para evitar cualquier
+               stacking context creado por el contenido del producto. */
             body.rf-product-open #rf-mobile-overlay {
                 visibility: visible !important;
-            }
-            body.rf-product-open #rf-mobile-drawer {
-                visibility: visible !important;
+                z-index: 2147483646 !important;
+                pointer-events: none !important;
             }
             body.rf-product-open #rf-mobile-overlay.is-open {
                 pointer-events: auto !important;
+            }
+            body.rf-product-open #rf-mobile-drawer {
+                visibility: visible !important;
+                z-index: 2147483647 !important;
+                pointer-events: none !important;
             }
             body.rf-product-open #rf-mobile-drawer.is-open {
                 pointer-events: auto !important;
@@ -364,7 +372,10 @@ body.rf-mobile-menu-open{overflow:hidden}
             body.rf-product-open #carrito-lateral {
                 visibility: visible !important;
                 pointer-events: auto !important;
-                z-index: 10002 !important;
+                z-index: 2147483647 !important;
+            }
+            body.rf-product-open #carrito-lateral.carrito-abierto {
+                z-index: 2147483647 !important;
             }
             body.rf-product-open .rf-desktop-product-main {
                 display: none !important;
