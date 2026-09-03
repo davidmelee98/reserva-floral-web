@@ -491,13 +491,23 @@ body.rf-mobile-menu-open{overflow:hidden}
     <div class="mt-5 space-y-3">
       <div class="relative"><button id="estado-trigger" onclick="toggleDrop('estado')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none"><span id="estado-label" class="text-gray-500">Estado <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="estado-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><div class="px-3 pt-3 pb-2 text-[10px] text-gray-500 uppercase">Más buscados</div><div id="estado-options" class="max-h-56 overflow-y-auto pb-2"></div></div></div>
       <div class="relative"><button id="ciudad-trigger" disabled onclick="toggleDrop('ciudad')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none disabled:bg-gray-50 disabled:text-gray-300"><span id="ciudad-label" class="text-gray-400">Ciudad <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="ciudad-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><div class="px-3 pt-3 pb-2 text-[10px] text-gray-500 uppercase">Ciudades disponibles</div><div id="ciudad-options" class="max-h-56 overflow-y-auto pb-2"></div></div></div>
-      <div class="relative"><button onclick="toggleDrop('fecha')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none"><span id="fecha-label" class="text-gray-500">Fecha de entrega <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="fecha-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><button onclick="setFecha('hoy')" class="w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Hoy <span>◯</span></button><button onclick="setFecha('manana')" class="w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Mañana <span>◯</span></button><button onclick="setFecha('otro')" class="w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Otro día <span>◯</span></button></div></div>
+      <div class="relative"><button onclick="toggleDrop('fecha')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none"><span id="fecha-label" class="text-gray-500">Fecha de entrega <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="fecha-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><button type="button" data-fecha="hoy" class="rf-location-option w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Hoy <span>◯</span></button><button type="button" data-fecha="manana" class="rf-location-option w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Mañana <span>◯</span></button><button type="button" data-fecha="otro" class="rf-location-option w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Otro día <span>◯</span></button></div></div>
       <div id="otro-wrap" class="hidden border border-gray-300 rounded-lg px-3 py-2"><label class="block text-[10px] text-gray-500 uppercase">Selecciona la fecha <b class="text-brandLightPink">*</b></label><input id="otra-fecha" type="date" class="w-full outline-none text-sm mt-1"></div>
     </div>
     <p id="loc-error" class="hidden text-xs text-red-600 mt-3"></p><button onclick="confirmarUbicacion()" class="w-full bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold py-3 rounded-full mt-4">Ver regalos</button>
   </div>
 </div>
 
+
+<style>
+/* Selector de ubicación: interacción robusta en iOS/Safari y pantallas táctiles */
+#modal-ubicacion .rf-location-card{position:relative;z-index:100!important;isolation:isolate;}
+#modal-ubicacion .rf-location-card .relative{position:relative;z-index:10;}
+#modal-ubicacion .rf-location-card .relative:has(.rf-location-option){z-index:1000;}
+#modal-ubicacion .rf-location-card [id$="-menu"]{z-index:2000!important;pointer-events:auto!important;}
+#modal-ubicacion .rf-location-option{position:relative;z-index:2001;pointer-events:auto!important;touch-action:manipulation;-webkit-tap-highlight-color:rgba(194,24,91,.08);cursor:pointer;}
+#modal-ubicacion .absolute.inset-0{z-index:1;}
+</style>
 <script>
 const KEY='rf_ubicacion_entrega';
 const CIUDADES={'Ciudad de México':['Benito Juárez','Cuauhtémoc','Miguel Hidalgo','Coyoacán'],'Tamaulipas':['Ciudad Madero','Tampico','Altamira','Ciudad Victoria','Matamoros','Reynosa','Nuevo Laredo'],'Nuevo León':['Monterrey','San Pedro Garza García','Guadalupe','San Nicolás de los Garza','Apodaca']};
@@ -591,8 +601,18 @@ function toggleDrop(t){const m=document.getElementById(t+'-menu');const open=!m.
 function closeDrops(){document.querySelectorAll('#modal-ubicacion [id$="-menu"]').forEach(x=>x.classList.add('hidden'))}
 function abrirModalUbicacion(cb){window.rfAfterLocation=cb||null;renderEstados();const modal=document.getElementById('modal-ubicacion');modal.classList.remove('hidden');modal.classList.add('flex');document.body.style.overflow='hidden';}
 function cerrarModalUbicacion(){if(!complete())return;document.getElementById('modal-ubicacion').classList.add('hidden');document.getElementById('modal-ubicacion').classList.remove('flex');document.body.style.overflow='auto';closeDrops()}
-function renderEstados(){document.getElementById('estado-options').innerHTML=ESTADOS.map(e=>`<button onclick="setEstado(${JSON.stringify(e)})" class="w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50">${e}</button>`).join('')}
-function setEstado(e){draft={estado:e,ciudad:'',tipoFecha:'',fecha:''};document.getElementById('estado-label').innerText=e;document.getElementById('ciudad-label').innerHTML='Ciudad <b class="text-brandLightPink">*</b>';document.getElementById('ciudad-options').innerHTML=(CIUDADES[e]||[]).map(c=>`<button onclick="setCiudad(${JSON.stringify(c)})" class="w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50">${c}</button>`).join('');document.getElementById('ciudad-trigger').disabled=false;closeDrops()}
+function renderEstados(){
+  const box=document.getElementById('estado-options');
+  box.innerHTML=ESTADOS.map(e=>`<button type="button" data-estado="${e.replace(/&/g,'&amp;').replace(/\"/g,'&quot;')}" class="rf-location-option w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50">${e}</button>`).join('');
+}
+function setEstado(e){
+  draft={estado:e,ciudad:'',tipoFecha:'',fecha:''};
+  document.getElementById('estado-label').innerText=e;
+  document.getElementById('ciudad-label').innerHTML='Ciudad <b class="text-brandLightPink">*</b>';
+  document.getElementById('ciudad-options').innerHTML=(CIUDADES[e]||[]).map(c=>`<button type="button" data-ciudad="${c.replace(/&/g,'&amp;').replace(/\"/g,'&quot;')}" class="rf-location-option w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50">${c}</button>`).join('');
+  document.getElementById('ciudad-trigger').disabled=false;
+  closeDrops();
+}
 function setCiudad(c){draft.ciudad=c;document.getElementById('ciudad-label').innerText=c;closeDrops()}
 function setFecha(t){let d=new Date(),label='Hoy';if(t==='manana'){d.setDate(d.getDate()+1);label='Mañana'}if(t==='otro'){label='Otro día';draft.fecha='';document.getElementById('otro-wrap').classList.remove('hidden')}else{draft.fecha=iso(d);document.getElementById('otro-wrap').classList.add('hidden')}draft.tipoFecha=t;document.getElementById('fecha-label').innerText=label;closeDrops()}
 function confirmarUbicacion(){const err=document.getElementById('loc-error');let fecha=draft.fecha;if(draft.tipoFecha==='otro')fecha=document.getElementById('otra-fecha').value;if(!draft.estado||!draft.ciudad||!draft.tipoFecha||!fecha){err.innerText='Completa estado, ciudad y fecha de entrega para continuar.';err.classList.remove('hidden');return}if(fecha<iso()){err.innerText='La fecha de entrega no puede ser anterior a hoy.';err.classList.remove('hidden');return}const data={estado:draft.estado,ciudad:draft.ciudad,fecha,tipoFecha:draft.tipoFecha,actualizadoEn:new Date().toISOString()};localStorage.setItem(KEY,JSON.stringify(data));err.classList.add('hidden');const cb=window.rfAfterLocation;window.rfAfterLocation=null;cerrarModalUbicacion();if(cb)cb();renderLocation()}
@@ -622,7 +642,30 @@ function prepararMegaMenu(){
 
 function protegerNavegacion(){document.querySelectorAll('[data-main], .mega-menu a[data-category-child]').forEach(a=>a.addEventListener('click',e=>{if(complete())return;e.preventDefault();const href=a.href;abrirModalUbicacion(()=>location.href=href)},true));}
 async function init(){config=getConfig();prepararMegaMenu();document.getElementById('sort-select').addEventListener('change',render);document.getElementById('otra-fecha').min=iso();protegerNavegacion();renderLocation();try{const r=await fetch('/api/catalogo');products=await r.json();render()}catch{document.getElementById('products').innerHTML='<div class="col-span-full py-16 text-center text-red-500">No se pudo cargar el catálogo.</div>'}if(!complete())abrirModalUbicacion(()=>{});}
-document.addEventListener('click',e=>{if(!e.target.closest('#modal-ubicacion .relative'))closeDrops()});document.addEventListener('DOMContentLoaded',init);
+function instalarEventosUbicacion(){
+  const modal=document.getElementById('modal-ubicacion');
+  const estadoOptions=document.getElementById('estado-options');
+  const ciudadOptions=document.getElementById('ciudad-options');
+  const fechaMenu=document.getElementById('fecha-menu');
+  const activar=(el,selector,handler)=>{
+    if(!el)return;
+    const fire=e=>{
+      const option=e.target.closest(selector);
+      if(!option || !el.contains(option)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      handler(option);
+    };
+    el.addEventListener('pointerup',fire);
+    el.addEventListener('click',fire);
+  };
+  activar(estadoOptions,'[data-estado]',o=>setEstado(o.dataset.estado));
+  activar(ciudadOptions,'[data-ciudad]',o=>setCiudad(o.dataset.ciudad));
+  activar(fechaMenu,'[data-fecha]',o=>setFecha(o.dataset.fecha));
+}
+
+document.addEventListener('click',e=>{if(!e.target.closest('#modal-ubicacion .relative'))closeDrops()});
+document.addEventListener('DOMContentLoaded',()=>{instalarEventosUbicacion();init()});
 function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[]');if(c.length)location.href='/checkout.html';}
 </script>
 
