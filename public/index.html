@@ -255,15 +255,15 @@
 .rf-mobile-overlay.is-open{opacity:1;visibility:visible;pointer-events:auto}
 .rf-mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:min(66.666vw,420px);background:#fff;transform:translateX(-102%);transition:transform .24s ease;z-index:99999;display:flex;flex-direction:column;box-shadow:16px 0 35px rgba(0,0,0,.16)}
 .rf-mobile-drawer.is-open{transform:translateX(0)}
-.rf-mobile-head{display:flex;align-items:center;justify-content:space-between;padding:24px 24px 16px;border-bottom:1px solid #eee;flex:0 0 auto}
-.rf-mobile-title{font-size:25px;line-height:1.15;font-weight:600;color:#252525;margin:0}
-.rf-mobile-close,.rf-mobile-back{border:0;background:transparent;color:#252525;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.rf-mobile-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:18px 14px 14px;border-bottom:1px solid #eee;flex:0 0 auto}
+.rf-mobile-title{font-size:19px;line-height:1.2;font-weight:600;color:#252525;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.rf-mobile-close,.rf-mobile-back{border:0;background:transparent;color:#252525;width:34px;height:34px;flex:0 0 auto;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .rf-mobile-close:active,.rf-mobile-back:active{background:#f6f6f6}
 .rf-mobile-crumbs{padding:12px 24px 4px;display:flex;align-items:center;gap:6px;overflow:auto;white-space:nowrap;flex:0 0 auto}
 .rf-mobile-crumb{border:0;background:transparent;padding:0;color:#777;font:500 13px/1.2 Poppins,sans-serif;cursor:pointer}
 .rf-mobile-crumb.is-current{color:#c2185b;font-weight:600}
 .rf-mobile-slash{color:#c5c5c5;font-size:13px}
-.rf-mobile-list{padding:8px 24px 26px;overflow:auto;flex:1}
+.rf-mobile-list{padding:8px 16px 26px;overflow:auto;flex:1}
 .rf-mobile-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;border:0;border-bottom:1px solid #f0f0f0;background:#fff;padding:18px 0;text-align:left;color:#000;font:400 18px/1.35 Poppins,sans-serif;cursor:pointer}
 .rf-mobile-row.is-parent{font-weight:700}
 .rf-mobile-row.is-viewall{color:#8a8a8a;font-weight:400}
@@ -548,7 +548,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                 </button>
 
                 <!-- Logo -->
-                <div class="rf-mobile-logo flex-shrink-0 flex items-center cursor-pointer" onclick="cargarInventario()">
+                <div class="rf-mobile-logo flex-shrink-0 flex items-center cursor-pointer" onclick="location.href='/'">
                     <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
                 </div>
                 
@@ -3008,6 +3008,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
       const mainTop=path[0];
       if(path.length===1 && mainLinksTop[mainTop]){
         const verTodo=document.createElement('a'); verTodo.className='rf-mobile-row is-viewall'; verTodo.href=mainLinksTop[mainTop];
+        verTodo.dataset.rfAction='navigate'; verTodo.dataset.rfHref=mainLinksTop[mainTop];
         verTodo.innerHTML='<span class="rf-mobile-row-label">Ver todo</span>';
         list.appendChild(verTodo);
       }
