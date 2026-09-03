@@ -446,8 +446,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                 pointer-events:auto !important;
             }
             body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-row,
-            body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-crumb,
-            body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-viewall,
+            body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-back,
             body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-close { pointer-events:auto !important; position:relative; z-index:2; }
             #modal-mobile-gallery {
                 display: flex;
@@ -592,12 +591,16 @@ body.rf-mobile-menu-open{overflow:hidden !important}
 <div id="rf-mobile-overlay" class="rf-mobile-overlay" aria-hidden="true"></div>
 <aside id="rf-mobile-drawer" class="rf-mobile-drawer" aria-hidden="true" aria-label="Categorías">
   <div class="rf-mobile-head">
-    <div id="rf-mobile-title" class="rf-mobile-title">Categorías</div>
+    <div class="flex items-center gap-2 min-w-0">
+      <button type="button" id="rf-mobile-back" class="rf-mobile-back" aria-label="Regresar" style="display:none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <div id="rf-mobile-title" class="rf-mobile-title">Categorías</div>
+    </div>
     <button type="button" id="rf-mobile-close" class="rf-mobile-close" aria-label="Cerrar menú">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
   </div>
-  <div id="rf-mobile-crumbs" class="rf-mobile-crumbs"></div>
   <div id="rf-mobile-list" class="rf-mobile-list"></div>
 </aside>
 
@@ -2969,10 +2972,10 @@ body.rf-mobile-menu-open{overflow:hidden !important}
   const overlay=document.getElementById('rf-mobile-overlay');
   const drawer=document.getElementById('rf-mobile-drawer');
   const list=document.getElementById('rf-mobile-list');
-  const crumbs=document.getElementById('rf-mobile-crumbs');
   const title=document.getElementById('rf-mobile-title');
   const closeBtn=document.getElementById('rf-mobile-close');
-  if(!overlay||!drawer||!list||!crumbs)return;
+  const backBtn=document.getElementById('rf-mobile-back');
+  if(!overlay||!drawer||!list)return;
 
   let path=[];
   function currentItems(){
@@ -2994,15 +2997,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
   }
   function render(){
     title.textContent=path.length ? path[path.length-1] : 'Categorías';
-    crumbs.innerHTML='';
-    const root=document.createElement('button');
-    root.type='button'; root.className='rf-mobile-crumb'+(!path.length?' is-current':''); root.textContent='Categorías';
-    root.onclick=()=>{path=[];render();}; crumbs.appendChild(root);
-    path.forEach((label,idx)=>{
-      const slash=document.createElement('span'); slash.className='rf-mobile-slash'; slash.textContent='/'; crumbs.appendChild(slash);
-      const c=document.createElement('button'); c.type='button'; c.className='rf-mobile-crumb'+(idx===path.length-1?' is-current':''); c.textContent=label;
-      c.dataset.rfCrumbIndex=String(idx); crumbs.appendChild(c);
-    });
+    if(backBtn) backBtn.style.display = path.length ? 'flex' : 'none';
     list.innerHTML='';
     if(path.length){
       const mainLinksTop={
@@ -3014,8 +3009,6 @@ body.rf-mobile-menu-open{overflow:hidden !important}
         verTodo.innerHTML='<span class="rf-mobile-row-label">Ver todo</span>';
         list.appendChild(verTodo);
       }
-      const back=document.createElement('button'); back.type='button'; back.className='rf-mobile-row'; back.dataset.rfAction='back'; back.innerHTML='<span class="rf-mobile-row-label">← Volver</span>';
-      list.appendChild(back);
     }
     const items=currentItems();
     items.forEach(item=>{
@@ -3035,6 +3028,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
   window.rfOpenMobileCategories=openMenu;
   window.rfCloseMobileCategories=closeMenu;
   closeBtn.addEventListener('click',closeMenu); overlay.addEventListener('click',closeMenu);
+  if(backBtn) backBtn.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); path.pop(); render(); });
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();});
   document.addEventListener('click',e=>{
     const btn=e.target.closest('#rf-mobile-menu-button');
@@ -3048,23 +3042,10 @@ body.rf-mobile-menu-open{overflow:hidden !important}
     e.preventDefault();
     e.stopImmediatePropagation();
     const action=row.dataset.rfAction;
-    if(action==='back'){ path.pop(); render(); return; }
     if(action==='open'){ path.push(row.dataset.rfLabel || ''); render(); return; }
     if(action==='navigate'){
       const href=row.dataset.rfHref;
       if(href) window.location.assign(href);
-    }
-  }, true);
-  crumbs.addEventListener('click', e=>{
-    const crumb=e.target.closest('[data-rf-crumb-index]');
-    if(crumb){
-      e.preventDefault(); e.stopImmediatePropagation();
-      path=path.slice(0, Number(crumb.dataset.rfCrumbIndex)+1); render(); return;
-    }
-    const root=e.target.closest('#rf-mobile-crumbs > button.rf-mobile-crumb:not([data-rf-crumb-index])');
-    if(root){
-      e.preventDefault(); e.stopImmediatePropagation();
-      path=[]; render();
     }
   }, true);
 })();
