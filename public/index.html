@@ -1852,12 +1852,19 @@ body.rf-mobile-menu-open{overflow:hidden}
                 const hoy = new Date();
                 const isoHoy = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000).toISOString().slice(0,10);
                 dateInput.min = isoHoy;
-                setTimeout(() => {
-                    dateInput.focus();
+                // Importante en iPhone/iPad: el selector nativo solo puede abrirse
+                // mientras sigue vigente la activación del toque del usuario.
+                // No usamos setTimeout/focus porque Safari pierde esa activación.
+                dateInput.focus({preventScroll:true});
+                try {
                     if (typeof dateInput.showPicker === 'function') {
-                        try { dateInput.showPicker(); } catch (_) {}
+                        dateInput.showPicker();
+                    } else {
+                        dateInput.click();
                     }
-                }, 80);
+                } catch (_) {
+                    try { dateInput.click(); } catch (_) {}
+                }
             }
         }
 
