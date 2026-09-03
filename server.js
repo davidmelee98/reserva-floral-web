@@ -91,6 +91,7 @@ function productoValido(body) {
 }
 
 function normalizarProducto(body) {
+  const stockNum = Number(body.stock);
   return {
     nombre: String(body.nombre || '').trim(),
     descripcion: String(body.descripcion || '').trim() || null,
@@ -104,7 +105,9 @@ function normalizarProducto(body) {
     variante_personalizada: String(body.variante_personalizada || '').trim() || null,
     opcion_foto: Boolean(body.opcion_foto),
     tamanos: String(body.tamanos || '').trim() || null,
-    cobertura: String(body.cobertura || '').trim() || null
+    cobertura: String(body.cobertura || '').trim() || null,
+    stock: Number.isFinite(stockNum) && stockNum >= 0 ? Math.floor(stockNum) : 1,
+    disponible: body.disponible === undefined ? true : Boolean(body.disponible)
   };
 }
 
@@ -120,12 +123,16 @@ app.get('/api/health', async (req, res) => {
 });
 
 // API: Obtener catálogo disponible.
+// El panel de administración pasa ?todos=1 para ver también los productos
+// marcados como no disponibles (agotados) -- la tienda nunca manda ese parámetro,
+// así que su comportamiento no cambia.
 app.get('/api/catalogo', async (req, res) => {
+  const verTodos = req.query.todos === '1' || req.query.todos === 'true';
   try {
     const result = await pool.query(`
       SELECT *
       FROM arreglos_florales
-      WHERE COALESCE(disponible, true) = true
+      ${verTodos ? '' : 'WHERE COALESCE(disponible, true) = true'}
       ORDER BY id DESC
     `);
     res.json(result.rows);
@@ -162,11 +169,12 @@ app.post('/api/catalogo', async (req, res) => {
     const result = await pool.query(`
       INSERT INTO arreglos_florales
         (nombre, descripcion, especificaciones, precio, imagen_url, imagenes, categoria, subcategoria, subsubcategoria,
-         variante_personalizada, opcion_foto, tamanos, cobertura)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         variante_personalizada, opcion_foto, tamanos, cobertura, stock, disponible)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING *
     `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, p.categoria,
-        p.subcategoria, p.subsubcategoria, p.variante_personalizada, p.opcion_foto, p.tamanos, p.cobertura]);
+        p.subcategoria, p.subsubcategoria, p.variante_personalizada, p.opcion_foto, p.tamanos, p.cobertura,
+        p.stock, p.disponible]);
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -192,12 +200,12 @@ app.put('/api/catalogo/:id', async (req, res) => {
       UPDATE arreglos_florales
       SET nombre=$1, descripcion=$2, especificaciones=$3, precio=$4, imagen_url=$5, imagenes=$6,
           categoria=$7, subcategoria=$8, subsubcategoria=$9, variante_personalizada=$10,
-          opcion_foto=$11, tamanos=$12, cobertura=$13
-      WHERE id=$14
+          opcion_foto=$11, tamanos=$12, cobertura=$13, stock=$14, disponible=$15
+      WHERE id=$16
       RETURNING *
     `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, p.categoria,
         p.subcategoria, p.subsubcategoria, p.variante_personalizada, p.opcion_foto, p.tamanos,
-        p.cobertura, id]);
+        p.cobertura, p.stock, p.disponible, id]);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Producto no encontrado.' });
@@ -293,6 +301,42 @@ app.post('/api/ordenes', async (req, res) => {
 
 app.get('/categoria/*splat', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'categoria.html'));
+});
+
+// --- Panel de administración: pedidos ---
+// No hay sistema de autenticación todavía (ver nota en README/entrega); estas
+// rutas quedan abiertas igual que las de /api/catalogo que ya existían.
+const ESTADOS_ORDEN_VALIDOS = ['Pendiente', 'Confirmado', 'En preparación', 'En camino', 'Entregado', 'Cancelado'];
+
+app.get('/api/admin/ordenes', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM ordenes ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('GET /api/admin/ordenes:', error);
+    res.status(500).json({ error: 'Error del servidor al cargar los pedidos.' });
+  }
+});
+
+app.patch('/api/admin/ordenes/:id/estado', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID de pedido inválido.' });
+  }
+  const { estado } = req.body;
+  if (!ESTADOS_ORDEN_VALIDOS.includes(estado)) {
+    return res.status(400).json({ error: 'Estado de pedido inválido.' });
+  }
+  try {
+    const result = await pool.query('UPDATE ordenes SET estado=$1 WHERE id=$2 RETURNING *', [estado, id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Pedido no encontrado.' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('PATCH /api/admin/ordenes/:id/estado:', error);
+    res.status(500).json({ error: 'Error al actualizar el pedido.' });
+  }
 });
 
 app.get(/.*/, (req, res) => {
