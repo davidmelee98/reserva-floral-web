@@ -283,6 +283,111 @@
 @media (min-width:768px){.rf-mobile-overlay,.rf-mobile-drawer{display:none!important}}
 body.rf-mobile-menu-open{overflow:hidden}
 
+
+        /* Vista de producto móvil: encabezado y CTA persistentes */
+        @media (max-width: 767px) {
+            body.rf-product-open { padding-top: 64px; }
+            body.rf-product-open > header {
+                position: fixed !important;
+                top: 0; left: 0; right: 0;
+                z-index: 200 !important;
+            }
+            body.rf-product-open #modal-producto {
+                z-index: 110 !important;
+            }
+            body.rf-product-open #modal-producto > #modal-content {
+                top: 64px !important;
+                bottom: 0 !important;
+                height: auto !important;
+                left: 0 !important;
+                right: 0 !important;
+                border-radius: 0 !important;
+            }
+            body.rf-product-open #modal-producto > #modal-content > .rf-product-info-mobile {
+                padding-bottom: 96px !important;
+            }
+            body.rf-product-open .rf-product-media {
+                padding: 0 !important;
+                background: #fff !important;
+            }
+            body.rf-product-open .rf-desktop-product-main {
+                display: none !important;
+            }
+            body.rf-product-open #btn-modal-agregar {
+                position: fixed !important;
+                left: 16px !important;
+                right: 16px !important;
+                bottom: 16px !important;
+                width: auto !important;
+                z-index: 220 !important;
+                margin: 0 !important;
+            }
+            #modal-mobile-gallery {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                height: min(58vh, 560px);
+                background: #fff;
+                overflow: hidden;
+            }
+            #modal-mobile-gallery-track {
+                display: flex;
+                width: 100%;
+                height: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                scroll-snap-type: x mandatory;
+                scroll-behavior: smooth;
+                overscroll-behavior-x: contain;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            #modal-mobile-gallery-track::-webkit-scrollbar { display: none; }
+            .rf-mobile-gallery-slide {
+                flex: 0 0 100%;
+                width: 100%;
+                height: 100%;
+                scroll-snap-align: center;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #fff;
+            }
+            .rf-mobile-gallery-slide img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                display: block;
+            }
+            #modal-mobile-gallery-dots {
+                position: relative;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 8px;
+                min-height: 30px;
+                padding: 4px 0 8px;
+                background: #fff;
+            }
+            .rf-mobile-gallery-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 999px;
+                border: 0;
+                padding: 0;
+                background: #d8d8d8;
+                cursor: pointer;
+                transition: width .18s ease, background-color .18s ease;
+            }
+            .rf-mobile-gallery-dot.is-active {
+                width: 10px;
+                background: #e91e63;
+            }
+        }
+        @media (min-width: 768px) {
+            #modal-mobile-gallery { display: none !important; }
+        }
+
 </style>
 </head>
 <body class="bg-white font-sans text-brandDark antialiased">
@@ -1019,9 +1124,14 @@ body.rf-mobile-menu-open{overflow:hidden}
             const principal = imagenes[0] || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
             const main = document.getElementById('modal-img');
             const thumbs = document.getElementById('modal-thumbnails');
+            const mobileTrack = document.getElementById('modal-mobile-gallery-track');
+            const mobileDots = document.getElementById('modal-mobile-gallery-dots');
             main.src = principal;
             main.onerror = () => { main.onerror = null; main.src = 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'; };
             thumbs.innerHTML = '';
+            if (mobileTrack) mobileTrack.innerHTML = '';
+            if (mobileDots) mobileDots.innerHTML = '';
+
             imagenes.forEach((url, index) => {
                 const wrap = document.createElement('button');
                 wrap.type = 'button';
@@ -1037,7 +1147,49 @@ body.rf-mobile-menu-open{overflow:hidden}
                     wrap.className = 'aspect-square bg-white border-2 border-brandFuchsia rounded-lg overflow-hidden cursor-pointer';
                 };
                 thumbs.appendChild(wrap);
+
+                if (mobileTrack && mobileDots) {
+                    const slide = document.createElement('div');
+                    slide.className = 'rf-mobile-gallery-slide';
+                    const mobileImg = document.createElement('img');
+                    mobileImg.src = url;
+                    mobileImg.alt = `${producto.nombre || 'Producto'} - foto ${index + 1}`;
+                    mobileImg.loading = index === 0 ? 'eager' : 'lazy';
+                    mobileImg.onerror = () => { mobileImg.onerror = null; mobileImg.src = 'https://via.placeholder.com/600?text=Foto'; };
+                    slide.appendChild(mobileImg);
+                    mobileTrack.appendChild(slide);
+
+                    const dot = document.createElement('button');
+                    dot.type = 'button';
+                    dot.className = 'rf-mobile-gallery-dot' + (index === 0 ? ' is-active' : '');
+                    dot.setAttribute('aria-label', `Ver foto ${index + 1}`);
+                    dot.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        slide.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    });
+                    mobileDots.appendChild(dot);
+                }
             });
+
+            if (mobileTrack && mobileDots) {
+                const slides = Array.from(mobileTrack.children);
+                const dots = Array.from(mobileDots.children);
+                const updateDots = () => {
+                    if (!slides.length) return;
+                    const center = mobileTrack.scrollLeft + mobileTrack.clientWidth / 2;
+                    let active = 0;
+                    let best = Infinity;
+                    slides.forEach((slide, i) => {
+                        const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
+                        const distance = Math.abs(slideCenter - center);
+                        if (distance < best) { best = distance; active = i; }
+                    });
+                    dots.forEach((dot, i) => dot.classList.toggle('is-active', i === active));
+                };
+                mobileTrack.addEventListener('scroll', updateDots, { passive: true });
+                window.requestAnimationFrame(updateDots);
+            }
         }
 
         function formatearPrecio(valor) {
@@ -1236,6 +1388,7 @@ body.rf-mobile-menu-open{overflow:hidden}
 
         function mostrarProducto(productoActual) {
             productoDescripcionActual = productoActual;
+            document.body.classList.add('rf-product-open');
             const imagenes = obtenerImagenes(productoActual);
             const urlImagen = imagenes[0] || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
             document.getElementById('modal-id').innerText = '00' + productoActual.id;
@@ -1270,6 +1423,7 @@ body.rf-mobile-menu-open{overflow:hidden}
             setTimeout(() => {
                 modal.classList.add('hidden');
                 document.body.style.overflow = 'auto';
+                document.body.classList.remove('rf-product-open');
             }, 300);
         }
 
@@ -2249,17 +2403,23 @@ body.rf-mobile-menu-open{overflow:hidden}
             </button>
 
             <!-- Sección Izquierda: Imágenes -->
-            <div class="w-full md:w-1/2 bg-gray-50 flex p-4 md:p-8">
+            <div class="w-full md:w-1/2 bg-gray-50 flex p-4 md:p-8 rf-product-media">
                 <!-- Miniaturas -->
                 <div id="modal-thumbnails" class="w-20 hidden md:flex flex-col gap-4 pr-4 overflow-y-auto"></div>
                 <!-- Imagen Principal -->
-                <div class="flex-1 bg-white rounded-xl overflow-hidden shadow-sm flex items-center justify-center relative">
+                <div class="flex-1 bg-white rounded-xl overflow-hidden shadow-sm flex items-center justify-center relative rf-desktop-product-main">
                     <img id="modal-img" src="" alt="Producto" class="w-full h-full object-contain max-h-[60vh] md:max-h-none">
+                </div>
+
+                <!-- Galería móvil: todas las imágenes registradas en el catálogo -->
+                <div id="modal-mobile-gallery" class="md:hidden">
+                    <div id="modal-mobile-gallery-track"></div>
+                    <div id="modal-mobile-gallery-dots" aria-label="Fotos del producto"></div>
                 </div>
             </div>
 
             <!-- Sección Derecha: Info y Compra -->
-            <div class="w-full md:w-1/2 p-6 md:p-10 flex flex-col overflow-y-auto">
+            <div class="w-full md:w-1/2 p-6 md:p-10 flex flex-col overflow-y-auto rf-product-info-mobile">
                 <div class="mb-6">
                     <p class="text-xs text-gray-500 mb-1">SKU: <span id="modal-id"></span></p>
                     <h2 id="modal-nombre" class="text-2xl font-semibold text-brandDark mb-2"></h2>
