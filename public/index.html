@@ -2507,4 +2507,16 @@ body.rf-mobile-menu-open{overflow:hidden}
 </script>
 
 </body>
-</html>
+</html><style>
+/* Ajuste de ritmo vertical en móvil: secciones más compactas y conectadas */
+@media (max-width:767px){
+  #seccion-catalogo{padding-bottom:2.5rem !important; padding-top:2rem !important;}
+  #seccion-catalogo + section,
+  #seccion-catalogo + section + section{margin-bottom:2.5rem !important;}
+  #seccion-catalogo + section > div:first-child,
+  #seccion-catalogo + section + section > div:first-child{padding-top:1rem !important; padding-bottom:1rem !important;}
+  .rf-favorites-track,
+  .rf-category-track,
+  .rf-occasion-track{padding-bottom:4px !important;}
+}
+</style>
