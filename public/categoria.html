@@ -489,9 +489,9 @@ body.rf-mobile-menu-open{overflow:hidden}
     <button onclick="cerrarModalUbicacion()" class="absolute top-4 right-4 text-gray-700 hover:text-brandFuchsia text-2xl leading-none">×</button>
     <div class="text-center px-3"><h2 class="text-lg font-semibold">¿A dónde quieres enviar?</h2><p class="text-xs text-gray-500 mt-3 leading-relaxed">Los regalos, precios y las opciones de envío podrían variar según la ciudad de entrega.</p></div>
     <div class="mt-5 space-y-3">
-      <div class="relative"><button id="estado-trigger" onclick="toggleDrop('estado')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none"><span id="estado-label" class="text-gray-500">Estado <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="estado-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><div class="px-3 pt-3 pb-2 text-[10px] text-gray-500 uppercase">Más buscados</div><div id="estado-options" class="max-h-56 overflow-y-auto pb-2"></div></div></div>
-      <div class="relative"><button id="ciudad-trigger" disabled onclick="toggleDrop('ciudad')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none disabled:bg-gray-50 disabled:text-gray-300"><span id="ciudad-label" class="text-gray-400">Ciudad <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="ciudad-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><div class="px-3 pt-3 pb-2 text-[10px] text-gray-500 uppercase">Ciudades disponibles</div><div id="ciudad-options" class="max-h-56 overflow-y-auto pb-2"></div></div></div>
-      <div class="relative"><button onclick="toggleDrop('fecha')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none"><span id="fecha-label" class="text-gray-500">Fecha de entrega <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="fecha-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><button type="button" data-fecha="hoy" class="rf-location-option w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Hoy <span>◯</span></button><button type="button" data-fecha="manana" class="rf-location-option w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Mañana <span>◯</span></button><button type="button" data-fecha="otro" class="rf-location-option w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Otro día <span>◯</span></button></div></div>
+      <div class="relative rf-location-field-wrap"><button id="estado-trigger" onclick="toggleDrop('estado')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none"><span id="estado-label" class="text-gray-500">Estado <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="estado-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><div class="px-3 pt-3 pb-2 text-[10px] text-gray-500 uppercase">Más buscados</div><div id="estado-options" class="max-h-56 overflow-y-auto pb-2"></div></div></div>
+      <div class="relative rf-location-field-wrap"><button id="ciudad-trigger" disabled onclick="toggleDrop('ciudad')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none disabled:bg-gray-50 disabled:text-gray-300"><span id="ciudad-label" class="text-gray-400">Ciudad <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="ciudad-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><div class="px-3 pt-3 pb-2 text-[10px] text-gray-500 uppercase">Ciudades disponibles</div><div id="ciudad-options" class="max-h-56 overflow-y-auto pb-2"></div></div></div>
+      <div class="relative rf-location-field-wrap"><button id="fecha-trigger" onclick="toggleDrop('fecha')" class="w-full border border-gray-200 rounded-xl px-3 py-3 text-left text-sm flex justify-between items-center outline-none"><span id="fecha-label" class="text-gray-500">Fecha de entrega <b class="text-brandLightPink">*</b></span><span>⌄</span></button><div id="fecha-menu" class="hidden absolute z-30 top-full mt-2 left-0 right-0 bg-white rf-dropdown-panel overflow-hidden"><button type="button" data-fecha="hoy" class="rf-location-option w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Hoy <span>◯</span></button><button type="button" data-fecha="manana" class="rf-location-option w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Mañana <span>◯</span></button><button type="button" data-fecha="otro" class="rf-location-option w-full px-3 py-3 flex justify-between hover:bg-gray-50 text-left text-sm">Otro día <span>◯</span></button></div></div>
       <div id="otro-wrap" class="hidden border border-gray-300 rounded-lg px-3 py-2"><label class="block text-[10px] text-gray-500 uppercase">Selecciona la fecha <b class="text-brandLightPink">*</b></label><input id="otra-fecha" type="date" class="w-full outline-none text-sm mt-1"></div>
     </div>
     <p id="loc-error" class="hidden text-xs text-red-600 mt-3"></p><button onclick="confirmarUbicacion()" class="w-full bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold py-3 rounded-full mt-4">Ver regalos</button>
@@ -500,12 +500,14 @@ body.rf-mobile-menu-open{overflow:hidden}
 
 
 <style>
-/* Selector de ubicación: interacción robusta en iOS/Safari y pantallas táctiles */
-#modal-ubicacion .rf-location-card{position:relative;z-index:100!important;isolation:isolate;}
-#modal-ubicacion .rf-location-card .relative{position:relative;z-index:10;}
-#modal-ubicacion .rf-location-card .relative:has(.rf-location-option){z-index:1000;}
-#modal-ubicacion .rf-location-card [id$="-menu"]{z-index:2000!important;pointer-events:auto!important;}
-#modal-ubicacion .rf-location-option{position:relative;z-index:2001;pointer-events:auto!important;touch-action:manipulation;-webkit-tap-highlight-color:rgba(194,24,91,.08);cursor:pointer;}
+/* Selector de ubicación — capas controladas por JS para evitar que un menú tape a otro en iOS */
+#modal-ubicacion .rf-location-card{position:relative;z-index:100!important;}
+#modal-ubicacion .rf-location-card > .mt-5{position:relative;z-index:10;}
+#modal-ubicacion .rf-location-field-wrap{position:relative;}
+#modal-ubicacion .rf-location-field-wrap.rf-open{z-index:100;}
+#modal-ubicacion .rf-location-field-wrap:not(.rf-open){z-index:1;}
+#modal-ubicacion [id$="-menu"]{z-index:9999!important;pointer-events:auto!important;}
+#modal-ubicacion .rf-location-option{position:relative;z-index:10000;pointer-events:auto!important;touch-action:manipulation;-webkit-tap-highlight-color:rgba(194,24,91,.08);cursor:pointer;}
 #modal-ubicacion .absolute.inset-0{z-index:1;}
 </style>
 <script>
@@ -597,24 +599,82 @@ function iso(d=new Date()){const x=new Date(d);return new Date(x.getTime()-x.get
 function readLocation(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch{return null}}
 function complete(){const x=readLocation();return !!(x?.estado&&x?.ciudad&&x?.fecha)}
 function openCategory(slug){if(complete())return;abrirModalUbicacion(()=>{});}
-function toggleDrop(t){const m=document.getElementById(t+'-menu');const open=!m.classList.contains('hidden');document.querySelectorAll('#modal-ubicacion [id$="-menu"]').forEach(x=>x.classList.add('hidden'));if(!open)m.classList.remove('hidden')}
-function closeDrops(){document.querySelectorAll('#modal-ubicacion [id$="-menu"]').forEach(x=>x.classList.add('hidden'))}
-function abrirModalUbicacion(cb){window.rfAfterLocation=cb||null;renderEstados();const modal=document.getElementById('modal-ubicacion');modal.classList.remove('hidden');modal.classList.add('flex');document.body.style.overflow='hidden';}
-function cerrarModalUbicacion(){if(!complete())return;document.getElementById('modal-ubicacion').classList.add('hidden');document.getElementById('modal-ubicacion').classList.remove('flex');document.body.style.overflow='auto';closeDrops()}
+function toggleDrop(t){
+  const trigger=document.getElementById(t+'-trigger');
+  if(trigger?.disabled)return;
+  const m=document.getElementById(t+'-menu');
+  const wasOpen=!m.classList.contains('hidden');
+  closeDrops();
+  if(!wasOpen){
+    const wrap=trigger.closest('.rf-location-field-wrap');
+    if(wrap)wrap.classList.add('rf-open');
+    m.classList.remove('hidden');
+  }
+}
+function closeDrops(){
+  document.querySelectorAll('#modal-ubicacion [id$="-menu"]').forEach(x=>x.classList.add('hidden'));
+  document.querySelectorAll('#modal-ubicacion .rf-location-field-wrap').forEach(x=>x.classList.remove('rf-open'));
+}
+function abrirModalUbicacion(cb){
+  window.rfAfterLocation=cb||null;
+  draft={...(readLocation()||{})};
+  renderEstados();
+  renderDraftState();
+  const modal=document.getElementById('modal-ubicacion');
+  modal.classList.remove('hidden');modal.classList.add('flex');
+  document.body.style.overflow='hidden';
+}
+function cerrarModalUbicacion(){
+  document.getElementById('modal-ubicacion').classList.add('hidden');
+  document.getElementById('modal-ubicacion').classList.remove('flex');
+  document.body.style.overflow='auto';
+  closeDrops();
+}
 function renderEstados(){
   const box=document.getElementById('estado-options');
-  box.innerHTML=ESTADOS.map(e=>`<button type="button" data-estado="${e.replace(/&/g,'&amp;').replace(/\"/g,'&quot;')}" class="rf-location-option w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50">${e}</button>`).join('');
+  box.innerHTML=ESTADOS.map(e=>`<button type="button" data-estado="${e.replace(/&/g,'&amp;').replace(/\"/g,'&quot;')}" class="rf-location-option w-full px-3 py-3 text-left text-sm hover:bg-gray-50">${e}</button>`).join('');
+}
+function renderDraftState(){
+  const hasEstado=!!draft.estado, hasCiudad=!!draft.ciudad;
+  const estadoLabel=document.getElementById('estado-label');
+  const ciudadLabel=document.getElementById('ciudad-label');
+  const fechaLabel=document.getElementById('fecha-label');
+  estadoLabel.innerText=hasEstado?draft.estado:'Estado';
+  if(!hasEstado) estadoLabel.innerHTML='Estado <b class="text-brandLightPink">*</b>';
+  ciudadLabel.innerHTML=hasCiudad?draft.ciudad:'Ciudad <b class="text-brandLightPink">*</b>';
+  fechaLabel.innerHTML=draft.tipoFecha?(draft.tipoFecha==='manana'?'Mañana':draft.tipoFecha==='otro'?'Otro día':'Hoy'):'Fecha de entrega <b class="text-brandLightPink">*</b>';
+  const ciudadTrigger=document.getElementById('ciudad-trigger');
+  const fechaTrigger=document.getElementById('fecha-trigger');
+  ciudadTrigger.disabled=!hasEstado;
+  fechaTrigger.disabled=!hasCiudad;
+  ciudadTrigger.classList.toggle('disabled:bg-gray-50',!hasEstado);
+  fechaTrigger.classList.toggle('disabled:bg-gray-50',!hasCiudad);
+  if(hasEstado){
+    document.getElementById('ciudad-options').innerHTML=(CIUDADES[draft.estado]||[]).map(c=>`<button type="button" data-ciudad="${c.replace(/&/g,'&amp;').replace(/\"/g,'&quot;')}" class="rf-location-option w-full px-3 py-3 text-left text-sm hover:bg-gray-50">${c}</button>`).join('');
+  }else document.getElementById('ciudad-options').innerHTML='';
+  if(draft.tipoFecha==='otro')document.getElementById('otro-wrap').classList.remove('hidden');else document.getElementById('otro-wrap').classList.add('hidden');
 }
 function setEstado(e){
   draft={estado:e,ciudad:'',tipoFecha:'',fecha:''};
-  document.getElementById('estado-label').innerText=e;
-  document.getElementById('ciudad-label').innerHTML='Ciudad <b class="text-brandLightPink">*</b>';
-  document.getElementById('ciudad-options').innerHTML=(CIUDADES[e]||[]).map(c=>`<button type="button" data-ciudad="${c.replace(/&/g,'&amp;').replace(/\"/g,'&quot;')}" class="rf-location-option w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50">${c}</button>`).join('');
-  document.getElementById('ciudad-trigger').disabled=false;
+  renderDraftState();
   closeDrops();
 }
-function setCiudad(c){draft.ciudad=c;document.getElementById('ciudad-label').innerText=c;closeDrops()}
-function setFecha(t){let d=new Date(),label='Hoy';if(t==='manana'){d.setDate(d.getDate()+1);label='Mañana'}if(t==='otro'){label='Otro día';draft.fecha='';document.getElementById('otro-wrap').classList.remove('hidden')}else{draft.fecha=iso(d);document.getElementById('otro-wrap').classList.add('hidden')}draft.tipoFecha=t;document.getElementById('fecha-label').innerText=label;closeDrops()}
+function setCiudad(c){
+  if(!draft.estado)return;
+  draft.ciudad=c;
+  renderDraftState();
+  closeDrops();
+}
+function setFecha(t){
+  if(!draft.estado||!draft.ciudad)return;
+  let d=new Date(),label='Hoy';
+  if(t==='manana'){d.setDate(d.getDate()+1);label='Mañana';draft.fecha=iso(d)}
+  else if(t==='otro'){label='Otro día';draft.fecha='';document.getElementById('otro-wrap').classList.remove('hidden')}
+  else{draft.fecha=iso(d);document.getElementById('otro-wrap').classList.add('hidden')}
+  draft.tipoFecha=t;
+  document.getElementById('fecha-label').innerText=label;
+  closeDrops();
+}
 function confirmarUbicacion(){const err=document.getElementById('loc-error');let fecha=draft.fecha;if(draft.tipoFecha==='otro')fecha=document.getElementById('otra-fecha').value;if(!draft.estado||!draft.ciudad||!draft.tipoFecha||!fecha){err.innerText='Completa estado, ciudad y fecha de entrega para continuar.';err.classList.remove('hidden');return}if(fecha<iso()){err.innerText='La fecha de entrega no puede ser anterior a hoy.';err.classList.remove('hidden');return}const data={estado:draft.estado,ciudad:draft.ciudad,fecha,tipoFecha:draft.tipoFecha,actualizadoEn:new Date().toISOString()};localStorage.setItem(KEY,JSON.stringify(data));err.classList.add('hidden');const cb=window.rfAfterLocation;window.rfAfterLocation=null;cerrarModalUbicacion();if(cb)cb();renderLocation()}
 function renderLocation(){const x=readLocation();if(!x)return;document.querySelector('#rf-location-summary span:last-child').innerText=x.ciudad;document.querySelector('#rf-date-summary span:last-child').innerText=new Date(x.fecha+'T00:00:00').toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});}
 function slugPath(){return location.pathname.replace(/^\/categoria\//,'').replace(/\/$/,'')}
@@ -643,28 +703,25 @@ function prepararMegaMenu(){
 function protegerNavegacion(){document.querySelectorAll('[data-main], .mega-menu a[data-category-child]').forEach(a=>a.addEventListener('click',e=>{if(complete())return;e.preventDefault();const href=a.href;abrirModalUbicacion(()=>location.href=href)},true));}
 async function init(){config=getConfig();prepararMegaMenu();document.getElementById('sort-select').addEventListener('change',render);document.getElementById('otra-fecha').min=iso();protegerNavegacion();renderLocation();try{const r=await fetch('/api/catalogo');products=await r.json();render()}catch{document.getElementById('products').innerHTML='<div class="col-span-full py-16 text-center text-red-500">No se pudo cargar el catálogo.</div>'}if(!complete())abrirModalUbicacion(()=>{});}
 function instalarEventosUbicacion(){
-  const modal=document.getElementById('modal-ubicacion');
   const estadoOptions=document.getElementById('estado-options');
   const ciudadOptions=document.getElementById('ciudad-options');
   const fechaMenu=document.getElementById('fecha-menu');
   const activar=(el,selector,handler)=>{
     if(!el)return;
-    const fire=e=>{
+    el.addEventListener('click',e=>{
       const option=e.target.closest(selector);
-      if(!option || !el.contains(option)) return;
+      if(!option || !el.contains(option))return;
       e.preventDefault();
       e.stopPropagation();
       handler(option);
-    };
-    el.addEventListener('pointerup',fire);
-    el.addEventListener('click',fire);
+    });
   };
   activar(estadoOptions,'[data-estado]',o=>setEstado(o.dataset.estado));
   activar(ciudadOptions,'[data-ciudad]',o=>setCiudad(o.dataset.ciudad));
   activar(fechaMenu,'[data-fecha]',o=>setFecha(o.dataset.fecha));
 }
 
-document.addEventListener('click',e=>{if(!e.target.closest('#modal-ubicacion .relative'))closeDrops()});
+document.addEventListener('click',e=>{if(document.getElementById('modal-ubicacion')?.classList.contains('hidden'))return;if(!e.target.closest('#modal-ubicacion .rf-location-field-wrap'))closeDrops();});
 document.addEventListener('DOMContentLoaded',()=>{instalarEventosUbicacion();init()});
 function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[]');if(c.length)location.href='/checkout.html';}
 </script>
