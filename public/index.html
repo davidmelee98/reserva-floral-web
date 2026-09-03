@@ -281,7 +281,7 @@
     header .flex.items-center.justify-between.h-16{height:64px}
 }
 @media (min-width:768px){.rf-mobile-overlay,.rf-mobile-drawer{display:none!important}}
-body.rf-mobile-menu-open{overflow:hidden}
+body.rf-mobile-menu-open{overflow:hidden !important}
 
 
         /* Vista de producto móvil: modal realmente a pantalla completa; header y CTA persistentes, galería con scroll normal */
@@ -304,6 +304,7 @@ body.rf-mobile-menu-open{overflow:hidden}
                evitar los problemas de scroll de iOS. */
             body.rf-product-open #modal-producto {
                 position: absolute !important;
+                pointer-events: none !important;
                 top: 0 !important;
                 left: 0 !important;
                 right: 0 !important;
@@ -323,6 +324,7 @@ body.rf-mobile-menu-open{overflow:hidden}
             }
             body.rf-product-open #modal-producto > #modal-content {
                 position: relative !important;
+                pointer-events: auto !important;
                 top: 64px !important;
                 left: 0 !important;
                 right: auto !important;
@@ -389,6 +391,7 @@ body.rf-mobile-menu-open{overflow:hidden}
             }
             body.rf-product-open #btn-modal-agregar {
                 position: fixed !important;
+                pointer-events: auto !important;
                 left: 16px !important;
                 right: 16px !important;
                 bottom: max(16px, env(safe-area-inset-bottom)) !important;
@@ -396,6 +399,12 @@ body.rf-mobile-menu-open{overflow:hidden}
                 z-index: 10003 !important;
                 margin: 0 !important;
             }
+            body.rf-product-open #modal-producto > #modal-content > button[onclick=\"cerrarProducto()\"] { pointer-events:auto !important; z-index:10004 !important; }
+            body.rf-product-open #modal-producto .rf-product-info-mobile button { pointer-events:auto !important; }
+            body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-row,
+            body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-crumb,
+            body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-viewall,
+            body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-close { pointer-events:auto !important; position:relative; z-index:2; }
             #modal-mobile-gallery {
                 display: flex;
                 flex-direction: column;
@@ -1381,6 +1390,7 @@ body.rf-mobile-menu-open{overflow:hidden}
 
         let productoDescripcionActual = null;
         let productoVariantesSeleccionadas = {};
+        let rfScrollAntesProducto = 0;
 
         function escaparHtmlRF(valor) {
             return String(valor ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -1462,7 +1472,10 @@ body.rf-mobile-menu-open{overflow:hidden}
 
         function mostrarProducto(productoActual) {
             productoDescripcionActual = productoActual;
+            rfScrollAntesProducto = window.scrollY || document.documentElement.scrollTop || 0;
             document.body.classList.add('rf-product-open');
+            // El producto siempre debe abrir desde arriba, independientemente de dónde estaba el catálogo.
+            window.scrollTo(0, 0);
             const imagenes = obtenerImagenes(productoActual);
             const urlImagen = imagenes[0] || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
             document.getElementById('modal-id').innerText = '00' + productoActual.id;
@@ -1498,8 +1511,9 @@ body.rf-mobile-menu-open{overflow:hidden}
             content.classList.add('scale-95', 'opacity-0');
             setTimeout(() => {
                 modal.classList.add('hidden');
-                document.body.style.overflow = 'auto';
+                document.body.style.overflow = '';
                 document.body.classList.remove('rf-product-open');
+                window.scrollTo(0, rfScrollAntesProducto);
             }, 300);
         }
 
@@ -2833,7 +2847,13 @@ body.rf-mobile-menu-open{overflow:hidden}
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();});
   document.addEventListener('click',e=>{
     const btn=e.target.closest('#rf-mobile-menu-button');
-    if(btn){e.preventDefault();openMenu();}
+    if(btn){e.preventDefault();e.stopPropagation();openMenu();}
+  });
+  // En producto, los botones del drawer deben recibir el primer toque sin que el modal interfiera.
+  list.addEventListener('click', e=>{
+    const row=e.target.closest('.rf-mobile-row');
+    if(!row) return;
+    e.stopPropagation();
   });
 })();
 </script>
