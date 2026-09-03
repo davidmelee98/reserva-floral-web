@@ -46,6 +46,8 @@
             width: 110px;
             min-width: 110px;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
         }
         #complementos-container .rf-complemento-nombre {
             display: -webkit-box;
@@ -54,6 +56,18 @@
             overflow: hidden;
             min-height: 32px;
             line-height: 1.15;
+        }
+        @media (hover: hover) and (pointer: fine) {
+            #complementos-container .rf-complemento-card:hover {
+                border-color: #c2185b;
+            }
+        }
+        @media (hover: none) {
+            #complementos-container .rf-complemento-card:focus,
+            #complementos-container .rf-complemento-card:active {
+                outline: none !important;
+                box-shadow: none !important;
+            }
         }
         #modal-complemento {
             z-index: 300 !important;
@@ -1330,11 +1344,11 @@ body.rf-mobile-menu-open{overflow:hidden}
                     const urlImagenComp = escaparHtml(comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=200&q=80');
                     const safeName = escaparHtml(comp.nombre || 'Producto');
                     contenedorComp.innerHTML += `
-                        <button type="button" onclick="abrirComplementoPorIndice(${index})" class="rf-complemento-card border border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:border-brandFuchsia transition-colors flex flex-col justify-between group/comp focus:outline-none">
+                        <button type="button" onpointerdown="event.preventDefault(); event.stopPropagation(); abrirComplementoPorIndice(${index});" onclick="event.preventDefault(); event.stopPropagation(); return false;" class="rf-complemento-card border border-gray-200 rounded-xl p-3 text-center cursor-pointer transition-colors flex flex-col justify-between group/comp focus:outline-none focus:ring-0">
                             <img src="${urlImagenComp}" class="w-12 h-12 mx-auto object-cover rounded mb-2 shadow-sm group-hover/comp:scale-105 transition-transform" alt="${safeName}">
                             <span class="rf-complemento-nombre text-[11px] text-gray-700">${safeName}</span>
                             <span class="font-bold text-xs mt-1 text-brandDark">$${formatearPrecio(comp.precio)}</span>
-                            <span class="text-[10px] font-bold text-brandLightPink mt-1 hover:underline hidden md:block">+ Detalle</span>
+                            <span class="rf-complemento-detalle text-[10px] font-bold text-brandLightPink mt-1 hover:underline">+ Detalle</span>
                         </button>
                     `;
                 });
