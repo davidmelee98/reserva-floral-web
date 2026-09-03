@@ -147,6 +147,25 @@
 .rf-category-arrow:disabled{opacity:.35;cursor:default;transform:none;}
 .rf-category-arrow svg{width:22px;height:22px;}
 
+/* Carrusel de productos inspirado en la sección Trending de referencia */
+.rf-trending-heading{position:relative;text-align:center;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;min-height:48px;}
+.rf-trending-heading h2{margin:0;font-family:Poppins,sans-serif;font-size:clamp(24px,2.1vw,34px);font-weight:600;line-height:1.2;color:#353535;}
+.rf-trending-heading .rf-view-all-catalog{position:absolute;right:0;top:50%;transform:translateY(-50%);color:#e91e63;font-size:13px;font-weight:500;text-decoration:none;}
+.rf-trending-heading .rf-view-all-catalog:hover{text-decoration:underline;}
+.rf-trending-tabs{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin:0 auto 26px;}
+.rf-trending-tab{appearance:none;border:1px solid #202020;background:#fff;color:#353535;border-radius:999px;padding:10px 20px;font-family:Poppins,sans-serif;font-size:14px;line-height:1;cursor:pointer;transition:all .2s ease;white-space:nowrap;}
+.rf-trending-tab:hover{background:#f8f6fb;}
+.rf-trending-tab.is-active{background:#241457;border-color:#241457;color:#fff;}
+.rf-trending-products-wrap{margin-top:0;}
+@media (max-width:767px){
+  .rf-trending-heading{justify-content:flex-start;margin-bottom:12px;}
+  .rf-trending-heading h2{font-size:24px;}
+  .rf-trending-heading .rf-view-all-catalog{right:0;font-size:12px;}
+  .rf-trending-tabs{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:2px 0 8px;margin-bottom:14px;}
+  .rf-trending-tabs::-webkit-scrollbar{display:none;}
+  .rf-trending-tab{font-size:13px;padding:9px 16px;flex:0 0 auto;}
+}
+
 .rf-favorites-carousel-wrap{position:relative;display:flex;align-items:center;}
 .rf-favorites-track{display:flex;gap:18px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 10px;width:100%;}
 .rf-favorites-track::-webkit-scrollbar{display:none;}
@@ -679,14 +698,25 @@ body.rf-mobile-menu-open{overflow:hidden}
     </section>
 
 
-    <!-- Catálogo destacado (carrusel) -->
-    <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-16">
-        <div class="relative text-center py-8 mb-2">
-            <h2 id="titulo-catalogo" class="text-2xl md:text-3xl font-semibold text-brandDark">Tus favoritos de Reserva Floral</h2>
-            <a href="/categoria/todos" class="rf-view-all-catalog absolute right-0 top-1/2 -translate-y-1/2 text-brandLightPink font-medium hover:underline text-sm">Ver todos</a>
+    <!-- Carrusel de productos por categoría -->
+    <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-12">
+        <div class="rf-trending-heading">
+            <h2 id="titulo-catalogo">Flores y regalos en tendencia</h2>
+            <a href="/categoria/todos" class="rf-view-all-catalog">Ver todos</a>
         </div>
 
-        <div class="rf-favorites-carousel-wrap">
+        <div class="rf-trending-tabs" role="tablist" aria-label="Categorías de productos">
+            <button type="button" class="rf-trending-tab is-active" data-filter="best" role="tab" aria-selected="true">Más vendidos</button>
+            <button type="button" class="rf-trending-tab" data-filter="flores" role="tab" aria-selected="false">Flores</button>
+            <button type="button" class="rf-trending-tab" data-filter="globos" role="tab" aria-selected="false">Globos</button>
+            <button type="button" class="rf-trending-tab" data-filter="regalos" role="tab" aria-selected="false">Regalos</button>
+            <button type="button" class="rf-trending-tab" data-filter="plantas" role="tab" aria-selected="false">Plantas</button>
+            <button type="button" class="rf-trending-tab" data-filter="joyeria" role="tab" aria-selected="false">Joyería</button>
+            <button type="button" class="rf-trending-tab" data-filter="premium" role="tab" aria-selected="false">Línea Premium</button>
+            <button type="button" class="rf-trending-tab" data-filter="desde249" role="tab" aria-selected="false">Desde $249</button>
+        </div>
+
+        <div class="rf-favorites-carousel-wrap rf-trending-products-wrap">
             <button type="button" class="rf-favorite-arrow rf-favorite-prev" aria-label="Ver productos anteriores">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
@@ -965,6 +995,31 @@ body.rf-mobile-menu-open{overflow:hidden}
             return numero.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        let filtroTrendingActualRF = 'best';
+
+        function filtrarTrendingRF(arreglos, filtro) {
+            const normal = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            switch (filtro) {
+                case 'flores':
+                    return arreglos.filter(a => normal(a.categoria) === 'flores y plantas' && normal(a.subcategoria) === 'flores' || normal(a.subsubcategoria).includes('rosa') || normal(a.subsubcategoria).includes('gerbera') || normal(a.subsubcategoria).includes('tulipan') || normal(a.subsubcategoria).includes('orquidea'));
+                case 'globos':
+                    return arreglos.filter(a => normal(a.categoria) === 'globos');
+                case 'regalos':
+                    return arreglos.filter(a => normal(a.categoria) === 'regalos');
+                case 'plantas':
+                    return arreglos.filter(a => normal(a.subcategoria) === 'plantas' || normal(a.subsubcategoria).includes('planta'));
+                case 'joyeria':
+                    return arreglos.filter(a => normal(a.subcategoria) === 'joyeria' || normal(a.subsubcategoria) === 'joyeria');
+                case 'premium':
+                    return arreglos.filter(a => normal(a.subcategoria).includes('premium') || normal(a.subsubcategoria).includes('premium'));
+                case 'desde249':
+                    return arreglos.filter(a => Number(a.precio) >= 249);
+                case 'best':
+                default:
+                    return arreglos;
+            }
+        }
+
         async function cargarInventario(filtroCategoria = null) {
             try {
                 const respuesta = await fetch('/api/catalogo');
@@ -975,16 +1030,17 @@ body.rf-mobile-menu-open{overflow:hidden}
                     arreglos = arreglos.filter(arreglo => arreglo.categoria === filtroCategoria);
                     document.getElementById('titulo-catalogo').innerText = "Colección: " + filtroCategoria;
                 } else {
-                    document.getElementById('titulo-catalogo').innerText = "Tus favoritos de Reserva Floral";
-                    // La sección destacada muestra una selección breve; el catálogo completo vive en "Ver todos".
-                    arreglos = [...arreglos].sort(() => Math.random() - 0.5).slice(0, 8);
+                    document.getElementById('titulo-catalogo').innerText = "Flores y regalos en tendencia";
+                    arreglos = filtrarTrendingRF(arreglos, filtroTrendingActualRF);
+                    // Mezcla ligera para que la sección de inicio no muestre siempre los mismos productos.
+                    arreglos = [...arreglos].sort(() => Math.random() - 0.5).slice(0, 12);
                 }
 
                 const contenedor = document.getElementById('contenedor-arreglos');
                 contenedor.innerHTML = '';
 
                 if (arreglos.length === 0) {
-                    contenedor.innerHTML = '<p class="text-gray-500 py-10">No hay arreglos disponibles en este momento.</p>';
+                    contenedor.innerHTML = '<p class="text-gray-500 py-10">No hay arreglos disponibles en esta categoría por el momento.</p>';
                     actualizarFlechasFavoritosRF();
                     return;
                 }
@@ -2024,6 +2080,18 @@ body.rf-mobile-menu-open{overflow:hidden}
             }
             prepararRutasCategorias();
             instalarBloqueoCategorias();
+
+            document.querySelectorAll('.rf-trending-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    filtroTrendingActualRF = tab.dataset.filter || 'best';
+                    document.querySelectorAll('.rf-trending-tab').forEach(t => {
+                        const active = t === tab;
+                        t.classList.toggle('is-active', active);
+                        t.setAttribute('aria-selected', active ? 'true' : 'false');
+                    });
+                    cargarInventario();
+                });
+            });
         });
 
         cargarInventario();
