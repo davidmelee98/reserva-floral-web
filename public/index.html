@@ -284,6 +284,10 @@
 }
 @media (min-width:768px){.rf-mobile-overlay,.rf-mobile-drawer{display:none!important}}
 body.rf-mobile-menu-open{overflow:hidden !important}
+/* El header debe quedar fijo arriba mientras el menú de categorías está
+   abierto -- si la página ya estaba scrolleada, sin esto el header se
+   quedaba "donde iba el scroll" en vez de mostrarse arriba junto al menú. */
+body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0;}
 
 
         /* Vista de producto móvil: modal realmente a pantalla completa; header y CTA persistentes, galería con scroll normal */
