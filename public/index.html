@@ -169,7 +169,7 @@
 .rf-favorites-carousel-wrap{position:relative;display:flex;align-items:center;}
 .rf-favorites-track{display:flex;gap:18px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 10px;width:100%;}
 .rf-favorites-track::-webkit-scrollbar{display:none;}
-.rf-favorite-card{position:relative;flex:0 0 clamp(280px,20.5vw,395px);scroll-snap-align:start;background:#fff;border:1px solid #edf0f2;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
+.rf-favorite-card{position:relative;flex:0 0 clamp(280px,20.5vw,395px);scroll-snap-align:start;background:#fff;border:1px solid #edf0f2;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;appearance:none;-webkit-appearance:none;padding:0;text-align:left;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation;}
 .rf-favorite-card-image{aspect-ratio:1/1;overflow:hidden;background:#f7f7f7;}
 .rf-favorite-card-image img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease;}
 .rf-favorite-card:hover .rf-favorite-card-image img{transform:scale(1.045);}
@@ -1036,8 +1036,10 @@ body.rf-mobile-menu-open{overflow:hidden}
 
         async function cargarInventario(filtroCategoria = null) {
             try {
-                const respuesta = await fetch('/api/catalogo');
+                const respuesta = await fetch('/api/catalogo', { cache: 'no-store' });
+                if (!respuesta.ok) throw new Error('Catálogo: HTTP ' + respuesta.status);
                 todosLosArreglos = await respuesta.json();
+                if (!Array.isArray(todosLosArreglos)) throw new Error('La API del catálogo no devolvió una lista de productos.');
                 let arreglos = todosLosArreglos;
 
                 if (filtroCategoria) {
@@ -1063,26 +1065,34 @@ body.rf-mobile-menu-open{overflow:hidden}
                     const urlImagen = (obtenerImagenes(arreglo)[0]) || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
                     const arregloData = encodeURIComponent(JSON.stringify(arreglo));
                     contenedor.innerHTML += `
-                        <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
+                        <button type="button" data-producto="${arregloData}" class="rf-favorite-card group">
                             <div class="rf-favorite-card-image">
-                                <img src="${urlImagen}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                                <img src="${escaparHtmlRF(urlImagen)}" alt="${escaparHtmlRF(arreglo.nombre)}" draggable="false" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
                             </div>
                             <div class="rf-favorite-card-body">
-                                <h3 class="font-medium text-sm text-gray-800 leading-tight">${arreglo.nombre}</h3>
+                                <h3 class="font-medium text-sm text-gray-800 leading-tight">${escaparHtmlRF(arreglo.nombre)}</h3>
                                 <div class="flex items-center justify-between gap-3">
                                     <span class="font-bold text-gray-900 text-sm">$${formatearPrecio(arreglo.precio)}</span>
                                     <span class="text-brandLightPink font-medium text-xs">Agregar</span>
                                 </div>
                             </div>
-                        </div>
+                        </button>
                     `;
                 });
                 actualizarUI();
                 actualizarFlechasFavoritosRF();
-            } catch (error) { console.error("Error cargando el catálogo", error); }
+            } catch (error) {
+                console.error("Error cargando el catálogo", error);
+                const contenedor = document.getElementById('contenedor-arreglos');
+                if (contenedor && !contenedor.children.length) {
+                    contenedor.innerHTML = '<p class="text-gray-500 py-10 text-sm">Cargando productos…</p>';
+                    clearTimeout(window.rfCatalogoRetryTimer);
+                    window.rfCatalogoRetryTimer = setTimeout(() => cargarInventario(filtroCategoria), 1200);
+                }
+            }
         }
 
-        function abrirProducto(dataStr, urlImagen) {
+        function abrirProducto(dataStr) {
             const productoActual = JSON.parse(decodeURIComponent(dataStr));
             mostrarProducto(productoActual);
         }
@@ -2052,6 +2062,21 @@ body.rf-mobile-menu-open{overflow:hidden}
                 rfFavNext.addEventListener('click', () => scrollFav(1));
                 rfFavTrack.addEventListener('scroll', window.actualizarFlechasFavoritosRF, {passive:true});
                 window.addEventListener('resize', window.actualizarFlechasFavoritosRF);
+            }
+            // Los productos del carrusel son botones reales: un toque en móvil abre
+            // directamente el producto y no se confunde con el gesto de desplazamiento.
+            if (rfFavTrack) {
+                rfFavTrack.addEventListener('click', function(e) {
+                    const card = e.target.closest('[data-producto]');
+                    if (!card || !rfFavTrack.contains(card)) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        abrirProducto(card.dataset.producto);
+                    } catch (error) {
+                        console.error('Error abriendo producto del carrusel:', error);
+                    }
+                });
             }
             document.querySelectorAll('.rf-view-all-catalog').forEach(link => {
                 link.addEventListener('click', e => {
