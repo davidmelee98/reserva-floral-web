@@ -92,13 +92,14 @@
 .rf-mobile-arrow{width:22px;height:22px;flex:0 0 auto;color:#555}
 .rf-mobile-note{font-size:12px;color:#8a8a8a;padding:14px 0 6px}
 .rf-mobile-viewall{display:block;margin:14px 0 0;color:#c2185b;font-size:14px;font-weight:600;text-decoration:none}
+.rf-mobile-action{display:none;align-items:center;justify-content:center;width:36px;height:42px;padding:0;border:0;background:transparent;color:#fff;border-radius:10px;cursor:pointer;flex:0 0 36px}.rf-mobile-action:active{background:rgba(255,255,255,.12)}
 .rf-mobile-menu-button + .rf-mobile-logo-spacer{display:none}
 @media (max-width:767px){
   .rf-mobile-menu-button{display:flex}
+  .rf-mobile-action{display:flex}
   .rf-mobile-logo{flex:1;display:flex;justify-content:center;min-width:0}
   .rf-mobile-logo img{width:174px;height:54px;object-fit:contain;object-position:center}
-  .rf-mobile-right-spacer{width:42px;flex:0 0 42px}
-  header .flex.items-center.justify-between.h-16{height:64px}
+    header .flex.items-center.justify-between.h-16{height:64px}
 }
 @media (min-width:768px){.rf-mobile-overlay,.rf-mobile-drawer{display:none!important}}
 body.rf-mobile-menu-open{overflow:hidden}
@@ -127,10 +128,17 @@ body.rf-mobile-menu-open{overflow:hidden}
                     </div>
                 </div>
 
-                <div class="rf-mobile-right-spacer md:hidden" aria-hidden="true"></div>
+
+                <!-- Acciones móviles: búsqueda y usuario (funcionalidad pendiente) -->
+                <button type="button" class="rf-mobile-action md:hidden" aria-label="Buscar" title="Buscar">
+                    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="6.8"></circle><path stroke-linecap="round" d="m16.2 16.2 4.1 4.1"></path></svg>
+                </button>
+                <button type="button" class="rf-mobile-action md:hidden" aria-label="Mi cuenta" title="Mi cuenta">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.4"></circle><path stroke-linecap="round" d="M5.2 20.1c.8-3.1 3.1-4.9 6.8-4.9s6 1.8 6.8 4.9"></path></svg>
+                </button>
 
                 <!-- Iconos derecha -->
-                <div class="flex items-center gap-6 text-sm font-medium">
+                <div class="flex items-center gap-1 md:gap-6 text-sm font-medium">
                     <div class="hidden md:flex items-center gap-1 cursor-pointer hover:text-gray-200">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
                         Español $MXN
