@@ -1673,7 +1673,22 @@ body.rf-mobile-menu-open{overflow:hidden !important}
         function abrirComplementoPorIndice(index) {
             const comp = complementosSugeridosActuales[Number(index)];
             if (!comp) return;
-            abrirComplemento(comp);
+            // El usuario prefiere que un complemento abra el artículo completo
+            // (galería, variantes, "Agregar al carrito") en vez del recuadro
+            // resumido. Cerramos "Agregaste al carrito" al instante (sin su
+            // animación, que tarda 300ms y al final resetea el overflow del
+            // body -- si usáramos cerrarConfirmacion() aquí, ese reset llegaría
+            // DESPUÉS de que mostrarProducto ya bloqueó el scroll, y lo dejaría
+            // desbloqueado por error) para que no quede detrás del producto.
+            const modalConfirmacion = document.getElementById('modal-confirmacion');
+            const contentConfirmacion = document.getElementById('modal-confirmacion-content');
+            if (modalConfirmacion && contentConfirmacion) {
+                contentConfirmacion.classList.remove('scale-100', 'opacity-100');
+                contentConfirmacion.classList.add('scale-95', 'opacity-0');
+                modalConfirmacion.classList.remove('flex');
+                modalConfirmacion.classList.add('hidden');
+            }
+            mostrarProducto(comp);
         }
 
         // Función que abre el recuadro visual original del complemento.
