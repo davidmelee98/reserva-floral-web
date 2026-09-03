@@ -2372,11 +2372,11 @@ body.rf-mobile-menu-open{overflow:hidden !important}
 
             const rfLocationModal = document.getElementById('modal-ubicacion');
             const rfLocationCard = rfLocationModal?.querySelector('.rf-location-card');
-            if (rfLocationCard) {
-                rfLocationCard.addEventListener('click', e => e.stopPropagation(), true);
-                rfLocationCard.addEventListener('pointerdown', e => e.stopPropagation(), true);
-                rfLocationCard.addEventListener('touchstart', e => e.stopPropagation(), {capture:true, passive:false});
-            }
+            // (Antes había 3 listeners aquí que llamaban stopPropagation() en fase de
+            // captura sobre toda la tarjeta -- eso interceptaba CUALQUIER toque antes
+            // de que llegara a los botones de Estado/Ciudad/Fecha o a la X, por eso
+            // no respondían. El backdrop ya se cierra solo si tocas el fondo mismo
+            // (event.target===event.currentTarget), así que no hacía falta nada más.
 
             const rfOccTrack = document.getElementById('rf-occasion-track');
             const rfOccPrev = document.querySelector('.rf-occasion-prev');
