@@ -1403,7 +1403,7 @@ body.rf-mobile-menu-open{overflow:hidden}
 
                 event.preventDefault();
                 ultimoToqueAtendido = Date.now();
-                abrirComplemento(JSON.stringify(comp));
+                abrirComplemento(comp);
             }, { passive: false });
 
             container.addEventListener('pointercancel', () => {
@@ -1425,41 +1425,75 @@ body.rf-mobile-menu-open{overflow:hidden}
                 if (!comp) return;
 
                 event.preventDefault();
-                abrirComplemento(JSON.stringify(comp));
+                abrirComplemento(comp);
             });
         })();
 
-        // Función para abrir el modal del complemento
-        function abrirComplemento(dataStr) {
-            const comp = JSON.parse(decodeURIComponent(dataStr));
+        // Abre el mismo recuadro visual de complemento que ya existía.
+        // Recibe el objeto directamente: no serializamos el producto dentro del
+        // HTML ni lo pasamos por decodeURIComponent, evitando errores con nombres,
+        // descripciones o caracteres especiales y haciendo que el primer toque funcione.
+        function abrirComplemento(comp) {
+            if (!comp || typeof comp !== 'object') return;
+
             const urlImagen = comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
-            
-            document.getElementById('comp-modal-nombre').innerText = comp.nombre;
-            document.getElementById('comp-modal-precio').innerText = "$" + formatearPrecio(comp.precio);
-            document.getElementById('comp-modal-desc').innerText = comp.descripcion || "Complemento perfecto para tu regalo.";
-            document.getElementById('comp-modal-img').src = urlImagen;
-            
-            document.getElementById('btn-modal-comp-detalles').onclick = () => {
-                abrirPanelDescripcionRF(comp, false);
-            };
+            const nombre = comp.nombre || 'Producto';
 
-            document.getElementById('btn-modal-comp-agregar').onclick = () => {
-                ejecutarConUbicacionRF(() => {
-                    agregarItemCarrito({ id: comp.id, nombre: comp.nombre, precio: comp.precio, imagen: urlImagen, variante: null });
-                    cerrarComplemento();
-                });
-            };
-
+            const nombreEl = document.getElementById('comp-modal-nombre');
+            const precioEl = document.getElementById('comp-modal-precio');
+            const descEl = document.getElementById('comp-modal-desc');
+            const imgEl = document.getElementById('comp-modal-img');
+            const detallesBtn = document.getElementById('btn-modal-comp-detalles');
+            const agregarBtn = document.getElementById('btn-modal-comp-agregar');
             const modal = document.getElementById('modal-complemento');
             const content = document.getElementById('modal-complemento-content');
-            
+
+            if (!modal || !content || !imgEl || !nombreEl || !precioEl || !descEl) return;
+
+            nombreEl.innerText = nombre;
+            precioEl.innerText = '$' + formatearPrecio(comp.precio);
+            descEl.innerText = comp.descripcion || 'Complemento perfecto para tu regalo.';
+            imgEl.src = urlImagen;
+            imgEl.alt = nombre;
+
+            if (detallesBtn) {
+                detallesBtn.onclick = (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    abrirPanelDescripcionRF(comp, false);
+                };
+            }
+
+            if (agregarBtn) {
+                agregarBtn.onclick = (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    ejecutarConUbicacionRF(() => {
+                        agregarItemCarrito({
+                            id: comp.id,
+                            nombre: nombre,
+                            precio: comp.precio,
+                            imagen: urlImagen,
+                            variante: null
+                        });
+                        cerrarComplemento();
+                    });
+                };
+            }
+
+            // Aseguramos el estado inicial de la animación cada vez que se abre.
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            
-            setTimeout(() => {
-                content.classList.remove('scale-95', 'opacity-0');
-                content.classList.add('scale-100', 'opacity-100');
-            }, 10);
+            modal.style.zIndex = '230';
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                });
+            });
         }
 
         function cerrarComplemento() {
