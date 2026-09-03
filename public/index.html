@@ -378,13 +378,20 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             body.rf-product-open #rf-mobile-drawer.is-open {
                 pointer-events: auto !important;
             }
-            body.rf-product-open #carrito-lateral {
+            /* El carrito lateral solo debe capturar toques cuando el usuario
+               realmente lo abrió (.carrito-abierto). Antes esta regla forzaba
+               visibility+pointer-events SIEMPRE que había un producto abierto,
+               dejando un panel invisible pero clicable cubriendo casi toda la
+               pantalla -- eso era lo que tapaba la X, las categorías y el
+               selector de ubicación. */
+            body.rf-product-open #carrito-lateral.carrito-abierto {
                 visibility: visible !important;
                 pointer-events: auto !important;
                 z-index: 2147483647 !important;
             }
-            body.rf-product-open #carrito-lateral.carrito-abierto {
-                z-index: 2147483647 !important;
+            body.rf-product-open #carrito-lateral.carrito-cerrado {
+                visibility: hidden !important;
+                pointer-events: none !important;
             }
             /* Selector de ubicación: debe poder abrirse desde la vista de producto. */
             body.rf-product-open #modal-ubicacion {
