@@ -253,7 +253,7 @@
 .rf-mobile-menu-button:active{background:rgba(255,255,255,.12)}
 .rf-mobile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease;z-index:99998}
 .rf-mobile-overlay.is-open{opacity:1;visibility:visible;pointer-events:auto}
-.rf-mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:min(88vw,420px);background:#fff;transform:translateX(-102%);transition:transform .24s ease;z-index:99999;display:flex;flex-direction:column;box-shadow:16px 0 35px rgba(0,0,0,.16)}
+.rf-mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:min(66.666vw,420px);background:#fff;transform:translateX(-102%);transition:transform .24s ease;z-index:99999;display:flex;flex-direction:column;box-shadow:16px 0 35px rgba(0,0,0,.16)}
 .rf-mobile-drawer.is-open{transform:translateX(0)}
 .rf-mobile-head{display:flex;align-items:center;justify-content:space-between;padding:24px 24px 16px;border-bottom:1px solid #eee;flex:0 0 auto}
 .rf-mobile-title{font-size:25px;line-height:1.15;font-weight:600;color:#252525;margin:0}
@@ -265,6 +265,8 @@
 .rf-mobile-slash{color:#c5c5c5;font-size:13px}
 .rf-mobile-list{padding:8px 24px 26px;overflow:auto;flex:1}
 .rf-mobile-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;border:0;border-bottom:1px solid #f0f0f0;background:#fff;padding:18px 0;text-align:left;color:#000;font:400 18px/1.35 Poppins,sans-serif;cursor:pointer}
+.rf-mobile-row.is-parent{font-weight:700}
+.rf-mobile-row.is-viewall{color:#8a8a8a;font-weight:400}
 .rf-mobile-row:last-child{border-bottom:0}
 .rf-mobile-row:active{color:#c2185b}
 .rf-mobile-row-label{min-width:0}
@@ -3005,14 +3007,14 @@ body.rf-mobile-menu-open{overflow:hidden !important}
       };
       const mainTop=path[0];
       if(path.length===1 && mainLinksTop[mainTop]){
-        const verTodo=document.createElement('a'); verTodo.className='rf-mobile-row'; verTodo.href=mainLinksTop[mainTop];
+        const verTodo=document.createElement('a'); verTodo.className='rf-mobile-row is-viewall'; verTodo.href=mainLinksTop[mainTop];
         verTodo.innerHTML='<span class="rf-mobile-row-label">Ver todo</span>';
         list.appendChild(verTodo);
       }
     }
     const items=currentItems();
     items.forEach(item=>{
-      const row=document.createElement('button'); row.type='button'; row.className='rf-mobile-row';
+      const row=document.createElement('button'); row.type='button'; row.className='rf-mobile-row'+(item.children?' is-parent':'');
       row.dataset.rfAction=item.children?'open':'navigate';
       row.dataset.rfLabel=item.label;
       if(item.href) row.dataset.rfHref=item.href;
