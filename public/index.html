@@ -284,7 +284,7 @@
 body.rf-mobile-menu-open{overflow:hidden}
 
 
-        /* Vista de producto móvil: encabezado y CTA persistentes */
+        /* Vista de producto móvil: encabezado y CTA persistentes; la página completa del producto sí hace scroll */
         @media (max-width: 767px) {
             body.rf-product-open { padding-top: 64px; }
             body.rf-product-open > header {
@@ -302,9 +302,20 @@ body.rf-mobile-menu-open{overflow:hidden}
                 left: 0 !important;
                 right: 0 !important;
                 border-radius: 0 !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                display: block !important;
+                -webkit-overflow-scrolling: touch;
             }
             body.rf-product-open #modal-producto > #modal-content > .rf-product-info-mobile {
-                padding-bottom: 96px !important;
+                padding-bottom: 112px !important;
+                overflow: visible !important;
+                height: auto !important;
+            }
+            body.rf-product-open .rf-product-media {
+                width: 100% !important;
+                height: auto !important;
+                display: block !important;
             }
             body.rf-product-open .rf-product-media {
                 padding: 0 !important;
@@ -1394,12 +1405,14 @@ body.rf-mobile-menu-open{overflow:hidden}
             document.getElementById('modal-id').innerText = '00' + productoActual.id;
             document.getElementById('modal-nombre').innerText = productoActual.nombre;
             document.getElementById('modal-precio').innerText = '$' + formatearPrecio(productoActual.precio);
+            const botonAgregarRF = document.getElementById('btn-modal-agregar');
+            botonAgregarRF.innerHTML = `Agregar al carrito <span class="ml-1 font-normal">$${formatearPrecio(productoActual.precio)} <small class="text-[0.7em]">mxn</small></span>`;
             document.getElementById('modal-desc').innerText = productoActual.descripcion || 'Un hermoso arreglo preparado con las mejores flores de temporada.';
             mostrarGaleria(productoActual);
             actualizarUbicacionProductoRF();
             productoVariantesSeleccionadas = {};
             const obtenerSeleccion = prepararVariantes(productoActual);
-            document.getElementById('btn-modal-agregar').onclick = () => {
+            botonAgregarRF.onclick = () => {
                 const variante = obtenerSeleccion ? obtenerSeleccion() : null;
                 ejecutarConUbicacionRF(() => {
                     agregarAlCarrito(productoActual.id, productoActual.nombre, productoActual.precio, urlImagen, variante);
