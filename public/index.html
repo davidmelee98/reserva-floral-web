@@ -287,6 +287,11 @@ body.rf-mobile-menu-open{overflow:hidden !important}
         /* Vista de producto móvil: modal realmente a pantalla completa; header y CTA persistentes, galería con scroll normal */
         @media (max-width: 767px) {
             body.rf-product-open { overflow-x: hidden !important; overflow-y: auto !important; }
+            /* Si el selector de ubicación se abre ENCIMA de la vista de producto móvil,
+               debe bloquear el scroll del fondo igual que lo hace en cualquier otro lado.
+               Sin esta regla, "overflow-y:auto" de arriba le ganaba al bloqueo y se
+               podía seguir scrolleando la página de atrás con el menú abierto. */
+            body.rf-product-open.rf-ubicacion-open { overflow: hidden !important; }
             /* Al abrir un producto, ocultamos completamente la página que queda detrás.
                Solo permanecen visibles el header y la pantalla de producto. */
             body.rf-product-open > *:not(header):not(#modal-producto):not(#rf-mobile-overlay):not(#rf-mobile-drawer):not(#carrito-lateral):not(#modal-ubicacion) {
@@ -503,9 +508,19 @@ body.rf-mobile-menu-open{overflow:hidden !important}
 #modal-ubicacion.rf-location-modal { position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; z-index: 2147483647 !important; pointer-events: auto !important; }
 #modal-ubicacion.rf-location-modal > .rf-location-card { position: relative; z-index: 2 !important; pointer-events: auto !important; }
 #modal-ubicacion.rf-location-modal .rf-select-trigger,
-#modal-ubicacion.rf-location-modal .rf-option,
-#modal-ubicacion.rf-location-modal button { position: relative; z-index: 3; pointer-events: auto !important; touch-action: manipulation; }
+#modal-ubicacion.rf-location-modal .rf-option { position: relative; z-index: 3; pointer-events: auto !important; touch-action: manipulation; }
 #modal-ubicacion.rf-location-modal .rf-custom-menu { z-index: 20 !important; pointer-events: auto !important; }
+/* La X de cerrar es "position:absolute" a propósito (para anclarse a la esquina
+   de la tarjeta). La regla de arriba antes decía "button" en vez de las clases
+   específicas, así que también convertía esta X a position:relative y la
+   sacaba de su lugar (aparecía arriba a la izquierda en vez de la esquina). */
+#modal-ubicacion.rf-location-modal .rf-location-card > button[onclick="cerrarModalUbicacion()"] {
+    position: absolute !important;
+    top: 1rem !important;
+    right: 1rem !important;
+    z-index: 4;
+    pointer-events: auto !important;
+}
 
 </style>
 </head>
@@ -2102,6 +2117,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             }
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            document.body.classList.add('rf-ubicacion-open');
             document.body.style.overflow = 'hidden';
         }
 
@@ -2113,7 +2129,8 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             if (!modal) return;
             modal.classList.remove('flex');
             modal.classList.add('hidden');
-            document.body.style.overflow = '';
+            document.body.classList.remove('rf-ubicacion-open');
+            document.body.style.overflow = document.body.classList.contains('rf-product-open') ? 'hidden' : '';
         }
 
         function cerrarDropdownsRF(excepto = null) {
