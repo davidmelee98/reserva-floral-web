@@ -264,7 +264,7 @@
 .rf-mobile-crumb.is-current{color:#c2185b;font-weight:600}
 .rf-mobile-slash{color:#c5c5c5;font-size:13px}
 .rf-mobile-list{padding:8px 24px 26px;overflow:auto;flex:1}
-.rf-mobile-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;border:0;border-bottom:1px solid #f0f0f0;background:#fff;padding:18px 0;text-align:left;color:#323232;font:400 18px/1.35 Poppins,sans-serif;cursor:pointer}
+.rf-mobile-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;border:0;border-bottom:1px solid #f0f0f0;background:#fff;padding:18px 0;text-align:left;color:#000;font:400 18px/1.35 Poppins,sans-serif;cursor:pointer}
 .rf-mobile-row:last-child{border-bottom:0}
 .rf-mobile-row:active{color:#c2185b}
 .rf-mobile-row-label{min-width:0}
@@ -1419,6 +1419,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
         function abrirProducto(dataStr, urlImagen) {
             const productoActual = JSON.parse(decodeURIComponent(dataStr));
             rfVolverAComplementos = false;
+            rfAbiertoPorUrlDirecta = false;
             mostrarProducto(productoActual);
         }
 
@@ -1578,7 +1579,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             document.body.style.overflow = 'hidden';
         }
 
-        function cerrarProducto() {
+        function cerrarModalProductoAlInstante() {
             const modal = document.getElementById('modal-producto');
             const content = document.getElementById('modal-content');
             content.classList.remove('scale-100', 'opacity-100');
@@ -1593,6 +1594,29 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                     reabrirConfirmacion();
                 }
             }, 300);
+        }
+
+        function cerrarProducto() {
+            if (rfAbiertoPorUrlDirecta) {
+                // Llegaste aquí por una URL directa (/producto/:id), típicamente
+                // desde una tarjeta de categoría. Usamos el historial del
+                // navegador para volver exactamente a esa página, con su
+                // scroll donde lo dejaste -- en vez de solo ocultar el modal,
+                // lo cual dejaría ver el inicio (la página de fondo real es
+                // el inicio "en blanco" que carga por debajo de esta ruta).
+                const urlActual = window.location.href;
+                window.history.back();
+                setTimeout(() => {
+                    if (window.location.href === urlActual) {
+                        // No había una página anterior a la que volver (p. ej.
+                        // entraste directo con este link) -- nos quedamos aquí.
+                        rfAbiertoPorUrlDirecta = false;
+                        cerrarModalProductoAlInstante();
+                    }
+                }, 400);
+                return;
+            }
+            cerrarModalProductoAlInstante();
         }
 
         function ejecutarConUbicacionRF(accion) {
@@ -1645,8 +1669,12 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             // Si venías del carrusel de complementos, aquí no hace falta que
             // cerrarProducto() te regrese a él -- abrirConfirmacion() ya abre
             // una confirmación nueva (con un carrusel actualizado, sin el
-            // producto que acabas de agregar).
+            // producto que acabas de agregar). Tampoco queremos que nos saque
+            // de la página con history.back() si llegamos por /producto/:id --
+            // acabas de agregar algo al carrito, te quedas aquí para ver la
+            // confirmación, no te mandamos de regreso a la categoría.
             rfVolverAComplementos = false;
+            rfAbiertoPorUrlDirecta = false;
             cerrarProducto();
             abrirConfirmacion(nombre, imagen);
         }
@@ -1726,6 +1754,12 @@ body.rf-mobile-menu-open{overflow:hidden !important}
         // carrusel "Complementa tu regalo", al cerrarlo con la X queremos
         // regresar a ese mismo carrusel en vez de dejar todo cerrado.
         let rfVolverAComplementos = false;
+        // Si el producto se abrió por una URL directa (/producto/:id) -- que es
+        // como se llega desde una tarjeta en una página de categoría -- al
+        // cerrarlo con la X queremos volver con el historial del navegador a
+        // esa página (y a la posición exacta de scroll), en vez de mostrar el
+        // inicio detrás.
+        let rfAbiertoPorUrlDirecta = false;
 
         // Entrada segura desde la tarjeta: solo recibe un número, nunca JSON dentro
         // del HTML. Esto evita que el clic se rompa por contenido del producto.
@@ -1748,6 +1782,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                 modalConfirmacion.classList.add('hidden');
             }
             rfVolverAComplementos = true;
+            rfAbiertoPorUrlDirecta = false;
             mostrarProducto(comp);
         }
 
@@ -1993,6 +2028,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                 if (!respuesta.ok) return;
                 const producto = await respuesta.json();
                 rfVolverAComplementos = false;
+                rfAbiertoPorUrlDirecta = true;
                 mostrarProducto(producto);
             } catch (error) {
                 console.error('Error cargando producto desde URL', error);
@@ -2969,6 +3005,15 @@ body.rf-mobile-menu-open{overflow:hidden !important}
     });
     list.innerHTML='';
     if(path.length){
+      const mainLinksTop={
+        'Cumpleaños':'/categoria/cumpleanos','Ocasiones':'/categoria/ocasiones','Flores y plantas':'/categoria/flores-y-plantas','Globos':'/categoria/globos','Regalos':'/categoria/regalos'
+      };
+      const mainTop=path[0];
+      if(path.length===1 && mainLinksTop[mainTop]){
+        const verTodo=document.createElement('a'); verTodo.className='rf-mobile-row'; verTodo.href=mainLinksTop[mainTop];
+        verTodo.innerHTML='<span class="rf-mobile-row-label">Ver todo</span>';
+        list.appendChild(verTodo);
+      }
       const back=document.createElement('button'); back.type='button'; back.className='rf-mobile-row'; back.dataset.rfAction='back'; back.innerHTML='<span class="rf-mobile-row-label">← Volver</span>';
       list.appendChild(back);
     }
@@ -2984,16 +3029,6 @@ body.rf-mobile-menu-open{overflow:hidden !important}
       }
       list.appendChild(row);
     });
-    if(path.length){
-      const cat=currentNode();
-      const mainLinks={
-        'Cumpleaños':'/categoria/cumpleanos','Ocasiones':'/categoria/ocasiones','Flores y plantas':'/categoria/flores-y-plantas','Globos':'/categoria/globos','Regalos':'/categoria/regalos'
-      };
-      const main=path[0];
-      if(path.length===1 && mainLinks[main]){
-        const a=document.createElement('a'); a.className='rf-mobile-viewall'; a.href=mainLinks[main]; a.textContent='Ver todo'; list.appendChild(a);
-      }
-    }
   }
   function openMenu(){path=[];render();overlay.classList.add('is-open');drawer.classList.add('is-open');document.body.classList.add('rf-mobile-menu-open');overlay.setAttribute('aria-hidden','false');drawer.setAttribute('aria-hidden','false');}
   function closeMenu(){overlay.classList.remove('is-open');drawer.classList.remove('is-open');document.body.classList.remove('rf-mobile-menu-open');overlay.setAttribute('aria-hidden','true');drawer.setAttribute('aria-hidden','true');}
