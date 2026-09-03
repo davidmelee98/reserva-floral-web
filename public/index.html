@@ -83,6 +83,7 @@
     
 /* Reserva Floral — selector principal de ubicación */
 .rf-home-select{position:relative;z-index:30;}
+.rf-home-select.is-open{z-index:10000;}
 .rf-home-trigger{position:relative;width:100%;border:0;outline:0;background:transparent;text-align:left;font-size:.875rem;line-height:1.25rem;padding:.25rem 1.9rem .15rem 0;color:#374151;cursor:pointer;}
 .rf-home-trigger:disabled{color:#9ca3af;cursor:not-allowed;opacity:.9;}
 .rf-home-chevron{pointer-events:none;position:absolute;right:4px;top:50%;transform:translateY(-25%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #6b7280;transition:transform .16s ease,border-color .16s ease;}
@@ -512,50 +513,54 @@
         </div>
     </nav>
 
-    <!-- Hero Banner con Buscador Flotante -->
-    <div class="relative mb-28">
-        <div class="h-[450px] w-full relative">
+    <!-- Hero Banner con Buscador -->
+    <div class="relative mb-10 sm:mb-16 md:mb-8">
+        <div class="h-[320px] sm:h-[380px] md:h-[450px] w-full relative">
             <img class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd?q=80&w=1920&auto=format&fit=crop" alt="Persona con flores">
             <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-                <h1 class="text-5xl md:text-7xl text-white font-serif tracking-wide shadow-sm">Solo envía...</h1>
+                <h1 class="text-4xl sm:text-5xl md:text-7xl text-white font-serif tracking-wide shadow-sm">Solo envía...</h1>
             </div>
         </div>
 
-        <!-- Buscador Flotante de Envíos -->
-        <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-11/12 max-w-5xl bg-white rounded-xl shadow-xl p-6 z-10 border border-gray-100">
-            <h3 class="text-lg font-semibold mb-4">¿A dónde quieres enviar?</h3>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="estado">
-                    <label class="block text-[10px] text-gray-500 uppercase">Estado</label>
-                    <button type="button" class="rf-home-trigger" id="home-estado-trigger" aria-expanded="false">Estado<span class="rf-home-chevron"></span></button>
-                    <div id="home-estado-menu" class="rf-home-menu hidden">
-                        <button type="button" class="rf-home-option" data-value="Ciudad de México">Ciudad de México</button>
-                        <button type="button" class="rf-home-option" data-value="Tamaulipas">Tamaulipas</button>
-                        <button type="button" class="rf-home-option" data-value="Nuevo León">Nuevo León</button>
-                    </div>
-                </div>
-                <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="ciudad">
-                    <label class="block text-[10px] text-gray-500 uppercase">Ciudad / Municipio</label>
-                    <button type="button" class="rf-home-trigger" id="home-ciudad-trigger" aria-expanded="false" disabled>Ciudad<span class="rf-home-chevron"></span></button>
-                    <div id="home-ciudad-menu" class="rf-home-menu hidden"></div>
-                </div>
-                <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="fecha">
-                    <label class="block text-[10px] text-gray-500 uppercase">Fecha de entrega</label>
-                    <button type="button" class="rf-home-trigger" id="home-fecha-trigger" aria-expanded="false" disabled>Fecha de entrega<span class="rf-home-chevron"></span></button>
-                    <div id="home-fecha-menu" class="rf-home-menu rf-home-date-menu hidden">
-                        <button type="button" class="rf-home-option" data-value="hoy">Hoy</button>
-                        <button type="button" class="rf-home-option" data-value="manana">Mañana</button>
-                        <button type="button" class="rf-home-option" data-value="otro">Otro día</button>
-                        <div id="home-otra-fecha-wrap" class="rf-home-date-wrap hidden">
-                            <div class="rf-home-date-title">Selecciona la fecha</div>
-                            <input id="home-otra-fecha" type="date" class="rf-home-date-input">
+        <!-- Buscador de Envíos: se superpone a la imagen usando un margen negativo
+             (en vez de position:absolute + translate), así su tamaño se ajusta solo
+             sin importar cuántas filas ocupe el formulario en cada pantalla. -->
+        <div class="relative z-10 px-4 sm:px-6 -mt-12 sm:-mt-16 md:-mt-20 md:flex md:justify-center">
+            <div class="w-full md:w-11/12 max-w-5xl mx-auto bg-white rounded-xl shadow-xl p-4 sm:p-6 border border-gray-100">
+                <h3 class="text-lg font-semibold mb-4">¿A dónde quieres enviar?</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                    <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="estado">
+                        <label class="block text-[10px] text-gray-500 uppercase">Estado</label>
+                        <button type="button" class="rf-home-trigger" id="home-estado-trigger" aria-expanded="false">Estado<span class="rf-home-chevron"></span></button>
+                        <div id="home-estado-menu" class="rf-home-menu hidden">
+                            <button type="button" class="rf-home-option" data-value="Ciudad de México">Ciudad de México</button>
+                            <button type="button" class="rf-home-option" data-value="Tamaulipas">Tamaulipas</button>
+                            <button type="button" class="rf-home-option" data-value="Nuevo León">Nuevo León</button>
                         </div>
                     </div>
-                </div>
-                <div class="col-span-1">
-                    <button type="button" onclick="confirmarSelectorHomeRF()" class="w-full h-full bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold rounded-lg transition-colors">
-                        Ver regalos
-                    </button>
+                    <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="ciudad">
+                        <label class="block text-[10px] text-gray-500 uppercase">Ciudad / Municipio</label>
+                        <button type="button" class="rf-home-trigger" id="home-ciudad-trigger" aria-expanded="false" disabled>Ciudad<span class="rf-home-chevron"></span></button>
+                        <div id="home-ciudad-menu" class="rf-home-menu hidden"></div>
+                    </div>
+                    <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="fecha">
+                        <label class="block text-[10px] text-gray-500 uppercase">Fecha de entrega</label>
+                        <button type="button" class="rf-home-trigger" id="home-fecha-trigger" aria-expanded="false" disabled>Fecha de entrega<span class="rf-home-chevron"></span></button>
+                        <div id="home-fecha-menu" class="rf-home-menu rf-home-date-menu hidden">
+                            <button type="button" class="rf-home-option" data-value="hoy">Hoy</button>
+                            <button type="button" class="rf-home-option" data-value="manana">Mañana</button>
+                            <button type="button" class="rf-home-option" data-value="otro">Otro día</button>
+                            <div id="home-otra-fecha-wrap" class="rf-home-date-wrap hidden">
+                                <div class="rf-home-date-title">Selecciona la fecha</div>
+                                <input id="home-otra-fecha" type="date" class="rf-home-date-input">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-span-1 sm:col-span-2 md:col-span-1">
+                        <button type="button" onclick="confirmarSelectorHomeRF()" class="w-full h-full py-3 md:py-0 bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold rounded-lg transition-colors">
+                            Ver regalos
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1414,17 +1419,20 @@
         function cerrarMenusHomeRF() {
             document.querySelectorAll('.rf-home-menu').forEach(menu => menu.classList.add('hidden'));
             document.querySelectorAll('.rf-home-trigger').forEach(trigger => trigger.setAttribute('aria-expanded','false'));
+            document.querySelectorAll('.rf-home-select.is-open').forEach(field => field.classList.remove('is-open'));
         }
         function abrirMenuHomeRF(id) {
             const triggerForMenu = document.getElementById(id.replace('-menu','-trigger'));
             if (triggerForMenu?.disabled) return;
             const menu = document.getElementById(id); if (!menu) return;
             const trigger = document.querySelector(`[data-home-menu="${id}"]`) || document.getElementById(id.replace('-menu','-trigger'));
+            const field = menu.closest('.rf-home-select');
             const open = !menu.classList.contains('hidden');
             cerrarMenusHomeRF();
             if (!open) {
                 menu.classList.remove('hidden');
                 if (trigger) trigger.setAttribute('aria-expanded','true');
+                field?.classList.add('is-open');
             }
         }
         function seleccionarEstadoHomeRF(valor) {
