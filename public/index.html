@@ -2302,7 +2302,16 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             const modal = document.getElementById('modal-ubicacion');
             modal.classList.remove('flex');
             modal.classList.add('hidden');
-            document.body.style.overflow = 'auto';
+            // Esta función confirma la ubicación (botón "Ver regalos") y es una
+            // ruta DISTINTA a cerrarModalUbicacion() (la X) -- por eso también
+            // necesita quitar esta clase. Se había quedado solo en la X, así que
+            // al cambiar la fecha desde dentro de un producto y confirmar, el
+            // body se quedaba con "rf-ubicacion-open" pegado para siempre, lo
+            // cual bloqueaba el scroll del producto de ahí en adelante (ese
+            // era el bug: "el scroll deja de funcionar después de cambiar la
+            // fecha de entrega y regresar").
+            document.body.classList.remove('rf-ubicacion-open');
+            document.body.style.overflow = document.body.classList.contains('rf-product-open') ? 'hidden' : 'auto';
             if (accion) setTimeout(accion, 0);
         }
 
