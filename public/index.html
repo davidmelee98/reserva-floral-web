@@ -819,10 +819,10 @@ body.rf-mobile-menu-open{overflow:hidden}
                         <button type="button" class="rf-option" data-value="hoy">Hoy</button>
                         <button type="button" class="rf-option" data-value="manana">Mañana</button>
                         <button type="button" class="rf-option" data-value="otro">Otro día</button>
-                        <div id="rf-otra-fecha-wrap" class="rf-date-picker-wrap hidden">
-                            <div class="rf-date-picker-title">Selecciona la fecha</div>
-                            <input id="rf-otra-fecha" type="date" class="rf-date-picker-input">
-                        </div>
+                    </div>
+                    <div id="rf-otra-fecha-wrap" class="rf-date-picker-wrap hidden">
+                        <div class="rf-date-picker-title">Selecciona la fecha</div>
+                        <input id="rf-otra-fecha" type="date" class="rf-date-picker-input">
                     </div>
                 </div>
             </div>
@@ -1842,11 +1842,23 @@ body.rf-mobile-menu-open{overflow:hidden}
             const labels = { hoy: 'Hoy', manana: 'Mañana', otro: 'Otro día' };
             trigger.innerHTML = `${labels[tipo] || 'Fecha de entrega'}<span class="rf-custom-chevron"></span>`;
             document.querySelectorAll('#rf-fecha-menu > .rf-option').forEach(o => o.classList.toggle('is-selected', o.dataset.value === tipo));
+
+            // En "Otro día" el calendario queda fuera del dropdown. Esto evita que
+            // el menú se superponga al selector nativo de fecha en iOS/Safari.
+            cerrarDropdownsRF();
             wrap.classList.toggle('hidden', tipo !== 'otro');
             if (tipo === 'otro') {
-                setTimeout(() => document.getElementById('rf-otra-fecha')?.focus(), 30);
+                const dateInput = document.getElementById('rf-otra-fecha');
+                const hoy = new Date();
+                const isoHoy = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000).toISOString().slice(0,10);
+                dateInput.min = isoHoy;
+                setTimeout(() => {
+                    dateInput.focus();
+                    if (typeof dateInput.showPicker === 'function') {
+                        try { dateInput.showPicker(); } catch (_) {}
+                    }
+                }, 80);
             }
-            if (tipo !== 'otro') cerrarDropdownsRF();
         }
 
         function fechaEntregaRF() {
