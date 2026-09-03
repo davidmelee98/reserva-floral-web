@@ -346,6 +346,26 @@ body.rf-mobile-menu-open{overflow:hidden}
                 padding: 0 !important;
                 background: #fff !important;
             }
+
+            /* Los controles globales del header siguen siendo interactivos
+               aunque la vista de producto esté abierta. */
+            body.rf-product-open #rf-mobile-overlay {
+                visibility: visible !important;
+            }
+            body.rf-product-open #rf-mobile-drawer {
+                visibility: visible !important;
+            }
+            body.rf-product-open #rf-mobile-overlay.is-open {
+                pointer-events: auto !important;
+            }
+            body.rf-product-open #rf-mobile-drawer.is-open {
+                pointer-events: auto !important;
+            }
+            body.rf-product-open #carrito-lateral {
+                visibility: visible !important;
+                pointer-events: auto !important;
+                z-index: 10002 !important;
+            }
             body.rf-product-open .rf-desktop-product-main {
                 display: none !important;
             }
