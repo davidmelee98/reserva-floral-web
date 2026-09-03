@@ -1418,6 +1418,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
 
         function abrirProducto(dataStr, urlImagen) {
             const productoActual = JSON.parse(decodeURIComponent(dataStr));
+            rfVolverAComplementos = false;
             mostrarProducto(productoActual);
         }
 
@@ -1587,6 +1588,10 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                 document.body.style.overflow = '';
                 document.body.classList.remove('rf-product-open');
                 window.scrollTo(0, rfScrollAntesProducto);
+                if (rfVolverAComplementos) {
+                    rfVolverAComplementos = false;
+                    reabrirConfirmacion();
+                }
             }, 300);
         }
 
@@ -1637,6 +1642,11 @@ body.rf-mobile-menu-open{overflow:hidden !important}
 
         function agregarAlCarrito(id, nombre, precio, imagen, variante = null) {
             agregarItemCarrito({ id, nombre, precio, imagen, variante });
+            // Si venías del carrusel de complementos, aquí no hace falta que
+            // cerrarProducto() te regrese a él -- abrirConfirmacion() ya abre
+            // una confirmación nueva (con un carrusel actualizado, sin el
+            // producto que acabas de agregar).
+            rfVolverAComplementos = false;
             cerrarProducto();
             abrirConfirmacion(nombre, imagen);
         }
@@ -1661,13 +1671,36 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                     const urlImagenComp = escaparHtml(comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=200&q=80');
                     const safeName = escaparHtml(comp.nombre || 'Producto');
                     contenedorComp.innerHTML += `
-                        <button type="button" onpointerdown="event.preventDefault(); event.stopPropagation(); abrirComplementoPorIndice(${index});" onclick="event.preventDefault(); event.stopPropagation(); return false;" class="rf-complemento-card border border-gray-200 rounded-xl p-3 text-center cursor-pointer transition-colors flex flex-col justify-between group/comp focus:outline-none focus:ring-0">
+                        <button type="button" data-complemento-index="${index}" class="rf-complemento-card border border-gray-200 rounded-xl p-3 text-center cursor-pointer transition-colors flex flex-col justify-between group/comp focus:outline-none focus:ring-0">
                             <img src="${urlImagenComp}" class="w-12 h-12 mx-auto object-cover rounded mb-2 shadow-sm group-hover/comp:scale-105 transition-transform" alt="${safeName}">
                             <span class="rf-complemento-nombre text-[11px] text-gray-700">${safeName}</span>
                             <span class="font-bold text-xs mt-1 text-brandDark">$${formatearPrecio(comp.precio)}</span>
                             <span class="rf-complemento-detalle text-[10px] font-bold text-brandLightPink mt-1 hover:underline">+ Detalle</span>
                         </button>
                     `;
+                });
+                // Distinguimos un toque de un arrastre: si el dedo se movió más
+                // de unos pocos píxeles entre pointerdown y pointerup, es que
+                // el usuario quería deslizar el carrusel, no abrir la tarjeta.
+                // Antes se abría con SOLO tocar (pointerdown), por eso era
+                // imposible arrastrar para ver más complementos.
+                const UMBRAL_ARRASTRE = 10;
+                contenedorComp.querySelectorAll('.rf-complemento-card').forEach(card => {
+                    let inicioX = 0, inicioY = 0, arrastrando = false;
+                    card.addEventListener('pointerdown', e => {
+                        inicioX = e.clientX; inicioY = e.clientY; arrastrando = false;
+                    });
+                    card.addEventListener('pointermove', e => {
+                        if (arrastrando) return;
+                        if (Math.abs(e.clientX - inicioX) > UMBRAL_ARRASTRE || Math.abs(e.clientY - inicioY) > UMBRAL_ARRASTRE) {
+                            arrastrando = true;
+                        }
+                    });
+                    card.addEventListener('click', e => {
+                        e.preventDefault();
+                        if (arrastrando) return;
+                        abrirComplementoPorIndice(Number(card.dataset.complementoIndex));
+                    });
                 });
             } else {
                 contenedorComp.innerHTML = '<p class="text-xs text-gray-500">Agrega más productos a tu inventario para ver complementos aquí.</p>';
@@ -1689,6 +1722,10 @@ body.rf-mobile-menu-open{overflow:hidden !important}
         // Productos sugeridos de la confirmación actual.
         let complementosSugeridosActuales = [];
         let complementoActual = null;
+        // Si el producto que está abierto se abrió desde una tarjeta del
+        // carrusel "Complementa tu regalo", al cerrarlo con la X queremos
+        // regresar a ese mismo carrusel en vez de dejar todo cerrado.
+        let rfVolverAComplementos = false;
 
         // Entrada segura desde la tarjeta: solo recibe un número, nunca JSON dentro
         // del HTML. Esto evita que el clic se rompa por contenido del producto.
@@ -1710,7 +1747,21 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                 modalConfirmacion.classList.remove('flex');
                 modalConfirmacion.classList.add('hidden');
             }
+            rfVolverAComplementos = true;
             mostrarProducto(comp);
+        }
+
+        // Vuelve a mostrar "Agregaste al carrito" con el mismo carrusel de
+        // complementos que ya estaba armado (no lo reconstruye).
+        function reabrirConfirmacion() {
+            const modal = document.getElementById('modal-confirmacion');
+            const content = document.getElementById('modal-confirmacion-content');
+            if (!modal || !content) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+            document.body.style.overflow = 'hidden';
         }
 
         // Función que abre el recuadro visual original del complemento.
@@ -1941,6 +1992,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                 const respuesta = await fetch('/api/catalogo/' + match[1]);
                 if (!respuesta.ok) return;
                 const producto = await respuesta.json();
+                rfVolverAComplementos = false;
                 mostrarProducto(producto);
             } catch (error) {
                 console.error('Error cargando producto desde URL', error);
