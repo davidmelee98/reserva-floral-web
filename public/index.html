@@ -289,7 +289,7 @@ body.rf-mobile-menu-open{overflow:hidden}
             body.rf-product-open { overflow: hidden !important; }
             /* Al abrir un producto, ocultamos completamente la página que queda detrás.
                Solo permanecen visibles el header y la pantalla de producto. */
-            body.rf-product-open > *:not(header):not(#modal-producto) {
+            body.rf-product-open > *:not(header):not(#modal-producto):not(#rf-mobile-overlay):not(#rf-mobile-drawer):not(#carrito-lateral) {
                 visibility: hidden !important;
                 pointer-events: none !important;
             }
