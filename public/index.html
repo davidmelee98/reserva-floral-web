@@ -183,7 +183,13 @@
 @media (max-width:767px){.rf-favorite-card{flex:0 0 calc((100% - 18px)/2);}.rf-favorite-arrow{width:40px;height:40px;}.rf-favorite-prev{left:8px;}.rf-favorite-next{right:8px;}}
 .rf-category-prev{left:12px;}
 .rf-category-next{right:12px;}
-@media (max-width:767px){.rf-category-card{flex-basis:78vw;}.rf-category-arrow{width:40px;height:40px;}.rf-category-prev{left:8px;}.rf-category-next{right:8px;}}
+@media (max-width:767px){
+  /* En móvil: dos tarjetas visibles por carrusel, igual que Tendencias */
+  .rf-category-card{flex:0 0 calc((100% - 18px)/2);}
+  .rf-category-arrow{width:40px;height:40px;}
+  .rf-category-prev{left:8px;}
+  .rf-category-next{right:8px;}
+}
 .rf-occasion-carousel-wrap{position:relative;display:flex;align-items:center;}
 .rf-occasion-track{display:flex;gap:18px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 10px;width:100%;}
 .rf-occasion-track::-webkit-scrollbar{display:none;}
@@ -196,7 +202,13 @@
 .rf-occasion-arrow svg{width:22px;height:22px;}
 .rf-occasion-prev{left:12px;}
 .rf-occasion-next{right:12px;}
-@media (max-width:767px){.rf-occasion-card{flex-basis:78vw;}.rf-occasion-arrow{width:40px;height:40px;}.rf-occasion-prev{left:8px;}.rf-occasion-next{right:8px;}}
+@media (max-width:767px){
+  /* En móvil: dos tarjetas visibles por carrusel */
+  .rf-occasion-card{flex:0 0 calc((100% - 18px)/2);}
+  .rf-occasion-arrow{width:40px;height:40px;}
+  .rf-occasion-prev{left:8px;}
+  .rf-occasion-next{right:8px;}
+}
 
 
 /* Navegación móvil jerárquica */
