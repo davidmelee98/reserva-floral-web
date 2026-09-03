@@ -289,7 +289,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             body.rf-product-open { overflow-x: hidden !important; overflow-y: auto !important; }
             /* Al abrir un producto, ocultamos completamente la página que queda detrás.
                Solo permanecen visibles el header y la pantalla de producto. */
-            body.rf-product-open > *:not(header):not(#modal-producto):not(#rf-mobile-overlay):not(#rf-mobile-drawer):not(#carrito-lateral) {
+            body.rf-product-open > *:not(header):not(#modal-producto):not(#rf-mobile-overlay):not(#rf-mobile-drawer):not(#carrito-lateral):not(#modal-ubicacion) {
                 visibility: hidden !important;
                 pointer-events: none !important;
             }
@@ -386,6 +386,15 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             body.rf-product-open #carrito-lateral.carrito-abierto {
                 z-index: 2147483647 !important;
             }
+            /* Selector de ubicación: debe poder abrirse desde la vista de producto. */
+            body.rf-product-open #modal-ubicacion {
+                visibility: visible !important;
+                pointer-events: auto !important;
+                z-index: 2147483647 !important;
+            }
+            body.rf-product-open #modal-ubicacion * {
+                pointer-events: auto !important;
+            }
             body.rf-product-open .rf-desktop-product-main {
                 display: none !important;
             }
@@ -399,8 +408,19 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                 z-index: 10003 !important;
                 margin: 0 !important;
             }
-            body.rf-product-open #modal-producto > #modal-content > button[onclick=\"cerrarProducto()\"] { pointer-events:auto !important; z-index:10004 !important; }
+            body.rf-product-open #modal-producto > #modal-content > button[onclick="cerrarProducto()"] {
+                pointer-events:auto !important;
+                position:fixed !important;
+                top:calc(env(safe-area-inset-top) + 74px) !important;
+                right:16px !important;
+                z-index:2147483644 !important;
+            }
             body.rf-product-open #modal-producto .rf-product-info-mobile button { pointer-events:auto !important; }
+            body.rf-product-open #modal-producto .rf-product-info-mobile [onclick],
+            body.rf-product-open #modal-producto .rf-product-info-mobile button,
+            body.rf-product-open #modal-producto #btn-modal-agregar {
+                pointer-events:auto !important;
+            }
             body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-row,
             body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-crumb,
             body.rf-product-open #rf-mobile-drawer.is-open .rf-mobile-viewall,
@@ -2809,22 +2829,22 @@ body.rf-mobile-menu-open{overflow:hidden !important}
     path.forEach((label,idx)=>{
       const slash=document.createElement('span'); slash.className='rf-mobile-slash'; slash.textContent='/'; crumbs.appendChild(slash);
       const c=document.createElement('button'); c.type='button'; c.className='rf-mobile-crumb'+(idx===path.length-1?' is-current':''); c.textContent=label;
-      c.onclick=()=>{path=path.slice(0,idx+1);render();}; crumbs.appendChild(c);
+      c.dataset.rfCrumbIndex=String(idx); crumbs.appendChild(c);
     });
     list.innerHTML='';
     if(path.length){
-      const back=document.createElement('button'); back.type='button'; back.className='rf-mobile-row'; back.innerHTML='<span class="rf-mobile-row-label">← Volver</span>';
-      back.onclick=()=>{path.pop();render();}; list.appendChild(back);
+      const back=document.createElement('button'); back.type='button'; back.className='rf-mobile-row'; back.dataset.rfAction='back'; back.innerHTML='<span class="rf-mobile-row-label">← Volver</span>';
+      list.appendChild(back);
     }
     const items=currentItems();
     items.forEach(item=>{
       const row=document.createElement('button'); row.type='button'; row.className='rf-mobile-row';
+      row.dataset.rfAction=item.children?'open':'navigate';
+      row.dataset.rfLabel=item.label;
+      if(item.href) row.dataset.rfHref=item.href;
       const left=document.createElement('span'); left.className='rf-mobile-row-label'; left.textContent=item.label; row.appendChild(left);
       if(item.children){
         const arr=document.createElement('span'); arr.className='rf-mobile-arrow'; arr.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>'; row.appendChild(arr);
-        row.onclick=()=>{path.push(item.label);render();};
-      }else{
-        row.onclick=()=>{window.location.href=item.href;};
       }
       list.appendChild(row);
     });
@@ -2849,12 +2869,33 @@ body.rf-mobile-menu-open{overflow:hidden !important}
     const btn=e.target.closest('#rf-mobile-menu-button');
     if(btn){e.preventDefault();e.stopPropagation();openMenu();}
   });
-  // En producto, los botones del drawer deben recibir el primer toque sin que el modal interfiera.
+  // Una sola delegación para las opciones del menú móvil. Se ejecuta en captura
+  // para que ningún listener del documento/modal pueda comerse el toque.
   list.addEventListener('click', e=>{
     const row=e.target.closest('.rf-mobile-row');
-    if(!row) return;
-    e.stopPropagation();
-  });
+    if(!row || !list.contains(row)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const action=row.dataset.rfAction;
+    if(action==='back'){ path.pop(); render(); return; }
+    if(action==='open'){ path.push(row.dataset.rfLabel || ''); render(); return; }
+    if(action==='navigate'){
+      const href=row.dataset.rfHref;
+      if(href) window.location.assign(href);
+    }
+  }, true);
+  crumbs.addEventListener('click', e=>{
+    const crumb=e.target.closest('[data-rf-crumb-index]');
+    if(crumb){
+      e.preventDefault(); e.stopImmediatePropagation();
+      path=path.slice(0, Number(crumb.dataset.rfCrumbIndex)+1); render(); return;
+    }
+    const root=e.target.closest('#rf-mobile-crumbs > button.rf-mobile-crumb:not([data-rf-crumb-index])');
+    if(root){
+      e.preventDefault(); e.stopImmediatePropagation();
+      path=[]; render();
+    }
+  }, true);
 })();
 </script>
 
