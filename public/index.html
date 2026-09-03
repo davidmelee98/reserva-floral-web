@@ -287,6 +287,12 @@ body.rf-mobile-menu-open{overflow:hidden}
         /* Vista de producto móvil: modal realmente a pantalla completa; header y CTA persistentes, galería con scroll normal */
         @media (max-width: 767px) {
             body.rf-product-open { overflow: hidden !important; }
+            /* Al abrir un producto, ocultamos completamente la página que queda detrás.
+               Solo permanecen visibles el header y la pantalla de producto. */
+            body.rf-product-open > *:not(header):not(#modal-producto) {
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }
             body.rf-product-open > header {
                 position: fixed !important;
                 top: 0; left: 0; right: 0;
@@ -320,6 +326,9 @@ body.rf-mobile-menu-open{overflow:hidden}
                 overflow-x: hidden !important;
                 display: block !important;
                 background: #fff !important;
+                /* El CTA fixed no debe quedar atrapado por el transform del modal. */
+                transform: none !important;
+                transition: none !important;
                 -webkit-overflow-scrolling: touch;
                 overscroll-behavior: contain;
             }
