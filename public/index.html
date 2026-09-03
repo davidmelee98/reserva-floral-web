@@ -491,6 +491,15 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             #modal-mobile-gallery { display: none !important; }
         }
 
+
+/* V15: el selector de ubicación debe capturar todos los toques por encima de la vista de producto. */
+#modal-ubicacion.rf-location-modal { position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; z-index: 2147483647 !important; pointer-events: auto !important; }
+#modal-ubicacion.rf-location-modal > .rf-location-card { position: relative; z-index: 2 !important; pointer-events: auto !important; }
+#modal-ubicacion.rf-location-modal .rf-select-trigger,
+#modal-ubicacion.rf-location-modal .rf-option,
+#modal-ubicacion.rf-location-modal button { position: relative; z-index: 3; pointer-events: auto !important; touch-action: manipulation; }
+#modal-ubicacion.rf-location-modal .rf-custom-menu { z-index: 20 !important; pointer-events: auto !important; }
+
 </style>
 </head>
 <body class="bg-white font-sans text-brandDark antialiased">
@@ -1031,7 +1040,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
 
     <!-- Modal de ubicación: obligatorio para navegar por categorías por primera vez -->
     <div id="modal-ubicacion" class="fixed inset-0 z-[200] hidden items-center justify-center rf-location-modal">
-        <div class="absolute inset-0 bg-black bg-opacity-60" onclick="cerrarModalUbicacion()"></div>
+        <div class="absolute inset-0 bg-black bg-opacity-60" onclick="if(event.target===event.currentTarget) cerrarModalUbicacion();"></div>
         <div class="relative z-10 bg-white rounded-xl shadow-2xl w-[calc(100%-32px)] max-w-[360px] p-6 rf-location-card">
             <button type="button" onclick="cerrarModalUbicacion()" aria-label="Cerrar" class="absolute top-4 right-4 text-gray-700 hover:text-brandFuchsia text-2xl leading-none">&times;</button>
             <div class="text-center mb-5 pr-5">
@@ -1045,9 +1054,9 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                     <input id="rf-ubicacion-estado" type="hidden" value="">
                     <button type="button" class="rf-select-trigger" data-target="rf-estado-menu" aria-expanded="false">Estado <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
                     <div id="rf-estado-menu" class="rf-custom-menu hidden">
-                        <button type="button" class="rf-option" data-value="Ciudad de México">Ciudad de México</button>
-                        <button type="button" class="rf-option" data-value="Tamaulipas">Tamaulipas</button>
-                        <button type="button" class="rf-option" data-value="Nuevo León">Nuevo León</button>
+                        <button type="button" class="rf-option" data-value="Ciudad de México" onclick="event.preventDefault(); event.stopPropagation(); seleccionarEstadoRF(this.dataset.value)">Ciudad de México</button>
+                        <button type="button" class="rf-option" data-value="Tamaulipas" onclick="event.preventDefault(); event.stopPropagation(); seleccionarEstadoRF(this.dataset.value)">Tamaulipas</button>
+                        <button type="button" class="rf-option" data-value="Nuevo León" onclick="event.preventDefault(); event.stopPropagation(); seleccionarEstadoRF(this.dataset.value)">Nuevo León</button>
                     </div>
                 </div>
                 <div class="rf-location-field p-2 rf-custom-select" data-rf-select="ciudad">
@@ -1061,9 +1070,9 @@ body.rf-mobile-menu-open{overflow:hidden !important}
                     <input id="rf-ubicacion-fecha" type="hidden" value="">
                     <button type="button" class="rf-select-trigger" data-target="rf-fecha-menu" aria-expanded="false" disabled>Fecha de entrega <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
                     <div id="rf-fecha-menu" class="rf-custom-menu hidden">
-                        <button type="button" class="rf-option" data-value="hoy">Hoy</button>
-                        <button type="button" class="rf-option" data-value="manana">Mañana</button>
-                        <button type="button" class="rf-option" data-value="otro">Otro día</button>
+                        <button type="button" class="rf-option" data-value="hoy" onclick="event.preventDefault(); event.stopPropagation(); seleccionarFechaRF(this.dataset.value)">Hoy</button>
+                        <button type="button" class="rf-option" data-value="manana" onclick="event.preventDefault(); event.stopPropagation(); seleccionarFechaRF(this.dataset.value)">Mañana</button>
+                        <button type="button" class="rf-option" data-value="otro" onclick="event.preventDefault(); event.stopPropagation(); seleccionarFechaRF(this.dataset.value)">Otro día</button>
                     </div>
                     <div id="rf-otra-fecha-wrap" class="rf-date-picker-wrap hidden">
                         <div class="rf-date-picker-title">Selecciona la fecha</div>
@@ -2155,10 +2164,13 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             ciudad.value = '';
             trigger.innerHTML = 'Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
             const ciudades = RF_CIUDADES[estado] || [];
-            menu.innerHTML = ciudades.map(nombre => `<button type="button" class="rf-option" data-value="${nombre.replace(/"/g,'&quot;')}">${nombre}</button>`).join('');
+            menu.innerHTML = ciudades.map(nombre => {
+                const safe = escaparHtmlRF(nombre);
+                const attr = String(nombre).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                return `<button type="button" class="rf-option" data-value="${attr}" onclick="event.preventDefault(); event.stopPropagation(); seleccionarCiudadRF(this.dataset.value)">${safe}</button>`;
+            }).join('');
             trigger.disabled = !ciudades.length;
             trigger.classList.toggle('is-disabled', !ciudades.length);
-            menu.querySelectorAll('.rf-option').forEach(option => option.addEventListener('click', () => seleccionarCiudadRF(option.dataset.value)));
         }
 
         function seleccionarCiudadRF(valor) {
@@ -2334,6 +2346,14 @@ body.rf-mobile-menu-open{overflow:hidden !important}
 
         document.addEventListener('DOMContentLoaded', () => {
 
+            const rfLocationModal = document.getElementById('modal-ubicacion');
+            const rfLocationCard = rfLocationModal?.querySelector('.rf-location-card');
+            if (rfLocationCard) {
+                rfLocationCard.addEventListener('click', e => e.stopPropagation(), true);
+                rfLocationCard.addEventListener('pointerdown', e => e.stopPropagation(), true);
+                rfLocationCard.addEventListener('touchstart', e => e.stopPropagation(), {capture:true, passive:false});
+            }
+
             const rfOccTrack = document.getElementById('rf-occasion-track');
             const rfOccPrev = document.querySelector('.rf-occasion-prev');
             const rfOccNext = document.querySelector('.rf-occasion-next');
@@ -2416,13 +2436,7 @@ body.rf-mobile-menu-open{overflow:hidden !important}
             actualizarUI();
             inicializarSelectorHomeRF();
             document.querySelectorAll('.rf-select-trigger').forEach(trigger => {
-                trigger.addEventListener('click', () => abrirDropdownRF(trigger.dataset.target, trigger));
-            });
-            document.querySelectorAll('#rf-estado-menu .rf-option').forEach(option => {
-                option.addEventListener('click', () => seleccionarEstadoRF(option.dataset.value));
-            });
-            document.querySelectorAll('#rf-fecha-menu > .rf-option').forEach(option => {
-                option.addEventListener('click', () => seleccionarFechaRF(option.dataset.value));
+                trigger.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); abrirDropdownRF(trigger.dataset.target, trigger); });
             });
             // Carrito: listener directo para evitar que otros manejadores globales interfieran.
             const carritoBotonHeader = document.getElementById('btn-carrito-header');
