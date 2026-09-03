@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración | Reserva Floral</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
+                    colors: { brandFuchsia: '#c2185b', brandDark: '#353535', brandGray: '#f8f9fa' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brandGray font-sans text-brandDark min-h-screen">
+
+    <header class="bg-brandFuchsia text-white py-4 shadow-md">
+        <div class="max-w-7xl mx-auto px-6 flex justify-between items-center">
+            <h1 class="font-semibold text-xl tracking-wide">📦 Panel de Inventario</h1>
+            <a href="/" target="_blank" class="text-sm hover:underline border border-white px-4 py-1 rounded-full">Ver Tienda</a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Formulario -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
+            <h2 id="titulo-formulario" class="text-lg font-semibold text-brandFuchsia mb-4">Agregar Nuevo Arreglo</h2>
+            <form id="form-arreglo" class="space-y-4">
+                <input type="hidden" id="producto_id">
+                
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+                    <input type="text" id="nombre" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Categoría</label>
+                        <select id="categoria" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none">
+                            <option value="" disabled selected>Selecciona...</option>
+                            <option value="Cumpleaños">Cumpleaños</option>
+                            <option value="Ocasiones">Ocasiones</option>
+                            <option value="Flores y plantas">Flores y plantas</option>
+                            <option value="Globos">Globos</option>
+                            <option value="Regalos">Regalos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Subcategoría</label>
+                        <select id="subcategoria" required disabled class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none">
+                            <option value="">Selecciona primero una categoría</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Tipo / Subcategoría final</label>
+                    <select id="subsubcategoria" disabled class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none">
+                        <option value="">Selecciona primero una subcategoría</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Precio Base ($)</label>
+                    <input type="number" id="precio" step="0.01" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Imagen Principal (URL)</label>
+                    <input type="url" id="imagen_url" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Galería Adicional (URLs separadas por coma)</label>
+                    <textarea id="imagenes" rows="2" placeholder="url1.jpg, url2.jpg" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none"></textarea>
+                </div>
+
+                <!-- Variantes -->
+                <div class="border-t border-b border-gray-100 py-4 my-2 space-y-4 bg-gray-50 -mx-6 px-6">
+                    <h3 class="text-sm font-semibold text-brandDark">Variantes y Cobertura</h3>
+                    
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 mb-1">Variante personalizada (Ej. Estilo: Con Foto, Sin Foto)</label>
+                        <input type="text" id="variante_personalizada" placeholder="Ej. Color: Rosa, Rojo, Blanco | Tamaño: Mediano, Grande" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 mb-1">Cantidades / Tamaños (Ej. 12 rosas:720, 24 rosas:1200)</label>
+                        <input type="text" id="tamanos" placeholder="12 rosas:720, 24 rosas:1200" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 mb-2">Ciudades de Cobertura</label>
+                        <div class="flex flex-wrap gap-4">
+                            <label class="flex items-center text-xs text-gray-700 cursor-pointer"><input type="checkbox" name="cobertura" value="Tampico" class="mr-1 w-3 h-3"> Tampico</label>
+                            <label class="flex items-center text-xs text-gray-700 cursor-pointer"><input type="checkbox" name="cobertura" value="Madero" class="mr-1 w-3 h-3"> Cd. Madero</label>
+                            <label class="flex items-center text-xs text-gray-700 cursor-pointer"><input type="checkbox" name="cobertura" value="Altamira" class="mr-1 w-3 h-3"> Altamira</label>
+                            <label class="flex items-center text-xs text-gray-700 cursor-pointer"><input type="checkbox" name="cobertura" value="Monterrey" class="mr-1 w-3 h-3"> Monterrey</label>
+                            <label class="flex items-center text-xs text-gray-700 cursor-pointer"><input type="checkbox" name="cobertura" value="CDMX" class="mr-1 w-3 h-3"> CDMX</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+                    <textarea id="descripcion" rows="3" placeholder="Descripción comercial del arreglo..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Especificaciones del arreglo</label>
+                    <textarea id="especificaciones" rows="5" placeholder="12 Rosas Rojas.
+Follaje.
+Tarjeta y Moño.
+Altura promedio del arreglo: 55 cm.
+Jarrón y listón sujetos a cambio." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brandFuchsia outline-none"></textarea>
+                    <p class="text-[10px] text-gray-400 mt-1">Escribe una especificación por línea. Se mostrará como lista en “Ver descripción”.</p>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="flex-1 bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2 rounded-lg text-sm transition">Guardar</button>
+                    <button type="button" onclick="limpiarFormulario()" class="bg-gray-200 hover:bg-gray-300 text-brandDark font-semibold py-2 px-4 rounded-lg text-sm transition">Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabla -->
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-fit">
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-brandDark">Catálogo Actual</h2>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-white border-b border-gray-100 text-[10px] uppercase tracking-wider text-gray-500">
+                            <th class="px-6 py-3">Producto</th>
+                            <th class="px-6 py-3">Variantes</th>
+                            <th class="px-6 py-3 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-inventario" class="divide-y divide-gray-100 text-sm">
+                        <!-- Llenado dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let catalogo = [];
+
+        // Taxonomía oficial de Reserva Floral. No agregar categorías aquí sin actualizar la estructura del catálogo.
+        const TAXONOMIA = {
+            "Cumpleaños": {
+                "Celebraciones": ["Amor/Aniversario", "Cumpleaños", "Gracias", "Nacimiento", "Graduación", "Logros", "Felicitaciones", "Solo porque sí"],
+                "Condolencias": ["Servicios Funerarios", "Consuelo en Casa"],
+                "Momentos Difíciles": ["Mejórate pronto", "Perdón"]
+            },
+            "Ocasiones": {
+                "Celebraciones": ["Amor/Aniversario", "Cumpleaños", "Gracias", "Nacimiento", "Graduación", "Logros", "Felicitaciones", "Solo porque sí"],
+                "Condolencias": ["Servicios Funerarios", "Consuelo en Casa"],
+                "Momentos Difíciles": ["Mejórate pronto", "Perdón"]
+            },
+            "Flores y plantas": {
+                "Flores": ["Combinados", "Gerberas", "Girasoles", "Lilys y Stargazer", "Orquídeas", "Rosas", "Tulipanes y Cala Lilies"],
+                "Por presentación": ["Ramos", "Jarrón", "Cajas", "Coronas Funerarias", "Canecas"],
+                "Premium": ["Flores premium"],
+                "Condolencias": ["Servicios Funerarios", "Consuelo en Casa"],
+                "Plantas": ["Mini plantas", "Plantas medianas", "Plantas con regalos"]
+            },
+            "Globos": {
+                "Por ocasión": ["Cumpleaños", "Graduación", "Nacimiento", "Just Because", "Mejórate Pronto"],
+                "Por Tipo": ["Metálicos", "Esfera", "Burbuja", "Ramilletes", "Combos"],
+                "Para quién": ["Para ella", "Para él"]
+            },
+            "Regalos": {
+                "Para quién": ["Para Ella", "Para Él", "Para Mamá", "Para Papá"],
+                "Joyería": ["Collares", "Pulseras", "Aretes", "Sets", "Combos"],
+                "Peluches": ["Osos", "Otros Peluches", "Combos de peluches"],
+                "Belleza y Fragancias": ["Mascarillas", "Cremas", "Sets de Belleza", "Perfumes", "Combos"],
+                "Velas": ["Velas y Aromas"],
+                "Regalos Corporativos": ["Personalizados", "Flores y Plantas", "Cajas de Regalo"],
+                "Otros Regalos": ["Diarios y Agendas", "Certificados"]
+            }
+        };
+
+        function poblarTaxonomia(categoria, subcategoriaSeleccionada = '', tipoSeleccionado = '') {
+            const sub = document.getElementById('subcategoria');
+            const tipo = document.getElementById('subsubcategoria');
+            const grupos = TAXONOMIA[categoria] || {};
+            const nombres = Object.keys(grupos);
+
+            sub.innerHTML = '<option value="">Selecciona...</option>' + nombres.map(x => `<option value="${x.replace(/"/g,'&quot;')}">${x}</option>`).join('');
+            sub.disabled = nombres.length === 0;
+            sub.value = nombres.includes(subcategoriaSeleccionada) ? subcategoriaSeleccionada : '';
+
+            const tipos = grupos[sub.value] || [];
+            tipo.innerHTML = '<option value="">Selecciona...</option>' + tipos.map(x => `<option value="${x.replace(/"/g,'&quot;')}">${x}</option>`).join('');
+            tipo.disabled = tipos.length === 0;
+            tipo.value = tipos.includes(tipoSeleccionado) ? tipoSeleccionado : '';
+        }
+
+        document.getElementById('categoria').addEventListener('change', () => poblarTaxonomia(document.getElementById('categoria').value));
+        document.getElementById('subcategoria').addEventListener('change', () => {
+            const categoria = document.getElementById('categoria').value;
+            poblarTaxonomia(categoria, document.getElementById('subcategoria').value);
+        });
+
+        async function cargarTabla() {
+            try {
+                const respuesta = await fetch('/api/catalogo');
+                catalogo = await respuesta.json();
+                const tbody = document.getElementById('tabla-inventario');
+                tbody.innerHTML = '';
+
+                if(catalogo.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-gray-500">No hay productos registrados.</td></tr>';
+                    return;
+                }
+
+                catalogo.forEach(item => {
+                    const img = item.imagen_url || 'https://via.placeholder.com/50';
+                    const catParts = [item.categoria, item.subcategoria, item.subsubcategoria].filter(Boolean);
+                    const catString = catParts.length ? catParts.join(' / ') : 'Sin categoría';
+                    const variantesBadge = item.tamanos ? `<span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded">Tallas múltiples</span>` : '';
+                    const customBadge = item.variante_personalizada ? `<span class="text-[10px] bg-pink-50 text-brandFuchsia px-2 py-0.5 rounded">Personalizable</span>` : '';
+                    
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-3 flex items-center gap-4">
+                                <a href="/producto/${item.id}" target="_blank" class="shrink-0"><img src="${img}" onerror="this.src='https://via.placeholder.com/50';" class="w-12 h-12 object-cover rounded-md border border-gray-200 hover:opacity-80"></a>
+                                <div class="min-w-0">
+                                    <a href="/producto/${item.id}" target="_blank" class="font-medium text-brandDark leading-tight hover:text-brandFuchsia">${item.nombre}</a>
+                                    <p class="text-[11px] text-gray-500 mt-1">${catString} • <strong class="text-gray-700">$${parseFloat(item.precio).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></p>
+                                </div>
+                            </td>
+                            <td class="px-6 py-3">
+                                <div class="flex flex-wrap gap-1">${variantesBadge} ${customBadge}</div>
+                                <p class="text-[10px] text-gray-400 mt-1 truncate max-w-[150px]">${item.cobertura || 'Sin zona'}</p>
+                            </td>
+                            <td class="px-6 py-3 text-right space-x-3">
+                                <button onclick="prepararEdicion(${item.id})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold uppercase tracking-wide">Editar</button>
+                                <button onclick="eliminarProducto(${item.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase tracking-wide">Eliminar</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (error) { console.error('Error cargando la tabla', error); }
+        }
+
+        document.getElementById('form-arreglo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('producto_id').value;
+            
+            const checkboxes = document.querySelectorAll('input[name="cobertura"]:checked');
+            const coberturaSelec = Array.from(checkboxes).map(cb => cb.value).join(',');
+
+            const producto = {
+                nombre: document.getElementById('nombre').value,
+                categoria: document.getElementById('categoria').value,
+                subcategoria: document.getElementById('subcategoria').value,
+                subsubcategoria: document.getElementById('subsubcategoria').value,
+                descripcion: document.getElementById('descripcion').value,
+                especificaciones: document.getElementById('especificaciones').value,
+                precio: document.getElementById('precio').value,
+                imagen_url: document.getElementById('imagen_url').value,
+                imagenes: document.getElementById('imagenes').value,
+                variante_personalizada: document.getElementById('variante_personalizada').value,
+                tamanos: document.getElementById('tamanos').value,
+                cobertura: coberturaSelec
+            };
+
+            const url = id ? `/api/catalogo/${id}` : '/api/catalogo';
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const respuesta = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(producto)
+                });
+                const datos = await respuesta.json().catch(() => ({}));
+                if (respuesta.ok) {
+                    limpiarFormulario();
+                    cargarTabla();
+                } else {
+                    alert(datos.error || 'No fue posible guardar el producto.');
+                }
+            } catch (error) { console.error('Error:', error); }
+        });
+
+        function prepararEdicion(id) {
+            const p = catalogo.find(x => x.id === id);
+            if(!p) return;
+
+            document.getElementById('titulo-formulario').innerText = "Editar Arreglo";
+            document.getElementById('producto_id').value = p.id;
+            document.getElementById('nombre').value = p.nombre;
+            document.getElementById('categoria').value = p.categoria || '';
+            poblarTaxonomia(p.categoria || '', p.subcategoria || '', p.subsubcategoria || '');
+            document.getElementById('precio').value = p.precio;
+            document.getElementById('imagen_url').value = p.imagen_url || '';
+            document.getElementById('imagenes').value = p.imagenes || '';
+            document.getElementById('variante_personalizada').value = p.variante_personalizada || '';
+            document.getElementById('tamanos').value = p.tamanos || '';
+            document.getElementById('descripcion').value = p.descripcion || '';
+            document.getElementById('especificaciones').value = p.especificaciones || '';
+
+            document.querySelectorAll('input[name="cobertura"]').forEach(cb => cb.checked = false);
+            if(p.cobertura) {
+                const cobArr = p.cobertura.split(',');
+                document.querySelectorAll('input[name="cobertura"]').forEach(cb => {
+                    if(cobArr.includes(cb.value)) cb.checked = true;
+                });
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function eliminarProducto(id) {
+            if(!confirm('¿Eliminar producto?')) return;
+            try {
+                const r = await fetch(`/api/catalogo/${id}`, { method: 'DELETE' });
+                const datos = await r.json().catch(() => ({}));
+                if(r.ok) cargarTabla();
+                else alert(datos.error || 'No fue posible eliminar el producto.');
+            } catch (error) { console.error(error); }
+        }
+
+        function limpiarFormulario() {
+            document.getElementById('form-arreglo').reset();
+            document.getElementById('producto_id').value = '';
+            document.getElementById('titulo-formulario').innerText = "Agregar Nuevo Arreglo";
+            poblarTaxonomia('');
+            document.querySelectorAll('input[name="cobertura"]').forEach(cb => cb.checked = false);
+        }
+
+        cargarTabla();
+    </script>
+</body>
+</html>

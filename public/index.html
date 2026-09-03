@@ -3,46 +3,2112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reserva Floral</title>
+    <title>Reserva Floral | Envío de Flores a Domicilio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Poppins', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif']
+                    },
+                    colors: {
+                        brandFuchsia: '#c2185b',
+                        brandLightPink: '#e91e63',
+                        brandDark: '#353535',
+                        brandGray: '#f8f9fa'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #fdfaf6; color: #333; text-align: center; padding: 20px; }
-        h1 { color: #2c3e50; }
-        .catalogo { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 30px; }
-        .tarjeta { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 300px; text-align: left; }
-        .tarjeta h3 { margin-top: 0; color: #d6336c; }
-        .precio { font-weight: bold; font-size: 1.3em; color: #2c3e50; }
-    </style>
-</head>
-<body>
+        #carrito-lateral {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px) scale(.98);
+            transform-origin: top right;
+            transition: opacity .18s ease, transform .18s ease, visibility .18s ease;
+        }
+        #carrito-lateral.carrito-abierto { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+        #carrito-lateral.carrito-cerrado { opacity: 0; visibility: hidden; transform: translateY(-8px) scale(.98); }
+        #items-carrito::-webkit-scrollbar { width: 7px; }
+        #items-carrito::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
+        #items-carrito::-webkit-scrollbar-track { background: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Estilos para el Mega Menú */
+        .mega-menu {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            position: absolute;
+            left: 0;
+            width: 100%;
+            background: white;
+            z-index: 40;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-item:hover .mega-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .nav-link {
+            position: relative;
+            padding-bottom: 1rem;
+        }
+        
+        .nav-item:hover .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #c2185b;
+        }
 
-    <h1>Colección Reserva Floral</h1>
-    <div class="catalogo" id="contenedor-arreglos">
-        <!-- Los arreglos se cargarán aquí automáticamente -->
+        /* Modal de ubicación obligatoria antes de navegar por categorías */
+        #modal-ubicacion.rf-location-modal { backdrop-filter: blur(2px); }
+        #modal-ubicacion .rf-location-card { animation: rfLocationIn .22s ease-out; }
+        @keyframes rfLocationIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    
+/* Reserva Floral — selector principal de ubicación */
+.rf-home-select{position:relative;z-index:30;}
+.rf-home-trigger{position:relative;width:100%;border:0;outline:0;background:transparent;text-align:left;font-size:.875rem;line-height:1.25rem;padding:.25rem 1.9rem .15rem 0;color:#374151;cursor:pointer;}
+.rf-home-trigger:disabled{color:#9ca3af;cursor:not-allowed;opacity:.9;}
+.rf-home-chevron{pointer-events:none;position:absolute;right:4px;top:50%;transform:translateY(-25%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #6b7280;transition:transform .16s ease,border-color .16s ease;}
+.rf-home-trigger[aria-expanded="true"] .rf-home-chevron{transform:translateY(-45%) rotate(180deg);border-top-color:#c2185b;}
+.rf-home-menu{position:absolute;left:6px;right:6px;top:calc(100% + 7px);background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 16px 32px rgba(17,24,39,.14);padding:6px;z-index:2000;max-height:220px;overflow:auto;animation:rfDropdownIn .14s ease-out;}
+.rf-home-menu::-webkit-scrollbar{width:7px;}
+.rf-home-menu::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:999px;}
+.rf-home-option{display:block;width:100%;border:0;background:transparent;border-radius:10px;padding:10px 12px;text-align:left;color:#374151;font-size:.875rem;cursor:pointer;transition:background .15s ease,color .15s ease;}
+.rf-home-option:hover,.rf-home-option.is-selected{background:#fdf0f6;color:#c2185b;}
+.rf-home-date-wrap{margin:5px 4px 4px;padding:10px 8px 7px;border-top:1px solid #f0f0f0;}
+.rf-home-date-title{font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:6px;}
+.rf-home-date-input{width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:9px 10px;outline:none;background:#fff;color:#374151;font-size:.875rem;}
+.rf-home-date-input:focus{border-color:#d1d5db;box-shadow:0 0 0 3px rgba(194,24,91,.06);}
+
+/* Reserva Floral — dropdowns personalizados */
+.rf-custom-select { position:relative; z-index:20; }
+.rf-custom-select.is-open { z-index:10000; }
+.rf-custom-select:focus-within { border-color:#d1d5db; box-shadow:0 0 0 3px rgba(194,24,91,.06); }
+.rf-select-trigger { position:relative; width:100%; border:0; outline:0; background:transparent; text-align:left; font-size:.875rem; line-height:1.25rem; padding:.25rem 1.9rem .15rem 0; color:#374151; cursor:pointer; }
+.rf-select-trigger.is-disabled { color:#9ca3af; cursor:not-allowed; }
+.rf-custom-chevron { pointer-events:none; position:absolute; right:3px; top:50%; transform:translateY(-20%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6b7280; transition:transform .16s ease, border-color .16s ease; }
+.rf-select-trigger[aria-expanded="true"] .rf-custom-chevron { transform:translateY(-45%) rotate(180deg); border-top-color:#c2185b; }
+.rf-custom-menu { position:absolute; left:6px; right:6px; top:calc(100% + 7px); background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 16px 32px rgba(17,24,39,.14); padding:6px; z-index:1000; max-height:220px; overflow:auto; animation:rfDropdownIn .14s ease-out; }
+.rf-custom-menu::-webkit-scrollbar { width:7px; }
+.rf-custom-menu::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:999px; }
+.rf-option { display:block; width:100%; border:0; background:transparent; border-radius:10px; padding:10px 12px; text-align:left; color:#374151; font-size:.875rem; cursor:pointer; transition:background .15s ease, color .15s ease; }
+.rf-option:hover, .rf-option.is-selected { background:#fdf0f6; color:#c2185b; }
+.rf-date-picker-wrap { margin:5px 4px 4px; padding:10px 8px 7px; border-top:1px solid #f0f0f0; }
+.rf-date-picker-title { font-size:10px; color:#6b7280; text-transform:uppercase; margin-bottom:6px; }
+.rf-date-picker-input { width:100%; border:1px solid #e5e7eb; border-radius:10px; padding:9px 10px; outline:none; background:#fff; color:#374151; font-size:.875rem; }
+.rf-date-picker-input:focus { border-color:#d1d5db; box-shadow:0 0 0 3px rgba(194,24,91,.06); }
+@keyframes rfDropdownIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+/* Reserva Floral — controles de ubicación premium */
+.rf-location-field { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; transition: border-color .18s ease, box-shadow .18s ease; }
+.rf-location-field:focus-within { border-color: #d1d5db; box-shadow: 0 0 0 3px rgba(194,24,91,.06); }
+.rf-location-field select, .rf-location-field input[type="date"] { appearance: none; -webkit-appearance: none; border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent; width: 100%; }
+.rf-location-field select { cursor: pointer; padding-right: 2.25rem; }
+.rf-location-field select:disabled { cursor: not-allowed; color: #9ca3af; }
+.rf-location-field .rf-chevron { pointer-events:none; position:absolute; right:14px; top:50%; transform:translateY(-25%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6b7280; }
+.rf-location-field select:focus + .rf-chevron { border-top-color:#c2185b; }
+.rf-location-field input[type="date"]::-webkit-calendar-picker-indicator { opacity:.72; cursor:pointer; }
+.rf-location-field label { pointer-events:none; }
+.rf-home-trigger:disabled { cursor: not-allowed; color: #9ca3af; opacity: .75; }
+.rf-select-trigger.is-disabled, .rf-select-trigger:disabled { cursor: not-allowed; color: #9ca3af; opacity: .7; }
+
+.rf-dropdown-panel { border:1px solid #e5e7eb !important; border-radius:14px !important; box-shadow:0 14px 30px rgba(17,24,39,.12) !important; }
+.rf-dropdown-panel::-webkit-scrollbar { width:7px; }
+.rf-dropdown-panel::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:999px; }
+
+
+.rf-category-carousel-wrap{position:relative;display:flex;align-items:center;}
+.rf-category-track{display:flex;gap:18px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 10px;width:100%;}
+.rf-category-track::-webkit-scrollbar{display:none;}
+.rf-category-card{position:relative;flex:0 0 clamp(280px,20.5vw,395px);aspect-ratio:1/1;border-radius:14px;overflow:hidden;scroll-snap-align:start;background:#f1f1f1;display:block;}
+.rf-category-card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease;}
+.rf-category-card::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.08) 0%,rgba(0,0,0,.06) 45%,rgba(0,0,0,.18) 100%);pointer-events:none;}
+.rf-category-card span{position:absolute;z-index:2;left:14px;top:12px;color:#fff;font-size:clamp(24px,2.1vw,36px);line-height:1;font-weight:700;text-shadow:0 2px 6px rgba(0,0,0,.35);}
+.rf-category-card:hover img{transform:scale(1.045);}
+.rf-category-arrow{position:absolute;z-index:4;width:44px;height:44px;border:0;border-radius:999px;background:#fff;color:#353535;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.16);cursor:pointer;transition:transform .2s ease,opacity .2s ease;}
+.rf-category-arrow:hover{transform:scale(1.06);}
+.rf-category-arrow:disabled{opacity:.35;cursor:default;transform:none;}
+.rf-category-arrow svg{width:22px;height:22px;}
+
+.rf-favorites-carousel-wrap{position:relative;display:flex;align-items:center;}
+.rf-favorites-track{display:flex;gap:18px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 10px;width:100%;}
+.rf-favorites-track::-webkit-scrollbar{display:none;}
+.rf-favorite-card{position:relative;flex:0 0 clamp(280px,20.5vw,395px);scroll-snap-align:start;background:#fff;border:1px solid #edf0f2;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
+.rf-favorite-card-image{aspect-ratio:1/1;overflow:hidden;background:#f7f7f7;}
+.rf-favorite-card-image img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease;}
+.rf-favorite-card:hover .rf-favorite-card-image img{transform:scale(1.045);}
+.rf-favorite-card-body{padding:16px;min-height:84px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;}
+.rf-favorite-arrow{position:absolute;z-index:4;width:44px;height:44px;border:0;border-radius:999px;background:#fff;color:#353535;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.16);cursor:pointer;transition:transform .2s ease,opacity .2s ease;}
+.rf-favorite-arrow:hover{transform:scale(1.06);}
+.rf-favorite-arrow:disabled{opacity:.35;cursor:default;transform:none;}
+.rf-favorite-arrow svg{width:22px;height:22px;}
+.rf-favorite-prev{left:12px;}
+.rf-favorite-next{right:12px;}
+@media (max-width:767px){.rf-favorite-card{flex-basis:78vw;}.rf-favorite-arrow{width:40px;height:40px;}.rf-favorite-prev{left:8px;}.rf-favorite-next{right:8px;}}
+.rf-category-prev{left:12px;}
+.rf-category-next{right:12px;}
+@media (max-width:767px){.rf-category-card{flex-basis:78vw;}.rf-category-arrow{width:40px;height:40px;}.rf-category-prev{left:8px;}.rf-category-next{right:8px;}}
+.rf-occasion-carousel-wrap{position:relative;display:flex;align-items:center;}
+.rf-occasion-track{display:flex;gap:18px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 10px;width:100%;}
+.rf-occasion-track::-webkit-scrollbar{display:none;}
+.rf-occasion-card{position:relative;flex:0 0 clamp(280px,20.5vw,395px);aspect-ratio:1/1;border-radius:14px;overflow:hidden;scroll-snap-align:start;background:#f1f1f1;display:block;}
+.rf-occasion-card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease;}
+.rf-occasion-card:hover img{transform:scale(1.045);}
+.rf-occasion-arrow{position:absolute;z-index:4;width:44px;height:44px;border:0;border-radius:999px;background:#fff;color:#353535;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.16);cursor:pointer;transition:transform .2s ease,opacity .2s ease;}
+.rf-occasion-arrow:hover{transform:scale(1.06);}
+.rf-occasion-arrow:disabled{opacity:.35;cursor:default;transform:none;}
+.rf-occasion-arrow svg{width:22px;height:22px;}
+.rf-occasion-prev{left:12px;}
+.rf-occasion-next{right:12px;}
+@media (max-width:767px){.rf-occasion-card{flex-basis:78vw;}.rf-occasion-arrow{width:40px;height:40px;}.rf-occasion-prev{left:8px;}.rf-occasion-next{right:8px;}}
+
+</style>
+</head>
+<body class="bg-white font-sans text-brandDark antialiased">
+
+    <!-- Top Bar (Fucsia) -->
+    <header class="bg-brandFuchsia text-white z-50 relative">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center cursor-pointer" onclick="cargarInventario()">
+                    <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
+                </div>
+                
+                <!-- Buscador global -->
+                <div class="flex-1 max-w-2xl mx-8 hidden lg:block">
+                    <div class="relative">
+                        <input type="text" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                        <svg class="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                </div>
+
+                <!-- Iconos derecha -->
+                <div class="flex items-center gap-6 text-sm font-medium">
+                    <div class="hidden md:flex items-center gap-1 cursor-pointer hover:text-gray-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                        Español $MXN
+                    </div>
+                    <div class="hidden md:flex items-center gap-1 cursor-pointer hover:text-gray-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        ¡Hola, Invitado!
+                    </div>
+                    <button type="button" id="btn-carrito-header" class="relative p-1 hover:text-gray-200 transition" aria-label="Abrir carrito">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        <span id="contador-carrito" class="absolute -top-1 -right-1 block h-4 w-4 rounded-full bg-white text-brandFuchsia text-[10px] font-bold flex items-center justify-center">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Menú Secundario (Blanco) con Mega Menús -->
+    <nav class="bg-white border-b border-gray-200 hidden md:block relative z-40">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ul class="flex justify-center text-sm text-gray-700">
+                <li class="nav-item group">
+                    <a href="#" onclick="cargarInventario()" class="nav-link block px-4 py-3 hover:text-brandFuchsia font-medium relative h-full flex items-center">
+                        Inicio
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                </li>
+                
+                <!-- Mega Menú Cumpleaños -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="cargarInventario('Cumpleaños')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Cumpleaños
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-5 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Flores y Plantas</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Todas las flores</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Rosas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Gerberas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Tulipanes</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Orquídeas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combinados</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Premium</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Plantas</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Globos</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Todos los globos</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Globos Personalizados</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos con globo</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <!-- Espacio vacío intencional -->
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Regalos</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Joyería</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Peluches</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Belleza y Fragancias</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Velas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Diarios y Agendas</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Para quién</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Ella</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Él</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Mamá</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Papá</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Niños</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="cargarInventario('Cumpleaños')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Mega Menú Ocasiones -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="cargarInventario('Ocasiones')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Ocasiones
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-4 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Celebraciones</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Amor/Aniversario</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cumpleaños</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Gracias</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Nacimiento</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Graduación</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Logros</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Felicitaciones</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Solo porque sí</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Condolencias</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Servicios Funerarios</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Consuelo en Casa</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Momentos Difíciles</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Mejórate pronto</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Perdón</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="cargarInventario('Ocasiones')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Mega Menú Flores y plantas -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="cargarInventario('Flores y plantas')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Flores y plantas
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-5 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Flores</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combinados</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Gerberas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Girasoles</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Lilys y Stargazer</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Orquídeas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Rosas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Tulipanes y Cala Lilies</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Por presentación</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Ramos</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Jarrón</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cajas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Coronas Funerarias</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Caneas</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Premium</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Flores premium</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Condolencias</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Servicios Funerarios</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Consuelo en Casa</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Plantas</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Mini plantas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Plantas medianas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Plantas con regalos</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="cargarInventario('Flores y plantas')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Mega Menú Globos -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="cargarInventario('Globos')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Globos
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-4 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Por ocasión</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cumpleaños</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Graduación</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Nacimiento</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Just Because</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Mejórate Pronto</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Por Tipo</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Metálicos</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Esfera</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Burbuja</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Ramilletes</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Para quién</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para ella</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Él</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="cargarInventario('Globos')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Mega Menú Regalos -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="cargarInventario('Regalos')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Regalos
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-5 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Para quién</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Ella</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Él</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Mamá</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Papá</a></li>
+                                    </ul>
+                                    <h4 class="font-semibold text-brandDark mt-6 mb-4">Otros Regalos</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Diarios y Agendas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Certificados</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Joyería</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Collares</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Pulseras</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Aretes</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Sets</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Peluches</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Osos</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Otros Peluches</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos de peluches</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Belleza y Fragancias</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Mascarillas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cremas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Sets de Belleza</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Perfumes</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Velas</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Velas y Aromas</a></li>
+                                    </ul>
+                                    <h4 class="font-semibold text-brandDark mt-6 mb-4">Regalos Corporativos</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Personalizados</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Flores y Plantas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cajas de Regalo</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="cargarInventario('Regalos')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Banner con Buscador Flotante -->
+    <div class="relative mb-28">
+        <div class="h-[450px] w-full relative">
+            <img class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd?q=80&w=1920&auto=format&fit=crop" alt="Persona con flores">
+            <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+                <h1 class="text-5xl md:text-7xl text-white font-serif tracking-wide shadow-sm">Solo envía...</h1>
+            </div>
+        </div>
+
+        <!-- Buscador Flotante de Envíos -->
+        <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-11/12 max-w-5xl bg-white rounded-xl shadow-xl p-6 z-10 border border-gray-100">
+            <h3 class="text-lg font-semibold mb-4">¿A dónde quieres enviar?</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="estado">
+                    <label class="block text-[10px] text-gray-500 uppercase">Estado</label>
+                    <button type="button" class="rf-home-trigger" id="home-estado-trigger" aria-expanded="false">Estado<span class="rf-home-chevron"></span></button>
+                    <div id="home-estado-menu" class="rf-home-menu hidden">
+                        <button type="button" class="rf-home-option" data-value="Ciudad de México">Ciudad de México</button>
+                        <button type="button" class="rf-home-option" data-value="Tamaulipas">Tamaulipas</button>
+                        <button type="button" class="rf-home-option" data-value="Nuevo León">Nuevo León</button>
+                    </div>
+                </div>
+                <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="ciudad">
+                    <label class="block text-[10px] text-gray-500 uppercase">Ciudad / Municipio</label>
+                    <button type="button" class="rf-home-trigger" id="home-ciudad-trigger" aria-expanded="false" disabled>Ciudad<span class="rf-home-chevron"></span></button>
+                    <div id="home-ciudad-menu" class="rf-home-menu hidden"></div>
+                </div>
+                <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="fecha">
+                    <label class="block text-[10px] text-gray-500 uppercase">Fecha de entrega</label>
+                    <button type="button" class="rf-home-trigger" id="home-fecha-trigger" aria-expanded="false" disabled>Fecha de entrega<span class="rf-home-chevron"></span></button>
+                    <div id="home-fecha-menu" class="rf-home-menu rf-home-date-menu hidden">
+                        <button type="button" class="rf-home-option" data-value="hoy">Hoy</button>
+                        <button type="button" class="rf-home-option" data-value="manana">Mañana</button>
+                        <button type="button" class="rf-home-option" data-value="otro">Otro día</button>
+                        <div id="home-otra-fecha-wrap" class="rf-home-date-wrap hidden">
+                            <div class="rf-home-date-title">Selecciona la fecha</div>
+                            <input id="home-otra-fecha" type="date" class="rf-home-date-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-1">
+                    <button type="button" onclick="confirmarSelectorHomeRF()" class="w-full h-full bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold rounded-lg transition-colors">
+                        Ver regalos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categorías Principales -->
+    <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" aria-label="Categorías destacadas">
+        <div class="text-center py-8">
+            <h2 class="text-2xl md:text-3xl font-semibold text-brandDark">Entregas el mismo día, de lunes a domingo, a todo México</h2>
+        </div>
+
+        <div class="rf-category-carousel-wrap">
+            <button type="button" class="rf-category-arrow rf-category-prev" aria-label="Ver categorías anteriores">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+
+            <div class="rf-category-track" id="rf-category-track">
+                <a href="/categoria/flores-y-plantas" class="rf-category-card group">
+                    <img src="https://images.unsplash.com/photo-1591886960571-74d43a9d4166?q=80&w=900&auto=format&fit=crop" alt="Flores" loading="lazy">
+                    <span>Flores</span>
+                </a>
+                <a href="/categoria/globos" class="rf-category-card group">
+                    <img src="https://img.flowers.ua/images/Flowers/ext/1908_1.jpg" alt="Globos" loading="lazy">
+                    <span>Globos</span>
+                </a>
+                <a href="/categoria/regalos" class="rf-category-card group">
+                    <img src="https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=900&auto=format&fit=crop" alt="Regalos" loading="lazy">
+                    <span>Regalos</span>
+                </a>
+                <a href="/categoria/flores-y-plantas/plantas" class="rf-category-card group">
+                    <img src="https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=900&auto=format&fit=crop" alt="Plantas" loading="lazy">
+                    <span>Plantas</span>
+                </a>
+                <a href="/categoria/regalos/joyeria" class="rf-category-card group">
+                    <img src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=900&auto=format&fit=crop" alt="Joyería" loading="lazy">
+                    <span>Joyería</span>
+                </a>
+                <a href="/categoria/flores-y-plantas/flores-premium" class="rf-category-card group">
+                    <img src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=900&auto=format&fit=crop" alt="Línea Premium" loading="lazy">
+                    <span>Línea Premium</span>
+                </a>
+                <a href="/categoria/desde-249" class="rf-category-card group">
+                    <img src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=900&auto=format&fit=crop" alt="Desde $249" loading="lazy">
+                    <span>Desde $249</span>
+                </a>
+            </div>
+
+            <button type="button" class="rf-category-arrow rf-category-next" aria-label="Ver más categorías">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
+    </section>
+
+
+    <!-- Catálogo destacado (carrusel) -->
+    <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-16">
+        <div class="relative text-center py-8 mb-2">
+            <h2 id="titulo-catalogo" class="text-2xl md:text-3xl font-semibold text-brandDark">Tus favoritos de Reserva Floral</h2>
+            <a href="/categoria/todos" class="rf-view-all-catalog absolute right-0 top-1/2 -translate-y-1/2 text-brandLightPink font-medium hover:underline text-sm">Ver todos</a>
+        </div>
+
+        <div class="rf-favorites-carousel-wrap">
+            <button type="button" class="rf-favorite-arrow rf-favorite-prev" aria-label="Ver productos anteriores">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div id="contenedor-arreglos" class="rf-favorites-track"></div>
+            <button type="button" class="rf-favorite-arrow rf-favorite-next" aria-label="Ver más productos">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
+    </main>
+
+    <!-- Ocasiones -->
+    <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" aria-label="Ocasiones">
+        <div class="text-center py-8">
+            <h2 class="text-2xl md:text-3xl font-semibold text-brandDark">Ocasiones</h2>
+        </div>
+
+        <div class="rf-occasion-carousel-wrap">
+            <button type="button" class="rf-occasion-arrow rf-occasion-prev" aria-label="Ver ocasiones anteriores">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+
+            <div class="rf-occasion-track" id="rf-occasion-track">
+                <a href="/categoria/ocasiones/cumpleanos" class="rf-occasion-card rf-occasion-link" aria-label="Cumpleaños">
+                    <img src="/ocasiones/cumpleanos.jpg" alt="Cumpleaños" loading="lazy">
+                </a>
+                <a href="/categoria/ocasiones/amor-aniversario" class="rf-occasion-card rf-occasion-link" aria-label="Amor y Aniversario">
+                    <img src="/ocasiones/amor-aniversario.jpg" alt="Amor/Aniversario" loading="lazy">
+                </a>
+                <a href="/categoria/ocasiones/condolencias" class="rf-occasion-card rf-occasion-link" aria-label="Condolencias">
+                    <img src="/ocasiones/condolencias.jpg" alt="Condolencias" loading="lazy">
+                </a>
+                <a href="/categoria/ocasiones/gracias" class="rf-occasion-card rf-occasion-link" aria-label="Gracias">
+                    <img src="/ocasiones/gracias.jpg" alt="Gracias" loading="lazy">
+                </a>
+                <a href="/categoria/ocasiones/bride-to-be" class="rf-occasion-card rf-occasion-link" aria-label="Bride to be">
+                    <img src="/ocasiones/bride-to-be.jpg" alt="Bride to be" loading="lazy">
+                </a>
+                <a href="/categoria/ocasiones/mejorate-pronto" class="rf-occasion-card rf-occasion-link" aria-label="Mejórate pronto">
+                    <img src="/ocasiones/mejorate-pronto.jpg" alt="Mejórate pronto" loading="lazy">
+                </a>
+            </div>
+
+            <button type="button" class="rf-occasion-arrow rf-occasion-next" aria-label="Ver más ocasiones">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+        </div>
+    </section>
+
+
+    <!-- Botón Flotante WhatsApp -->
+    <a href="#" class="fixed bottom-6 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all z-40">
+        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    </a>
+
+    <!-- Modal de ubicación: obligatorio para navegar por categorías por primera vez -->
+    <div id="modal-ubicacion" class="fixed inset-0 z-[200] hidden items-center justify-center rf-location-modal">
+        <div class="absolute inset-0 bg-black bg-opacity-60" onclick="cerrarModalUbicacion()"></div>
+        <div class="relative z-10 bg-white rounded-xl shadow-2xl w-[calc(100%-32px)] max-w-[360px] p-6 rf-location-card">
+            <button type="button" onclick="cerrarModalUbicacion()" aria-label="Cerrar" class="absolute top-4 right-4 text-gray-700 hover:text-brandFuchsia text-2xl leading-none">&times;</button>
+            <div class="text-center mb-5 pr-5">
+                <h2 class="text-lg font-semibold text-gray-900">¿A dónde quieres enviar?</h2>
+                <p class="text-xs text-gray-500 mt-3 leading-relaxed">Los regalos, precios y las opciones de envío podrían variar según la ciudad de entrega.</p>
+            </div>
+
+            <div class="space-y-3">
+                <div class="rf-location-field p-2 rf-custom-select" data-rf-select="estado">
+                    <label class="block text-[10px] text-gray-500 uppercase">Estado <span class="text-brandLightPink">*</span></label>
+                    <input id="rf-ubicacion-estado" type="hidden" value="">
+                    <button type="button" class="rf-select-trigger" data-target="rf-estado-menu" aria-expanded="false">Estado <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
+                    <div id="rf-estado-menu" class="rf-custom-menu hidden">
+                        <button type="button" class="rf-option" data-value="Ciudad de México">Ciudad de México</button>
+                        <button type="button" class="rf-option" data-value="Tamaulipas">Tamaulipas</button>
+                        <button type="button" class="rf-option" data-value="Nuevo León">Nuevo León</button>
+                    </div>
+                </div>
+                <div class="rf-location-field p-2 rf-custom-select" data-rf-select="ciudad">
+                    <label class="block text-[10px] text-gray-500 uppercase">Ciudad <span class="text-brandLightPink">*</span></label>
+                    <input id="rf-ubicacion-ciudad" type="hidden" value="">
+                    <button type="button" id="rf-ciudad-trigger" class="rf-select-trigger is-disabled" data-target="rf-ciudad-menu" aria-expanded="false" disabled>Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
+                    <div id="rf-ciudad-menu" class="rf-custom-menu hidden"></div>
+                </div>
+                <div class="rf-location-field p-2 rf-custom-select" data-rf-select="fecha">
+                    <label class="block text-[10px] text-gray-500 uppercase">Fecha de entrega <span class="text-brandLightPink">*</span></label>
+                    <input id="rf-ubicacion-fecha" type="hidden" value="">
+                    <button type="button" class="rf-select-trigger" data-target="rf-fecha-menu" aria-expanded="false" disabled>Fecha de entrega <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
+                    <div id="rf-fecha-menu" class="rf-custom-menu hidden">
+                        <button type="button" class="rf-option" data-value="hoy">Hoy</button>
+                        <button type="button" class="rf-option" data-value="manana">Mañana</button>
+                        <button type="button" class="rf-option" data-value="otro">Otro día</button>
+                        <div id="rf-otra-fecha-wrap" class="rf-date-picker-wrap hidden">
+                            <div class="rf-date-picker-title">Selecciona la fecha</div>
+                            <input id="rf-otra-fecha" type="date" class="rf-date-picker-input">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p id="rf-ubicacion-error" class="hidden text-xs text-red-600 mt-3"></p>
+            <button type="button" onclick="confirmarUbicacion()" class="w-full bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold py-3 rounded-full transition-colors mt-4">Ver regalos</button>
+        </div>
+    </div>
+
+    <!-- Modal de Producto Complementario -->
+    <div id="modal-complemento" class="fixed inset-0 z-[130] hidden items-center justify-center">
+        <div class="absolute inset-0 bg-black bg-opacity-60 transition-opacity" onclick="cerrarComplemento()"></div>
+        <div class="bg-white rounded-2xl shadow-2xl z-10 w-full max-w-[500px] p-6 relative transform transition-transform scale-95 opacity-0 flex gap-6" id="modal-complemento-content">
+            <button onclick="cerrarComplemento()" class="absolute top-4 right-4 text-gray-400 hover:text-brandDark">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <div class="w-1/2">
+                <img id="comp-modal-img" src="" class="w-full aspect-square object-cover rounded-xl border border-gray-100">
+            </div>
+            <div class="w-1/2 flex flex-col justify-center">
+                <h2 id="comp-modal-nombre" class="text-xl font-semibold text-brandDark mb-1 leading-tight"></h2>
+                <span id="comp-modal-precio" class="text-lg font-bold text-gray-900 mb-4"></span>
+                
+                <h4 class="font-medium text-sm text-brandDark mb-1">Descripción</h4>
+                <p id="comp-modal-desc" class="text-xs text-gray-600 mb-2"></p>
+                <button type="button" id="btn-modal-comp-detalles" class="text-xs text-brandLightPink hover:underline mb-6 text-left">Ver detalles</button>
+                
+                <button id="btn-modal-comp-agregar" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full transition-colors shadow-md text-sm mt-auto">
+                    Agregar al carrito
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini carrito desplegable -->
+    <div id="carrito-lateral" class="fixed top-[64px] right-2 sm:right-4 lg:right-8 w-[calc(100vw-16px)] max-w-[390px] bg-white rounded-2xl shadow-xl border border-gray-200 z-[130] carrito-cerrado overflow-hidden">
+        <div class="px-4 pt-4 pb-3">
+            <div class="flex items-center gap-2 text-sm font-medium text-brandDark">
+                <span>Agregaste al carrito</span>
+                <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+            </div>
+        </div>
+        <div id="items-carrito" class="max-h-[285px] overflow-y-auto px-4"></div>
+        <div class="px-4 pt-3 pb-4 border-t border-gray-100 bg-white">
+            <div class="flex justify-between items-center text-sm font-semibold text-brandDark mb-3">
+                <p>Resumen del pedido</p>
+            </div>
+            <div class="flex justify-between items-center text-sm font-bold text-brandDark mb-4">
+                <p>Total</p><p>$<span id="total-carrito">0.00</span><span class="text-[8px] align-top ml-0.5 font-medium">MXN</span></p>
+            </div>
+            <button onclick="procesarPago()" class="w-full bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold py-3 rounded-full transition-colors text-sm shadow-sm">
+                Ir al carrito (<span id="contador-carrito-boton">0</span>)
+            </button>
+        </div>
     </div>
 
     <script>
-        async function cargarInventario() {
+        let carrito = JSON.parse(localStorage.getItem('carritoRF')) || [];
+        let todosLosArreglos = []; // Memoria global para el catálogo
+
+        function escaparHtml(valor) {
+            return String(valor ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+        }
+
+        function obtenerImagenes(producto) {
+            const principal = String(producto.imagen_url || '').trim();
+            const extras = String(producto.imagenes || '')
+                .split(/[\n,]+/)
+                .map(x => x.trim())
+                .filter(Boolean);
+            return [...new Set([principal, ...extras].filter(Boolean))];
+        }
+
+        function obtenerVariantes(producto) {
+            const raw = String(producto.variante_personalizada || '').trim();
+            if (!raw) return [];
+
+            // Formato recomendado: "Color: Rosa, Rojo | Tamaño: Mediano, Grande"
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    return parsed.map(g => ({ nombre: String(g.nombre || 'Opciones'), opciones: Array.isArray(g.opciones) ? g.opciones.map(String).filter(Boolean) : [] })).filter(g => g.opciones.length);
+                }
+                if (parsed && Array.isArray(parsed.grupos)) {
+                    return parsed.grupos.map(g => ({ nombre: String(g.nombre || 'Opciones'), opciones: Array.isArray(g.opciones) ? g.opciones.map(String).filter(Boolean) : [] })).filter(g => g.opciones.length);
+                }
+                if (parsed && Array.isArray(parsed.opciones) && parsed.opciones.length) {
+                    return [{ nombre: parsed.nombre || 'Opciones', opciones: parsed.opciones.map(String).filter(Boolean) }];
+                }
+            } catch (_) {}
+
+            const grupos = raw.split(/\s*\|\s*/).map(x => x.trim()).filter(Boolean).map(grupo => {
+                const pos = grupo.indexOf(':');
+                if (pos === -1) return { nombre: 'Opciones', opciones: grupo.split(/\s*[,;]\s*/).map(x => x.trim()).filter(Boolean) };
+                return { nombre: grupo.slice(0, pos).trim() || 'Opciones', opciones: grupo.slice(pos + 1).split(/\s*[,;]\s*/).map(x => x.trim()).filter(Boolean) };
+            }).filter(g => g.opciones.length);
+            return grupos;
+        }
+
+        function prepararVariantes(producto) {
+            const bloque = document.getElementById('modal-variantes');
+            const variante = obtenerVariantes(producto);
+            if (!variante.length) {
+                bloque.classList.add('hidden');
+                bloque.innerHTML = '';
+                return null;
+            }
+
+            bloque.classList.remove('hidden');
+            bloque.innerHTML = '';
+            const seleccionadas = {};
+            productoVariantesSeleccionadas = {};
+            const activeClass = 'px-4 py-2 border-2 border-brandFuchsia text-brandFuchsia font-medium rounded-full text-sm';
+            const normalClass = 'px-4 py-2 border border-gray-300 rounded-full text-sm hover:border-brandFuchsia transition';
+
+            variante.forEach((grupo, groupIndex) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = groupIndex ? 'mt-5' : '';
+                const titulo = document.createElement('h4');
+                titulo.className = 'font-medium text-sm text-brandDark mb-3';
+                titulo.innerText = grupo.nombre;
+                const texto = document.createElement('p');
+                texto.className = 'text-xs text-gray-600 mb-2';
+                texto.innerHTML = 'Elige una opción: <span class="font-semibold text-brandDark"></span>';
+                const opciones = document.createElement('div');
+                opciones.className = 'flex flex-wrap gap-3';
+                const spanSeleccion = texto.querySelector('span');
+                seleccionadas[grupo.nombre] = grupo.opciones[0];
+                productoVariantesSeleccionadas[grupo.nombre] = grupo.opciones[0];
+                spanSeleccion.innerText = grupo.opciones[0];
+
+                grupo.opciones.forEach((opcion, index) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.dataset.opcion = opcion;
+                    button.innerText = opcion;
+                    button.className = index === 0 ? activeClass : normalClass;
+                    button.onclick = () => {
+                        seleccionadas[grupo.nombre] = opcion;
+                        productoVariantesSeleccionadas[grupo.nombre] = opcion;
+                        spanSeleccion.innerText = opcion;
+                        actualizarSeleccionDescripcionRF();
+                        opciones.querySelectorAll('button').forEach(b => b.className = b === button ? activeClass : normalClass);
+                    };
+                    opciones.appendChild(button);
+                });
+                wrapper.append(titulo, texto, opciones);
+                bloque.appendChild(wrapper);
+            });
+
+            return () => Object.entries(seleccionadas).map(([nombre, opcion]) => `${nombre}: ${opcion}`).join(' | ');
+        }
+
+        function mostrarGaleria(producto) {
+            const imagenes = obtenerImagenes(producto);
+            const principal = imagenes[0] || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
+            const main = document.getElementById('modal-img');
+            const thumbs = document.getElementById('modal-thumbnails');
+            main.src = principal;
+            main.onerror = () => { main.onerror = null; main.src = 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'; };
+            thumbs.innerHTML = '';
+            imagenes.forEach((url, index) => {
+                const wrap = document.createElement('button');
+                wrap.type = 'button';
+                wrap.className = `aspect-square bg-white ${index === 0 ? 'border-2 border-brandFuchsia' : 'border border-gray-200'} rounded-lg overflow-hidden cursor-pointer`;
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'w-full h-full object-cover';
+                img.onerror = () => { img.onerror = null; img.src = 'https://via.placeholder.com/100?text=Foto'; };
+                wrap.appendChild(img);
+                wrap.onclick = () => {
+                    main.src = url;
+                    thumbs.querySelectorAll('button').forEach(b => b.className = 'aspect-square bg-white border border-gray-200 rounded-lg overflow-hidden cursor-pointer');
+                    wrap.className = 'aspect-square bg-white border-2 border-brandFuchsia rounded-lg overflow-hidden cursor-pointer';
+                };
+                thumbs.appendChild(wrap);
+            });
+        }
+
+        function formatearPrecio(valor) {
+            const numero = Number(valor) || 0;
+            return numero.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        async function cargarInventario(filtroCategoria = null) {
             try {
                 const respuesta = await fetch('/api/catalogo');
-                const arreglos = await respuesta.json();
+                todosLosArreglos = await respuesta.json();
+                let arreglos = todosLosArreglos;
+
+                if (filtroCategoria) {
+                    arreglos = arreglos.filter(arreglo => arreglo.categoria === filtroCategoria);
+                    document.getElementById('titulo-catalogo').innerText = "Colección: " + filtroCategoria;
+                } else {
+                    document.getElementById('titulo-catalogo').innerText = "Tus favoritos de Reserva Floral";
+                    // La sección destacada muestra una selección breve; el catálogo completo vive en "Ver todos".
+                    arreglos = [...arreglos].sort(() => Math.random() - 0.5).slice(0, 8);
+                }
+
                 const contenedor = document.getElementById('contenedor-arreglos');
+                contenedor.innerHTML = '';
+
+                if (arreglos.length === 0) {
+                    contenedor.innerHTML = '<p class="text-gray-500 py-10">No hay arreglos disponibles en este momento.</p>';
+                    actualizarFlechasFavoritosRF();
+                    return;
+                }
 
                 arreglos.forEach(arreglo => {
-                    const tarjeta = document.createElement('div');
-                    tarjeta.className = 'tarjeta';
-                    tarjeta.innerHTML = `
-                        <h3>${arreglo.nombre}</h3>
-                        <p>${arreglo.descripcion}</p>
-                        <p class="precio">$${arreglo.precio}</p>
+                    const urlImagen = (obtenerImagenes(arreglo)[0]) || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
+                    const arregloData = encodeURIComponent(JSON.stringify(arreglo));
+                    contenedor.innerHTML += `
+                        <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
+                            <div class="rf-favorite-card-image">
+                                <img src="${urlImagen}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                            </div>
+                            <div class="rf-favorite-card-body">
+                                <h3 class="font-medium text-sm text-gray-800 leading-tight">${arreglo.nombre}</h3>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-bold text-gray-900 text-sm">$${formatearPrecio(arreglo.precio)}</span>
+                                    <span class="text-brandLightPink font-medium text-xs">Agregar</span>
+                                </div>
+                            </div>
+                        </div>
                     `;
-                    contenedor.appendChild(tarjeta);
                 });
-            } catch (error) {
-                console.error("Error cargando el catálogo", error);
+                actualizarUI();
+                actualizarFlechasFavoritosRF();
+            } catch (error) { console.error("Error cargando el catálogo", error); }
+        }
+
+        function abrirProducto(dataStr, urlImagen) {
+            const productoActual = JSON.parse(decodeURIComponent(dataStr));
+            mostrarProducto(productoActual);
+        }
+
+        function obtenerUbicacionGuardadaRF() {
+            try {
+                const datos = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null');
+                return (datos && datos.estado && datos.ciudad && datos.fecha) ? datos : null;
+            } catch (_) {
+                return null;
             }
         }
-        
+
+        function formatearFechaProductoRF(fecha) {
+            if (!fecha) return 'Fecha de entrega';
+            const d = new Date(fecha + 'T00:00:00');
+            return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+
+        function actualizarUbicacionProductoRF() {
+            const ciudad = document.getElementById('producto-ciudad-seleccionada');
+            const fecha = document.getElementById('producto-fecha-seleccionada');
+            if (!ciudad || !fecha) return;
+            const datos = obtenerUbicacionGuardadaRF();
+            ciudad.innerText = datos?.ciudad || 'Selecciona tu ciudad';
+            fecha.innerText = datos?.fecha ? formatearFechaProductoRF(datos.fecha) : 'Selecciona fecha de entrega';
+        }
+
+        function abrirSelectorUbicacionDesdeProducto() {
+            // Mantiene abierto el producto detrás del selector para que, al confirmar,
+            // el usuario vuelva directamente al mismo producto con los datos actualizados.
+            abrirModalUbicacion(() => actualizarUbicacionProductoRF());
+        }
+
+        let productoDescripcionActual = null;
+        let productoVariantesSeleccionadas = {};
+
+        function escaparHtmlRF(valor) {
+            return String(valor ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+        }
+
+        function listaEspecificacionesRF(valor) {
+            return String(valor || '').split(/\r?\n|\s*;\s*/).map(x => x.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+        }
+
+        function actualizarSeleccionDescripcionRF() {
+            const wrap = document.getElementById('panel-seleccion-wrap');
+            const panel = document.getElementById('panel-seleccion');
+            if (!wrap || !panel) return;
+
+            const entradas = Object.entries(productoVariantesSeleccionadas || {}).filter(([, opcion]) => String(opcion || '').trim());
+            if (!entradas.length) {
+                wrap.classList.add('hidden');
+                panel.innerHTML = '';
+                return;
+            }
+
+            wrap.classList.remove('hidden');
+            panel.innerHTML = entradas.map(([nombre, opcion]) =>
+                `<div class="px-4 py-3 flex justify-between gap-4 bg-white"><span class="text-xs font-medium text-gray-700">${escaparHtmlRF(nombre)}</span><span class="text-xs text-gray-600 text-right">${escaparHtmlRF(opcion)}</span></div>`
+            ).join('');
+        }
+
+        function abrirPanelDescripcionRF(producto, mostrarSeleccion = false, seleccion = null) {
+            if (!producto) return;
+
+            document.getElementById('panel-descripcion-nombre').innerText = producto.nombre || '';
+            document.getElementById('panel-descripcion-texto').innerText = producto.descripcion || 'Este arreglo está preparado con cuidado y atención a cada detalle.';
+
+            const specs = listaEspecificacionesRF(producto.especificaciones);
+            const specsWrap = document.getElementById('panel-especificaciones-wrap');
+            const specsList = document.getElementById('panel-especificaciones');
+            if (specs.length) {
+                specsWrap.classList.remove('hidden');
+                specsList.innerHTML = specs.map(x => `<li>${escaparHtmlRF(x)}</li>`).join('');
+            } else {
+                specsWrap.classList.add('hidden');
+                specsList.innerHTML = '';
+            }
+
+            const seleccionWrap = document.getElementById('panel-seleccion-wrap');
+            const seleccionPanel = document.getElementById('panel-seleccion');
+            const datosSeleccion = seleccion || productoVariantesSeleccionadas || {};
+            const entradas = mostrarSeleccion ? Object.entries(datosSeleccion).filter(([, valor]) => valor) : [];
+            if (entradas.length) {
+                seleccionWrap.classList.remove('hidden');
+                seleccionPanel.innerHTML = entradas.map(([nombre, opcion]) =>
+                    `<div class="px-4 py-3 flex justify-between gap-4 bg-white"><span class="text-xs font-medium text-gray-700">${escaparHtmlRF(nombre)}</span><span class="text-xs text-gray-600 text-right">${escaparHtmlRF(opcion)}</span></div>`
+                ).join('');
+            } else {
+                seleccionWrap.classList.add('hidden');
+                seleccionPanel.innerHTML = '';
+            }
+
+            const panel = document.getElementById('panel-descripcion-producto');
+            const content = document.getElementById('panel-descripcion-content');
+            panel.classList.remove('hidden');
+            panel.setAttribute('aria-hidden', 'false');
+            requestAnimationFrame(() => content.classList.remove('translate-x-full'));
+        }
+
+        function abrirDescripcionProducto() {
+            if (!productoDescripcionActual) return;
+            const tieneVariantes = obtenerVariantes(productoDescripcionActual).length > 0;
+            abrirPanelDescripcionRF(productoDescripcionActual, tieneVariantes, productoVariantesSeleccionadas);
+        }
+
+        function cerrarDescripcionProducto() {
+            const panel = document.getElementById('panel-descripcion-producto');
+            const content = document.getElementById('panel-descripcion-content');
+            content.classList.add('translate-x-full');
+            panel.setAttribute('aria-hidden', 'true');
+            setTimeout(() => panel.classList.add('hidden'), 300);
+        }
+
+        function mostrarProducto(productoActual) {
+            productoDescripcionActual = productoActual;
+            const imagenes = obtenerImagenes(productoActual);
+            const urlImagen = imagenes[0] || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
+            document.getElementById('modal-id').innerText = '00' + productoActual.id;
+            document.getElementById('modal-nombre').innerText = productoActual.nombre;
+            document.getElementById('modal-precio').innerText = '$' + formatearPrecio(productoActual.precio);
+            document.getElementById('modal-desc').innerText = productoActual.descripcion || 'Un hermoso arreglo preparado con las mejores flores de temporada.';
+            mostrarGaleria(productoActual);
+            actualizarUbicacionProductoRF();
+            productoVariantesSeleccionadas = {};
+            const obtenerSeleccion = prepararVariantes(productoActual);
+            document.getElementById('btn-modal-agregar').onclick = () => {
+                const variante = obtenerSeleccion ? obtenerSeleccion() : null;
+                ejecutarConUbicacionRF(() => {
+                    agregarAlCarrito(productoActual.id, productoActual.nombre, productoActual.precio, urlImagen, variante);
+                });
+            };
+            const modal = document.getElementById('modal-producto');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function cerrarProducto() {
+            const modal = document.getElementById('modal-producto');
+            const content = document.getElementById('modal-content');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }, 300);
+        }
+
+        function ejecutarConUbicacionRF(accion) {
+            if (ubicacionRFCompleta()) {
+                if (typeof accion === 'function') accion();
+                return true;
+            }
+
+            // No se agrega nada al carrito hasta que exista estado, ciudad y fecha válidos.
+            abrirModalUbicacion(() => {
+                if (ubicacionRFCompleta() && typeof accion === 'function') accion();
+            });
+            return false;
+        }
+
+        function tieneVarianteCarrito(variante) {
+            if (variante === null || variante === undefined) return false;
+            if (typeof variante === 'string') return variante.trim() !== '';
+            if (Array.isArray(variante)) return variante.length > 0;
+            if (typeof variante === 'object') return Object.keys(variante).length > 0;
+            return true;
+        }
+
+        function agregarItemCarrito(item) {
+            const varianteReal = tieneVarianteCarrito(item.variante);
+            const existente = !varianteReal
+                ? carrito.find(x => String(x.id) === String(item.id) && !tieneVarianteCarrito(x.variante))
+                : null;
+
+            if (existente) {
+                existente.cantidad = Math.max(1, Number(existente.cantidad) || 1) + 1;
+                // Conservamos los datos actuales del producto y solo acumulamos cantidad.
+            } else {
+                carrito.push({
+                    id: item.id,
+                    nombre: item.nombre,
+                    precio: parseFloat(item.precio),
+                    imagen: item.imagen,
+                    variante: varianteReal ? item.variante : null,
+                    cantidad: 1
+                });
+            }
+
+            localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            actualizarUI();
+        }
+
+        function agregarAlCarrito(id, nombre, precio, imagen, variante = null) {
+            agregarItemCarrito({ id, nombre, precio, imagen, variante });
+            cerrarProducto();
+            abrirConfirmacion(nombre, imagen);
+        }
+
+        function abrirConfirmacion(nombre, imagen) {
+            document.getElementById('conf-nombre').innerText = nombre;
+            document.getElementById('conf-img').src = imagen;
+            
+            // Inyectar complementos dinámicos desde la base de datos
+            const contenedorComp = document.getElementById('complementos-container');
+            contenedorComp.innerHTML = '';
+            
+            // Filtramos para no mostrar el producto actual, y tomamos 6 opciones para poder scrollear
+            const complementos = todosLosArreglos.filter(a => a.nombre !== nombre).slice(0, 6);
+            
+            if (complementos.length > 0) {
+                complementos.forEach(comp => {
+                    const urlImagenComp = comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=200&q=80';
+                    const compData = encodeURIComponent(JSON.stringify(comp));
+                    contenedorComp.innerHTML += `
+                        <div onclick="abrirComplemento('${compData}')" class="min-w-[110px] w-[110px] border border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:border-brandFuchsia transition-colors flex flex-col justify-between group/comp">
+                            <img src="${urlImagenComp}" class="w-12 h-12 mx-auto object-cover rounded mb-2 shadow-sm group-hover/comp:scale-105 transition-transform">
+                            <p class="text-[11px] text-gray-700 leading-tight h-8 overflow-hidden">${comp.nombre}</p>
+                            <p class="font-bold text-xs mt-1 text-brandDark">$${formatearPrecio(comp.precio)}</p>
+                            <span class="text-[10px] font-bold text-brandLightPink mt-1 hover:underline hidden md:block">+ Detalle</span>
+                        </div>
+                    `;
+                });
+            } else {
+                contenedorComp.innerHTML = '<p class="text-xs text-gray-500">Agrega más productos a tu inventario para ver complementos aquí.</p>';
+            }
+
+            const modal = document.getElementById('modal-confirmacion');
+            const content = document.getElementById('modal-confirmacion-content');
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex'); 
+            
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Función para abrir el modal del complemento
+        function abrirComplemento(dataStr) {
+            const comp = JSON.parse(decodeURIComponent(dataStr));
+            const urlImagen = comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
+            
+            document.getElementById('comp-modal-nombre').innerText = comp.nombre;
+            document.getElementById('comp-modal-precio').innerText = "$" + formatearPrecio(comp.precio);
+            document.getElementById('comp-modal-desc').innerText = comp.descripcion || "Complemento perfecto para tu regalo.";
+            document.getElementById('comp-modal-img').src = urlImagen;
+            
+            document.getElementById('btn-modal-comp-detalles').onclick = () => {
+                abrirPanelDescripcionRF(comp, false);
+            };
+
+            document.getElementById('btn-modal-comp-agregar').onclick = () => {
+                ejecutarConUbicacionRF(() => {
+                    agregarItemCarrito({ id: comp.id, nombre: comp.nombre, precio: comp.precio, imagen: urlImagen, variante: null });
+                    cerrarComplemento();
+                });
+            };
+
+            const modal = document.getElementById('modal-complemento');
+            const content = document.getElementById('modal-complemento-content');
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function cerrarComplemento() {
+            const modal = document.getElementById('modal-complemento');
+            const content = document.getElementById('modal-complemento-content');
+            
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Función para scrollear el carrusel de complementos
+        function scrollComplementos(direccion) {
+            const container = document.getElementById('complementos-container');
+            const scrollAmount = 150; // Ancho aproximado de una tarjeta de complemento
+            if (direccion === 'left') {
+                container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            } else {
+                container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            }
+        }
+
+        function cerrarConfirmacion() {
+            const modal = document.getElementById('modal-confirmacion');
+            const content = document.getElementById('modal-confirmacion-content');
+            
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }, 300);
+        }
+
+        function totalUnidadesCarrito() {
+            return carrito.reduce((sum, item) => sum + (Number(item.cantidad) || 1), 0);
+        }
+
+        function normalizarCarrito() {
+            const normalizado = [];
+            carrito.forEach(item => {
+                const limpio = { ...item, cantidad: Math.max(1, Number(item.cantidad) || 1) };
+                const varianteReal = tieneVarianteCarrito(limpio.variante);
+                const existente = !varianteReal
+                    ? normalizado.find(x => String(x.id) === String(limpio.id) && !tieneVarianteCarrito(x.variante))
+                    : null;
+
+                if (existente) {
+                    existente.cantidad += limpio.cantidad;
+                } else {
+                    limpio.variante = varianteReal ? limpio.variante : null;
+                    normalizado.push(limpio);
+                }
+            });
+            carrito = normalizado;
+        }
+
+        function irAlCarrito() {
+            cerrarConfirmacion();
+            setTimeout(() => {
+                const panel = document.getElementById('carrito-lateral');
+                if (!panel) return;
+                actualizarUI();
+                panel.classList.remove('carrito-cerrado');
+                panel.classList.add('carrito-abierto');
+            }, 320);
+        }
+
+        function actualizarUI() {
+            normalizarCarrito();
+            localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            const unidades = totalUnidadesCarrito();
+            document.getElementById('contador-carrito').innerText = unidades;
+            const boton = document.getElementById('contador-carrito-boton');
+            if (boton) boton.innerText = unidades;
+
+            const contenedor = document.getElementById('items-carrito');
+            contenedor.innerHTML = '';
+            let total = 0;
+
+            if (carrito.length === 0) {
+                contenedor.innerHTML = '<div class="py-8 text-center text-sm text-gray-500">Tu carrito está vacío</div>';
+            } else {
+                carrito.forEach((item, index) => {
+                    const cantidad = Math.max(1, Number(item.cantidad) || 1);
+                    total += Number(item.precio) * cantidad;
+                    const sku = String(item.id ?? '').padStart(3, '0');
+                    contenedor.innerHTML += `
+                        <div class="flex items-start gap-3 py-3 border-b border-gray-100 last:border-b-0">
+                            <img src="${escaparHtml(item.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-[82px] h-[82px] object-cover rounded-md bg-gray-100 flex-shrink-0">
+                            <div class="min-w-0 flex-1 pt-0.5">
+                                <h4 class="font-medium text-[12px] leading-tight text-brandDark line-clamp-2">${escaparHtml(item.nombre)}</h4>
+                                <p class="font-semibold text-[11px] text-brandDark mt-1">$${formatearPrecio(item.precio)}<span class="text-[7px] align-top ml-0.5">MXN</span></p>
+                                <p class="text-[10px] text-gray-500 mt-1">Cantidad: ${cantidad}</p>
+                                <p class="text-[10px] text-gray-500">SKU: ${escaparHtml(sku)}</p>
+                                ${item.variante ? `<p class="text-[10px] text-gray-500 truncate mt-0.5">${escaparHtml(formatearVarianteCarrito(item.variante))}</p>` : ''}
+                            </div>
+                            <div class="flex flex-col items-end justify-between self-stretch">
+                                <div class="flex items-center border border-gray-900 rounded-[4px] h-7 overflow-hidden bg-white">
+                                    <button type="button" onclick="event.preventDefault(); event.stopPropagation(); cambiarCantidadCarrito(${index}, -1)" class="w-7 h-full text-sm font-semibold hover:bg-gray-100">−</button>
+                                    <span class="w-6 text-center text-[11px] font-semibold">${cantidad}</span>
+                                    <button type="button" onclick="event.preventDefault(); event.stopPropagation(); cambiarCantidadCarrito(${index}, 1)" class="w-7 h-full text-sm font-semibold hover:bg-gray-100">+</button>
+                                </div>
+                                <button type="button" onclick="event.preventDefault(); event.stopPropagation(); eliminarDelCarrito(${index})" class="mt-2 w-8 h-8 flex items-center justify-center rounded-md text-gray-700 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer" aria-label="Eliminar producto" title="Eliminar producto">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 7h12M9 7V5h6v2m2 0v13H7V7m3 4v6m4-6v6"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('total-carrito').innerText = formatearPrecio(total);
+        }
+
+        function formatearVarianteCarrito(variante) {
+            if (!variante) return '';
+            if (typeof variante === 'string') return variante;
+            if (Array.isArray(variante)) return variante.join(', ');
+            if (typeof variante === 'object') return Object.entries(variante).map(([k,v]) => `${k}: ${v}`).join(' · ');
+            return String(variante);
+        }
+
+        function cambiarCantidadCarrito(index, cambio) {
+            if (!carrito[index]) return;
+            const actual = Math.max(1, Number(carrito[index].cantidad) || 1);
+            const nueva = actual + cambio;
+            if (nueva <= 0) {
+                eliminarDelCarrito(index);
+                return;
+            }
+            carrito[index].cantidad = nueva;
+            localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            actualizarUI();
+        }
+
+        function eliminarDelCarrito(index) {
+            carrito.splice(index, 1);
+            localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            actualizarUI();
+        }
+
+        function toggleCarrito() {
+            const panel = document.getElementById('carrito-lateral');
+            if (!panel) return;
+            const abrir = panel.classList.contains('carrito-cerrado');
+            if (abrir) {
+                actualizarUI();
+                panel.classList.remove('carrito-cerrado');
+                panel.classList.add('carrito-abierto');
+            } else {
+                panel.classList.remove('carrito-abierto');
+                panel.classList.add('carrito-cerrado');
+            }
+        }
+
+        function procesarPago() {
+            if (carrito.length === 0) return alert('Por favor, agrega un arreglo antes de continuar.');
+            window.location.href = '/checkout.html';
+        }
+
+        async function abrirProductoDesdeRuta() {
+            const match = window.location.pathname.match(/^\/producto\/(\d+)\/?$/);
+            if (!match) return;
+            try {
+                const respuesta = await fetch('/api/catalogo/' + match[1]);
+                if (!respuesta.ok) return;
+                const producto = await respuesta.json();
+                mostrarProducto(producto);
+            } catch (error) {
+                console.error('Error cargando producto desde URL', error);
+            }
+        }
+
+
+        // Selector principal de ubicación de la página de inicio
+        let rfHome = { estado: '', ciudad: '', tipoFecha: '', fecha: '' };
+        const RF_HOME_CIUDADES = {
+            'Ciudad de México': ['Benito Juárez', 'Cuauhtémoc', 'Miguel Hidalgo', 'Coyoacán'],
+            'Tamaulipas': ['Ciudad Madero', 'Tampico', 'Altamira', 'Ciudad Victoria', 'Matamoros', 'Reynosa', 'Nuevo Laredo'],
+            'Nuevo León': ['Monterrey', 'San Pedro Garza García', 'Guadalupe', 'San Nicolás de los Garza', 'Apodaca']
+        };
+        function rfHomeIsoDate(d = new Date()) {
+            const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0,10);
+        }
+        function cerrarMenusHomeRF() {
+            document.querySelectorAll('.rf-home-menu').forEach(menu => menu.classList.add('hidden'));
+            document.querySelectorAll('.rf-home-trigger').forEach(trigger => trigger.setAttribute('aria-expanded','false'));
+        }
+        function abrirMenuHomeRF(id) {
+            const triggerForMenu = document.getElementById(id.replace('-menu','-trigger'));
+            if (triggerForMenu?.disabled) return;
+            const menu = document.getElementById(id); if (!menu) return;
+            const trigger = document.querySelector(`[data-home-menu="${id}"]`) || document.getElementById(id.replace('-menu','-trigger'));
+            const open = !menu.classList.contains('hidden');
+            cerrarMenusHomeRF();
+            if (!open) {
+                menu.classList.remove('hidden');
+                if (trigger) trigger.setAttribute('aria-expanded','true');
+            }
+        }
+        function seleccionarEstadoHomeRF(valor) {
+            rfHome.estado = valor; rfHome.ciudad = '';
+            document.getElementById('home-estado-trigger').innerHTML = `${valor}<span class="rf-home-chevron"></span>`;
+            const menu = document.getElementById('home-ciudad-menu');
+            menu.innerHTML = (RF_HOME_CIUDADES[valor] || []).map(c => `<button type="button" class="rf-home-option" data-value="${c.replace(/"/g,'&quot;')}">${c}</button>`).join('');
+            menu.querySelectorAll('.rf-home-option').forEach(o => o.addEventListener('click', () => seleccionarCiudadHomeRF(o.dataset.value)));
+            const cityTrigger = document.getElementById('home-ciudad-trigger');
+            cityTrigger.disabled = false;
+            cityTrigger.innerHTML = 'Ciudad<span class="rf-home-chevron"></span>';
+            const fechaTrigger = document.getElementById('home-fecha-trigger');
+            fechaTrigger.disabled = true;
+            fechaTrigger.innerHTML = 'Fecha de entrega<span class="rf-home-chevron"></span>';
+            rfHome.tipoFecha = '';
+            rfHome.fecha = '';
+            document.getElementById('home-otra-fecha-wrap').classList.add('hidden');
+            document.getElementById('home-otra-fecha').value = '';
+            cerrarMenusHomeRF();
+        }
+        function seleccionarCiudadHomeRF(valor) {
+            rfHome.ciudad = valor;
+            document.getElementById('home-ciudad-trigger').innerHTML = `${valor}<span class="rf-home-chevron"></span>`;
+            const fechaTrigger = document.getElementById('home-fecha-trigger');
+            fechaTrigger.disabled = false;
+            fechaTrigger.innerHTML = 'Fecha de entrega<span class="rf-home-chevron"></span>';
+            rfHome.tipoFecha = '';
+            rfHome.fecha = '';
+            document.getElementById('home-otra-fecha-wrap').classList.add('hidden');
+            document.getElementById('home-otra-fecha').value = '';
+            cerrarMenusHomeRF();
+        }
+        function seleccionarFechaHomeRF(tipo) {
+            rfHome.tipoFecha = tipo;
+            const wrap = document.getElementById('home-otra-fecha-wrap');
+            const trigger = document.getElementById('home-fecha-trigger');
+            if (tipo === 'hoy') { rfHome.fecha = rfHomeIsoDate(); trigger.innerHTML = 'Hoy<span class="rf-home-chevron"></span>'; wrap.classList.add('hidden'); cerrarMenusHomeRF(); }
+            else if (tipo === 'manana') { const d=new Date(); d.setDate(d.getDate()+1); rfHome.fecha=rfHomeIsoDate(d); trigger.innerHTML='Mañana<span class="rf-home-chevron"></span>'; wrap.classList.add('hidden'); cerrarMenusHomeRF(); }
+            else { rfHome.fecha=''; trigger.innerHTML='Otro día<span class="rf-home-chevron"></span>'; wrap.classList.remove('hidden'); document.getElementById('home-otra-fecha').focus(); }
+        }
+        function inicializarSelectorHomeRF() {
+            // Limpia datos de versiones anteriores para que la primera carga de esta versión
+            // realmente comience vacía. Después, la selección se conserva durante la sesión.
+            try {
+                const version = 'rf-location-v3';
+                if (sessionStorage.getItem('rf_location_ui_version') !== version) {
+                    localStorage.removeItem('rf_ubicacion_entrega');
+                    localStorage.removeItem('rf_ubicacion_entrega');
+                    sessionStorage.setItem('rf_location_ui_version', version);
+                }
+            } catch (_) {}
+            // El selector inicia vacío en una instalación nueva. Una vez completada, la ubicación
+            // se conserva en el navegador para navegar entre categorías sin volver a pedirla.
+            const saved = (() => { try{return JSON.parse(localStorage.getItem('rf_ubicacion_entrega')||'null')}catch(_){return null} })();
+            rfHome.estado = saved?.estado || '';
+            rfHome.ciudad = saved?.ciudad || '';
+            rfHome.fecha = saved?.fecha || '';
+            rfHome.tipoFecha = saved?.tipoFecha || '';
+            const estadoTrigger = document.getElementById('home-estado-trigger');
+            const ciudadTrigger = document.getElementById('home-ciudad-trigger');
+            if (rfHome.estado) {
+                estadoTrigger.innerHTML = `${rfHome.estado}<span class="rf-home-chevron"></span>`;
+                const cities=RF_HOME_CIUDADES[rfHome.estado]||[];
+                document.getElementById('home-ciudad-menu').innerHTML=cities.map(c=>`<button type="button" class="rf-home-option" data-value="${c.replace(/"/g,'&quot;')}">${c}</button>`).join('');
+                document.getElementById('home-ciudad-menu').querySelectorAll('.rf-home-option').forEach(o=>o.addEventListener('click',()=>seleccionarCiudadHomeRF(o.dataset.value)));
+                ciudadTrigger.disabled = false;
+                ciudadTrigger.innerHTML=`${rfHome.ciudad||'Ciudad'}<span class="rf-home-chevron"></span>`;
+                document.getElementById('home-fecha-trigger').disabled = !rfHome.ciudad;
+            } else {
+                estadoTrigger.innerHTML='Estado<span class="rf-home-chevron"></span>';
+                ciudadTrigger.disabled = true;
+                ciudadTrigger.innerHTML='Ciudad<span class="rf-home-chevron"></span>';
+                document.getElementById('home-fecha-trigger').disabled = true;
+                document.getElementById('home-fecha-trigger').innerHTML='Fecha de entrega<span class="rf-home-chevron"></span>';
+                rfHome.tipoFecha = ''; rfHome.fecha = '';
+            }
+            if(saved?.fecha && rfHome.estado){
+                const today=rfHomeIsoDate(), tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+                if(saved.fecha===today) document.getElementById('home-fecha-trigger').innerHTML='Hoy<span class="rf-home-chevron"></span>';
+                else if(saved.fecha===rfHomeIsoDate(tomorrow)) document.getElementById('home-fecha-trigger').innerHTML='Mañana<span class="rf-home-chevron"></span>';
+                else { document.getElementById('home-fecha-trigger').innerHTML='Otro día<span class="rf-home-chevron"></span>'; document.getElementById('home-otra-fecha').value=saved.fecha; document.getElementById('home-otra-fecha-wrap').classList.remove('hidden'); }
+            }
+            document.getElementById('home-otra-fecha').min=rfHomeIsoDate();
+            document.getElementById('home-estado-trigger').onclick=()=>abrirMenuHomeRF('home-estado-menu');
+            document.getElementById('home-ciudad-trigger').onclick=()=>abrirMenuHomeRF('home-ciudad-menu');
+            document.getElementById('home-fecha-trigger').onclick=()=>abrirMenuHomeRF('home-fecha-menu');
+            document.querySelectorAll('#home-estado-menu .rf-home-option').forEach(o=>o.addEventListener('click',()=>seleccionarEstadoHomeRF(o.dataset.value)));
+            document.querySelectorAll('#home-fecha-menu > .rf-home-option').forEach(o=>o.addEventListener('click',()=>seleccionarFechaHomeRF(o.dataset.value)));
+            document.getElementById('home-otra-fecha').addEventListener('change',e=>{rfHome.fecha=e.target.value; if(e.target.value) document.getElementById('home-fecha-trigger').innerHTML=`${new Date(e.target.value+'T00:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short'})}<span class="rf-home-chevron"></span>`;});
+        }
+        function confirmarSelectorHomeRF() {
+            if(rfHome.tipoFecha==='otro') rfHome.fecha=document.getElementById('home-otra-fecha').value;
+            if(!rfHome.estado || !rfHome.ciudad || !rfHome.fecha) { abrirModalUbicacion(()=>{}); return; }
+            if(rfHome.fecha < rfHomeIsoDate()) return;
+            localStorage.setItem('rf_ubicacion_entrega', JSON.stringify({...rfHome, actualizadoEn:new Date().toISOString()}));
+            const target=document.getElementById('seccion-catalogo'); if(target) target.scrollIntoView({behavior:'smooth'});
+        }
+        document.addEventListener('click',e=>{if(!e.target.closest('.rf-home-select')) cerrarMenusHomeRF();});
+
+        // ---------------------------------------------------------------------
+        // Ubicación obligatoria para navegar por categorías
+        // ---------------------------------------------------------------------
+        let rfAccionPendiente = null;
+        const RF_UBICACION_KEY = 'rf_ubicacion_entrega';
+        const RF_CIUDADES = {
+            'Ciudad de México': ['Benito Juárez', 'Cuauhtémoc', 'Miguel Hidalgo', 'Coyoacán'],
+            'Tamaulipas': ['Ciudad Madero', 'Tampico', 'Altamira', 'Ciudad Victoria', 'Matamoros', 'Reynosa', 'Nuevo Laredo'],
+            'Nuevo León': ['Monterrey', 'San Pedro Garza García', 'Guadalupe', 'San Nicolás de los Garza', 'Apodaca']
+        };
+
+        function ubicacionRFCompleta() {
+            try {
+                const data = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null');
+                return !!(data && data.estado && data.ciudad && data.fecha);
+            } catch (_) { return false; }
+        }
+
+        function cargarUbicacionGuardadaEnModal() {
+            let guardada = null;
+            try { guardada = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+            const estadoInput = document.getElementById('rf-ubicacion-estado');
+            const ciudadInput = document.getElementById('rf-ubicacion-ciudad');
+            const fechaInput = document.getElementById('rf-ubicacion-fecha');
+            const estadoTrigger = document.querySelector('[data-target="rf-estado-menu"]');
+            const ciudadTrigger = document.getElementById('rf-ciudad-trigger');
+            const fechaTrigger = document.querySelector('[data-target="rf-fecha-menu"]');
+            if (!estadoInput || !ciudadInput || !fechaInput || !estadoTrigger || !ciudadTrigger || !fechaTrigger) return;
+
+            estadoInput.value = ''; ciudadInput.value = ''; fechaInput.value = '';
+            estadoTrigger.innerHTML = 'Estado <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
+            ciudadTrigger.innerHTML = 'Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
+            fechaTrigger.innerHTML = 'Fecha de entrega <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
+            ciudadTrigger.disabled = true; ciudadTrigger.classList.add('is-disabled');
+            fechaTrigger.disabled = true; fechaTrigger.classList.add('is-disabled');
+            document.getElementById('rf-otra-fecha-wrap').classList.add('hidden');
+            document.getElementById('rf-otra-fecha').value = '';
+
+            if (!guardada?.estado) return;
+            seleccionarEstadoRF(guardada.estado);
+            if (!guardada.ciudad) return;
+            seleccionarCiudadRF(guardada.ciudad);
+            if (!guardada.fecha) return;
+            let tipo = guardada.tipoFecha;
+            if (!tipo) {
+                const hoy = new Date();
+                const isoHoy = fechaIsoRF(hoy);
+                const manana = new Date(hoy); manana.setDate(manana.getDate()+1);
+                if (guardada.fecha === isoHoy) tipo = 'hoy';
+                else if (guardada.fecha === fechaIsoRF(manana)) tipo = 'manana';
+                else tipo = 'otro';
+            }
+            seleccionarFechaRF(tipo);
+            if (tipo === 'otro') {
+                document.getElementById('rf-otra-fecha').value = guardada.fecha;
+            }
+        }
+
+        function fechaIsoRF(d = new Date()) {
+            const x = new Date(d);
+            x.setMinutes(x.getMinutes() - x.getTimezoneOffset());
+            return x.toISOString().slice(0,10);
+        }
+
+        function abrirModalUbicacion(accion) {
+            rfAccionPendiente = typeof accion === 'function' ? accion : null;
+            cargarUbicacionGuardadaEnModal();
+            const modal = document.getElementById('modal-ubicacion');
+            const error = document.getElementById('rf-ubicacion-error');
+            if (!modal) return;
+            error.classList.add('hidden');
+            error.innerText = '';
+            const ciudadActual = document.getElementById('rf-ubicacion-ciudad')?.value || '';
+            const fechaTrigger = document.querySelector('[data-target="rf-fecha-menu"]');
+            if (fechaTrigger) {
+                fechaTrigger.disabled = !ciudadActual;
+                fechaTrigger.classList.toggle('is-disabled', !ciudadActual);
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function cerrarModalUbicacion() {
+            // El usuario puede cerrar el modal y seguir navegando por la página.
+            // La ubicación sigue siendo obligatoria únicamente al intentar entrar a una categoría.
+            rfAccionPendiente = null;
+            const modal = document.getElementById('modal-ubicacion');
+            if (!modal) return;
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        function cerrarDropdownsRF(excepto = null) {
+            document.querySelectorAll('.rf-custom-select.is-open').forEach(field => field.classList.remove('is-open'));
+            document.querySelectorAll('.rf-custom-menu:not(.hidden)').forEach(menu => {
+                if (menu !== excepto) {
+                    menu.classList.add('hidden');
+                    const trigger = document.querySelector(`[data-target="${menu.id}"]`);
+                    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        function abrirDropdownRF(menuId, trigger) {
+            const menu = document.getElementById(menuId);
+            if (!menu || trigger.disabled) return;
+            const field = trigger.closest('.rf-custom-select');
+            const abierto = !menu.classList.contains('hidden');
+            cerrarDropdownsRF(abierto ? null : menu);
+            if (abierto) {
+                menu.classList.add('hidden');
+                trigger.setAttribute('aria-expanded', 'false');
+                field?.classList.remove('is-open');
+            } else {
+                menu.classList.remove('hidden');
+                trigger.setAttribute('aria-expanded', 'true');
+                field?.classList.add('is-open');
+            }
+        }
+
+        function seleccionarEstadoRF(valor) {
+            const input = document.getElementById('rf-ubicacion-estado');
+            const trigger = document.querySelector('[data-target="rf-estado-menu"]');
+            input.value = valor;
+            trigger.innerHTML = `${valor}<span class="rf-custom-chevron"></span>`;
+            document.querySelectorAll('#rf-estado-menu .rf-option').forEach(o => o.classList.toggle('is-selected', o.dataset.value === valor));
+            actualizarCiudadesRF();
+            const fechaTrigger = document.querySelector('[data-target="rf-fecha-menu"]');
+            if (fechaTrigger) {
+                fechaTrigger.disabled = true;
+                fechaTrigger.classList.add('is-disabled');
+            }
+            document.getElementById('rf-ubicacion-fecha').value = '';
+            document.getElementById('rf-otra-fecha').value = '';
+            document.getElementById('rf-otra-fecha-wrap').classList.add('hidden');
+            if (fechaTrigger) fechaTrigger.innerHTML = 'Fecha de entrega <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
+            cerrarDropdownsRF();
+        }
+
+        function actualizarCiudadesRF() {
+            const estado = document.getElementById('rf-ubicacion-estado').value;
+            const ciudad = document.getElementById('rf-ubicacion-ciudad');
+            const trigger = document.getElementById('rf-ciudad-trigger');
+            const menu = document.getElementById('rf-ciudad-menu');
+            ciudad.value = '';
+            trigger.innerHTML = 'Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
+            const ciudades = RF_CIUDADES[estado] || [];
+            menu.innerHTML = ciudades.map(nombre => `<button type="button" class="rf-option" data-value="${nombre.replace(/"/g,'&quot;')}">${nombre}</button>`).join('');
+            trigger.disabled = !ciudades.length;
+            trigger.classList.toggle('is-disabled', !ciudades.length);
+            menu.querySelectorAll('.rf-option').forEach(option => option.addEventListener('click', () => seleccionarCiudadRF(option.dataset.value)));
+        }
+
+        function seleccionarCiudadRF(valor) {
+            const input = document.getElementById('rf-ubicacion-ciudad');
+            const trigger = document.getElementById('rf-ciudad-trigger');
+            input.value = valor;
+            trigger.innerHTML = `${valor}<span class="rf-custom-chevron"></span>`;
+            document.querySelectorAll('#rf-ciudad-menu .rf-option').forEach(o => o.classList.toggle('is-selected', o.dataset.value === valor));
+            const fechaTrigger = document.querySelector('[data-target="rf-fecha-menu"]');
+            if (fechaTrigger) {
+                fechaTrigger.disabled = false;
+                fechaTrigger.classList.remove('is-disabled');
+            }
+            cerrarDropdownsRF();
+        }
+
+        function seleccionarFechaRF(tipo) {
+            const input = document.getElementById('rf-ubicacion-fecha');
+            const trigger = document.querySelector('[data-target="rf-fecha-menu"]');
+            const wrap = document.getElementById('rf-otra-fecha-wrap');
+            input.value = tipo;
+            const labels = { hoy: 'Hoy', manana: 'Mañana', otro: 'Otro día' };
+            trigger.innerHTML = `${labels[tipo] || 'Fecha de entrega'}<span class="rf-custom-chevron"></span>`;
+            document.querySelectorAll('#rf-fecha-menu > .rf-option').forEach(o => o.classList.toggle('is-selected', o.dataset.value === tipo));
+            wrap.classList.toggle('hidden', tipo !== 'otro');
+            if (tipo === 'otro') {
+                setTimeout(() => document.getElementById('rf-otra-fecha')?.focus(), 30);
+            }
+            if (tipo !== 'otro') cerrarDropdownsRF();
+        }
+
+        function fechaEntregaRF() {
+            const tipo = document.getElementById('rf-ubicacion-fecha').value;
+            if (tipo === 'hoy') return new Date().toISOString().slice(0, 10);
+            if (tipo === 'manana') {
+                const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10);
+            }
+            if (tipo === 'otro') return document.getElementById('rf-otra-fecha').value;
+            return '';
+        }
+
+        function confirmarUbicacion() {
+            const estado = document.getElementById('rf-ubicacion-estado').value;
+            const ciudad = document.getElementById('rf-ubicacion-ciudad').value;
+            const tipoFecha = document.getElementById('rf-ubicacion-fecha').value;
+            const fecha = fechaEntregaRF();
+            const error = document.getElementById('rf-ubicacion-error');
+
+            if (!estado || !ciudad || !tipoFecha || !fecha) {
+                error.innerText = tipoFecha === 'otro' && !fecha
+                    ? 'Selecciona la fecha de entrega.'
+                    : 'Completa estado, ciudad y fecha de entrega para continuar.';
+                error.classList.remove('hidden');
+                return;
+            }
+
+            const fechaObj = new Date(fecha + 'T00:00:00');
+            const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+            if (fechaObj < hoy) {
+                error.innerText = 'La fecha de entrega no puede ser anterior a hoy.';
+                error.classList.remove('hidden');
+                return;
+            }
+
+            const datos = { estado, ciudad, fecha, tipoFecha, actualizadoEn: new Date().toISOString() };
+            localStorage.setItem(RF_UBICACION_KEY, JSON.stringify(datos));
+            actualizarUbicacionProductoRF();
+
+            const accion = rfAccionPendiente;
+            rfAccionPendiente = null;
+            const modal = document.getElementById('modal-ubicacion');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            if (accion) setTimeout(accion, 0);
+        }
+
+        function solicitarUbicacionAntesDeCategoria(accion) {
+            if (ubicacionRFCompleta()) {
+                if (typeof accion === 'function') accion();
+                return true;
+            }
+            abrirModalUbicacion(accion);
+            return false;
+        }
+
+
+        // Rutas de catálogo: se mantienen los mega menús y su diseño, pero ahora todos los enlaces navegan a páginas reales.
+        const RF_CATEGORY_ROUTES = {
+            'Cumpleaños':'/categoria/cumpleanos','Ocasiones':'/categoria/ocasiones','Flores y plantas':'/categoria/flores-y-plantas','Globos':'/categoria/globos','Regalos':'/categoria/regalos',
+            'Todas las flores':'/categoria/flores-y-plantas','Rosas':'/categoria/flores-y-plantas/rosas','Gerberas':'/categoria/flores-y-plantas/gerberas','Tulipanes':'/categoria/flores-y-plantas/tulipanes','Orquídeas':'/categoria/flores-y-plantas/orquideas','Combinados':'/categoria/flores-y-plantas/combinados','Premium':'/categoria/flores-y-plantas/flores-premium','Plantas':'/categoria/flores-y-plantas/plantas','Girasoles':'/categoria/flores-y-plantas/girasoles','Lilys y Stargazer':'/categoria/flores-y-plantas/lilys-y-stargazer','Tulipanes y Cala Lilies':'/categoria/flores-y-plantas/tulipanes-y-cala-lilies','Ramos':'/categoria/flores-y-plantas/ramos','Jarrón':'/categoria/flores-y-plantas/jarron','Cajas':'/categoria/flores-y-plantas/cajas','Coronas Funerarias':'/categoria/flores-y-plantas/coronas-funerarias','Caneas':'/categoria/flores-y-plantas/caneas','Flores premium':'/categoria/flores-y-plantas/flores-premium','Servicios Funerarios':'/categoria/flores-y-plantas/servicios-funerarios','Consuelo en Casa':'/categoria/flores-y-plantas/consuelo-en-casa','Mini plantas':'/categoria/flores-y-plantas/mini-plantas','Plantas medianas':'/categoria/flores-y-plantas/plantas-medianas','Plantas con regalos':'/categoria/flores-y-plantas/plantas-con-regalos',
+            'Todos los globos':'/categoria/globos','Globos Personalizados':'/categoria/globos/para-ella','Combos con globo':'/categoria/globos/combos','Graduación':'/categoria/globos/graduacion','Nacimiento':'/categoria/globos/nacimiento','Just Because':'/categoria/globos/just-because','Mejórate Pronto':'/categoria/globos/mejorate-pronto','Metálicos':'/categoria/globos/metalicos','Esfera':'/categoria/globos/esfera','Burbuja':'/categoria/globos/burbuja','Ramilletes':'/categoria/globos/ramilletes','Para ella':'/categoria/globos/para-ella','Para Él':'/categoria/globos/para-el',
+            'Para Ella':'/categoria/regalos/para-ella','Para Él':'/categoria/regalos/para-el','Para Mamá':'/categoria/regalos/para-mama','Para Papá':'/categoria/regalos/para-papa','Para Niños':'/categoria/regalos/para-ninos','Collares':'/categoria/regalos/collares','Pulseras':'/categoria/regalos/pulseras','Aretes':'/categoria/regalos/aretes','Sets':'/categoria/regalos/sets','Combos':'/categoria/regalos/combos','Osos':'/categoria/regalos/osos','Otros Peluches':'/categoria/regalos/otros-peluches','Combos de peluches':'/categoria/regalos/combos-de-peluches','Mascarillas':'/categoria/regalos/mascarillas','Cremas':'/categoria/regalos/cremas','Sets de Belleza':'/categoria/regalos/sets-de-belleza','Perfumes':'/categoria/regalos/perfumes','Velas y Aromas':'/categoria/regalos/velas-y-aromas','Personalizados':'/categoria/regalos/personalizados','Flores y Plantas':'/categoria/regalos/flores-y-plantas','Cajas de Regalo':'/categoria/regalos/cajas-de-regalo','Diarios y Agendas':'/categoria/regalos/diarios-y-agendas','Certificados':'/categoria/regalos/certificados'
+        };
+
+        function prepararRutasCategorias() {
+            const topRoutes = { 'Cumpleaños':'/categoria/cumpleanos','Ocasiones':'/categoria/ocasiones','Flores y plantas':'/categoria/flores-y-plantas','Globos':'/categoria/globos','Regalos':'/categoria/regalos' };
+            document.querySelectorAll('nav .nav-item').forEach(item => {
+                const top = (item.querySelector(':scope > .nav-link')?.textContent || '').trim();
+                const topHref = topRoutes[top];
+                if (topHref) {
+                    const link = item.querySelector(':scope > .nav-link');
+                    link.href = topHref;
+                    link.dataset.categoryChild = '1';
+                    link.removeAttribute('onclick');
+                }
+                item.querySelectorAll('.mega-menu a').forEach(link => {
+                    const label = link.textContent.trim().replace(/\s*>\s*$/, '');
+                    if (label === 'Ver todo') {
+                        if (topHref) { link.href = topHref; link.dataset.categoryChild = '1'; }
+                        link.removeAttribute('onclick');
+                        return;
+                    }
+                    const href = RF_CATEGORY_ROUTES[label];
+                    if (href) { link.href = href; link.dataset.categoryChild = '1'; }
+                    else if (link.getAttribute('href') === '#') link.addEventListener('click', e => e.preventDefault());
+                });
+            });
+        }
+
+        function instalarBloqueoCategorias() {
+            const nav = document.querySelector('nav');
+            if (!nav) return;
+            nav.addEventListener('click', function(e) {
+                const link = e.target.closest('a');
+                if (!link) return;
+                const item = link.closest('.nav-item');
+                if (!item) return;
+                const textoItem = (item.querySelector('.nav-link')?.innerText || '').trim();
+                if (!textoItem || textoItem === 'Inicio') return;
+                if (ubicacionRFCompleta()) return;
+                e.preventDefault();
+                e.stopPropagation();
+                abrirModalUbicacion(() => {
+                    if (typeof link.onclick === 'function') link.onclick.call(link, e);
+                    else if (link.getAttribute('href') && link.getAttribute('href') !== '#') window.location.href = link.href;
+                });
+            }, true);
+
+            document.querySelectorAll('a[href="#seccion-catalogo"]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    if (ubicacionRFCompleta()) return;
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    const accionOriginal = this.onclick;
+                    abrirModalUbicacion(() => {
+                        if (typeof accionOriginal === 'function') accionOriginal.call(this, e);
+                        const href = this.getAttribute('href');
+                        if (href && href !== '#') window.location.hash = href.substring(1);
+                    });
+                }, true);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const rfOccTrack = document.getElementById('rf-occasion-track');
+            const rfOccPrev = document.querySelector('.rf-occasion-prev');
+            const rfOccNext = document.querySelector('.rf-occasion-next');
+            if (rfOccTrack && rfOccPrev && rfOccNext) {
+                const updateRfOccasionArrows = () => {
+                    const max = rfOccTrack.scrollWidth - rfOccTrack.clientWidth - 2;
+                    rfOccPrev.disabled = rfOccTrack.scrollLeft <= 2;
+                    rfOccNext.disabled = rfOccTrack.scrollLeft >= max;
+                };
+                const scrollRfOccasions = (direction) => {
+                    const card = rfOccTrack.querySelector('.rf-occasion-card');
+                    const amount = (card ? card.getBoundingClientRect().width : rfOccTrack.clientWidth * 0.8) + 18;
+                    rfOccTrack.scrollBy({left: direction * amount, behavior: 'smooth'});
+                };
+                rfOccPrev.addEventListener('click', () => scrollRfOccasions(-1));
+                rfOccNext.addEventListener('click', () => scrollRfOccasions(1));
+                rfOccTrack.addEventListener('scroll', updateRfOccasionArrows, {passive:true});
+                window.addEventListener('resize', updateRfOccasionArrows);
+                updateRfOccasionArrows();
+            }
+            document.querySelectorAll('.rf-occasion-link').forEach(link => {
+                link.addEventListener('click', e => {
+                    if (ubicacionRFCompleta()) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    abrirModalUbicacion(() => { window.location.href = link.href; });
+                }, true);
+            });
+
+            const rfFavTrack = document.getElementById('contenedor-arreglos');
+            const rfFavPrev = document.querySelector('.rf-favorite-prev');
+            const rfFavNext = document.querySelector('.rf-favorite-next');
+            window.actualizarFlechasFavoritosRF = function() {
+                if (!rfFavTrack || !rfFavPrev || !rfFavNext) return;
+                const max = rfFavTrack.scrollWidth - rfFavTrack.clientWidth - 2;
+                rfFavPrev.disabled = rfFavTrack.scrollLeft <= 2;
+                rfFavNext.disabled = rfFavTrack.scrollLeft >= max;
+            };
+            if (rfFavTrack && rfFavPrev && rfFavNext) {
+                const scrollFav = direction => {
+                    const card = rfFavTrack.querySelector('.rf-favorite-card');
+                    const amount = (card ? card.getBoundingClientRect().width : rfFavTrack.clientWidth * .8) + 18;
+                    rfFavTrack.scrollBy({left: direction * amount, behavior:'smooth'});
+                };
+                rfFavPrev.addEventListener('click', () => scrollFav(-1));
+                rfFavNext.addEventListener('click', () => scrollFav(1));
+                rfFavTrack.addEventListener('scroll', window.actualizarFlechasFavoritosRF, {passive:true});
+                window.addEventListener('resize', window.actualizarFlechasFavoritosRF);
+            }
+            document.querySelectorAll('.rf-view-all-catalog').forEach(link => {
+                link.addEventListener('click', e => {
+                    if (ubicacionRFCompleta()) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    abrirModalUbicacion(() => { window.location.href = link.href; });
+                }, true);
+            });
+
+            const rfTrack = document.getElementById('rf-category-track');
+            const rfPrev = document.querySelector('.rf-category-prev');
+            const rfNext = document.querySelector('.rf-category-next');
+            if (rfTrack && rfPrev && rfNext) {
+                const updateRfCategoryArrows = () => {
+                    const max = rfTrack.scrollWidth - rfTrack.clientWidth - 2;
+                    rfPrev.disabled = rfTrack.scrollLeft <= 2;
+                    rfNext.disabled = rfTrack.scrollLeft >= max;
+                };
+                const scrollRfCategories = (direction) => {
+                    const card = rfTrack.querySelector('.rf-category-card');
+                    const amount = (card ? card.getBoundingClientRect().width : rfTrack.clientWidth * 0.8) + 18;
+                    rfTrack.scrollBy({left: direction * amount, behavior: 'smooth'});
+                };
+                rfPrev.addEventListener('click', () => scrollRfCategories(-1));
+                rfNext.addEventListener('click', () => scrollRfCategories(1));
+                rfTrack.addEventListener('scroll', updateRfCategoryArrows, {passive:true});
+                window.addEventListener('resize', updateRfCategoryArrows);
+                updateRfCategoryArrows();
+            }
+            normalizarCarrito();
+            actualizarUI();
+            inicializarSelectorHomeRF();
+            document.querySelectorAll('.rf-select-trigger').forEach(trigger => {
+                trigger.addEventListener('click', () => abrirDropdownRF(trigger.dataset.target, trigger));
+            });
+            document.querySelectorAll('#rf-estado-menu .rf-option').forEach(option => {
+                option.addEventListener('click', () => seleccionarEstadoRF(option.dataset.value));
+            });
+            document.querySelectorAll('#rf-fecha-menu > .rf-option').forEach(option => {
+                option.addEventListener('click', () => seleccionarFechaRF(option.dataset.value));
+            });
+            // Carrito: listener directo para evitar que otros manejadores globales interfieran.
+            const carritoBotonHeader = document.getElementById('btn-carrito-header');
+            if (carritoBotonHeader) {
+                carritoBotonHeader.addEventListener('click', e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleCarrito();
+                });
+            }
+
+            document.addEventListener('click', e => {
+                if (!e.target.closest('.rf-custom-select')) cerrarDropdownsRF();
+                const carritoPanel = document.getElementById('carrito-lateral');
+                if (carritoPanel && !carritoPanel.contains(e.target) && !e.target.closest('#btn-carrito-header')) {
+                    carritoPanel.classList.remove('carrito-abierto');
+                    carritoPanel.classList.add('carrito-cerrado');
+                }
+            });
+            const otraFecha = document.getElementById('rf-otra-fecha');
+            if (otraFecha) {
+                otraFecha.min = new Date().toISOString().slice(0, 10);
+                otraFecha.addEventListener('change', () => {
+                    if (otraFecha.value) {
+                        document.getElementById('rf-ubicacion-fecha').value = 'otro';
+                    }
+                });
+            }
+            prepararRutasCategorias();
+            instalarBloqueoCategorias();
+        });
+
         cargarInventario();
+        abrirProductoDesdeRuta();
     </script>
+
+    <!-- Panel lateral de descripción del producto -->
+    <div id="panel-descripcion-producto" class="fixed inset-0 z-[160] hidden" aria-hidden="true">
+        <div class="absolute inset-0 bg-black bg-opacity-40" onclick="cerrarDescripcionProducto()"></div>
+        <aside id="panel-descripcion-content" class="absolute top-0 right-0 h-full w-full max-w-[390px] bg-white shadow-2xl overflow-y-auto transform translate-x-full transition-transform duration-300" role="dialog" aria-modal="true" aria-labelledby="panel-descripcion-titulo">
+            <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-5 flex items-center justify-between z-10">
+                <h2 id="panel-descripcion-titulo" class="text-lg font-semibold text-brandDark">Descripción</h2>
+                <button type="button" onclick="cerrarDescripcionProducto()" aria-label="Cerrar descripción" class="text-gray-500 hover:text-brandDark">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="px-6 py-6">
+                <p id="panel-descripcion-nombre" class="text-base font-semibold text-brandDark mb-4"></p>
+                <div class="mb-6">
+                    <h3 class="font-medium text-sm text-brandDark mb-2">Descripción</h3>
+                    <p id="panel-descripcion-texto" class="text-sm text-gray-600 leading-relaxed"></p>
+                </div>
+                <div id="panel-especificaciones-wrap" class="mb-6 hidden">
+                    <h3 class="font-medium text-sm text-brandDark mb-2">Especificaciones del arreglo</h3>
+                    <ul id="panel-especificaciones" class="text-sm text-gray-600 space-y-2 list-disc pl-5"></ul>
+                </div>
+                <div id="panel-seleccion-wrap" class="mb-6 hidden">
+                    <h3 class="font-medium text-sm text-brandDark mb-3">Tu selección</h3>
+                    <div id="panel-seleccion" class="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden"></div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modal de Producto -->
+    <div id="modal-producto" class="fixed inset-0 z-[110] hidden">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black bg-opacity-50 transition-opacity" onclick="cerrarProducto()"></div>
+        
+        <!-- Modal Content -->
+        <div class="absolute inset-0 md:inset-y-10 md:inset-x-20 lg:inset-x-40 xl:inset-x-60 bg-white md:rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden transform transition-transform scale-95 opacity-0" id="modal-content">
+            
+            <!-- Botón Cerrar -->
+            <button onclick="cerrarProducto()" class="absolute top-4 right-4 z-10 bg-white rounded-full p-2 text-gray-500 hover:text-brandDark shadow-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+
+            <!-- Sección Izquierda: Imágenes -->
+            <div class="w-full md:w-1/2 bg-gray-50 flex p-4 md:p-8">
+                <!-- Miniaturas -->
+                <div id="modal-thumbnails" class="w-20 hidden md:flex flex-col gap-4 pr-4 overflow-y-auto"></div>
+                <!-- Imagen Principal -->
+                <div class="flex-1 bg-white rounded-xl overflow-hidden shadow-sm flex items-center justify-center relative">
+                    <img id="modal-img" src="" alt="Producto" class="w-full h-full object-contain max-h-[60vh] md:max-h-none">
+                </div>
+            </div>
+
+            <!-- Sección Derecha: Info y Compra -->
+            <div class="w-full md:w-1/2 p-6 md:p-10 flex flex-col overflow-y-auto">
+                <div class="mb-6">
+                    <p class="text-xs text-gray-500 mb-1">SKU: <span id="modal-id"></span></p>
+                    <h2 id="modal-nombre" class="text-2xl font-semibold text-brandDark mb-2"></h2>
+                    <div class="flex items-end gap-2 mb-2">
+                        <span id="modal-precio" class="text-2xl font-bold text-gray-900"></span>
+                        <span class="text-sm text-gray-500 line-through hidden" id="modal-precio-old"></span>
+                    </div>
+                    <button type="button" onclick="abrirDescripcionProducto()" class="text-sm text-brandLightPink hover:underline text-left">Ver descripción</button>
+                </div>
+
+                <div class="space-y-6 flex-1">
+                    <!-- Variante dinámica -->
+                    <div id="modal-variantes" class="hidden">
+                        <h4 id="modal-variante-titulo" class="font-medium text-sm text-brandDark mb-3"></h4>
+                        <p class="text-xs text-gray-600 mb-2">Elige una opción: <span id="modal-variante-seleccion" class="font-semibold text-brandDark"></span></p>
+                        <div id="modal-variante-opciones" class="flex flex-wrap gap-3"></div>
+                    </div>
+
+                    <!-- Buscador Logístico dentro del Modal -->
+                    <div>
+                        <h4 class="font-medium text-sm text-brandDark mb-3">Enviar a:</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button" onclick="abrirSelectorUbicacionDesdeProducto()" class="border border-gray-300 rounded-lg p-3 flex items-center gap-2 text-left cursor-pointer hover:border-brandFuchsia transition-colors">
+                                <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21s7-6.1 7-11a7 7 0 10-14 0c0 4.9 7 11 7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+                                <span id="producto-ciudad-seleccionada" class="text-sm text-gray-600 truncate">Selecciona tu ciudad</span>
+                            </button>
+                            <button type="button" onclick="abrirSelectorUbicacionDesdeProducto()" class="border border-gray-300 rounded-lg p-3 flex items-center gap-2 text-left cursor-pointer hover:border-brandFuchsia transition-colors">
+                                <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3v4M17 3v4M3 10h18"></path></svg>
+                                <span id="producto-fecha-seleccionada" class="text-sm text-gray-600 truncate">Selecciona fecha de entrega</span>
+                            </button>
+                        </div>                        <p class="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Podrás elegir el horario de entrega al pagar.
+                        </p>
+                    </div>
+
+                    <button id="btn-modal-agregar" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-4 rounded-full transition-colors shadow-md mt-4">
+                        Agregar al carrito
+                    </button>
+                </div>
+
+                <div id="desc" class="mt-8 pt-8 border-t border-gray-100">
+                    <h4 class="font-medium text-sm text-brandDark mb-2">Descripción</h4>
+                    <p id="modal-desc" class="text-sm text-gray-600 leading-relaxed mb-4"></p>
+                    <ul class="text-xs text-gray-500 space-y-2">
+                        <li class="flex gap-2"><span class="text-brandLightPink">✿</span> Promesa de calidad: Cuidamos cada detalle...</li>
+                        <li class="flex gap-2"><span class="text-brandLightPink">✿</span> Política de envío: Garantizamos la entrega segura...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación y Upsell -->
+    <div id="modal-confirmacion" class="fixed inset-0 z-[120] hidden items-center justify-center">
+        <div class="absolute inset-0 bg-black bg-opacity-60 transition-opacity" onclick="cerrarConfirmacion()"></div>
+        <div class="bg-white rounded-2xl shadow-2xl z-10 w-full max-w-[450px] p-6 md:p-8 relative transform transition-transform scale-95 opacity-0 flex flex-col" id="modal-confirmacion-content">
+            <button onclick="cerrarConfirmacion()" class="absolute top-4 right-4 text-gray-400 hover:text-brandDark">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <div class="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
+                <img id="conf-img" src="" class="w-16 h-16 object-cover rounded-lg shadow-sm border border-gray-100">
+                <div>
+                    <p class="text-sm font-semibold text-green-600 flex items-center gap-1">
+                        Agregaste al carrito <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                    </p>
+                    <h4 id="conf-nombre" class="font-medium text-sm text-brandDark leading-tight mt-1"></h4>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-semibold text-brandDark text-sm">Complementa tu regalo</h4>
+                </div>
+                
+                <!-- Carrusel de complementos con flechas -->
+                <div class="relative group">
+                    <button onclick="scrollComplementos('left')" class="absolute -left-3 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-brandFuchsia z-10 hidden group-hover:block transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    
+                    <div id="complementos-container" class="flex gap-3 overflow-x-auto no-scrollbar pb-2 scroll-smooth">
+                        <!-- Los complementos se inyectarán aquí -->
+                    </div>
+
+                    <button onclick="scrollComplementos('right')" class="absolute -right-3 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md text-gray-500 hover:text-brandFuchsia z-10 hidden group-hover:block transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mt-auto">
+                <button onclick="cerrarConfirmacion()" class="text-brandLightPink font-semibold text-sm hover:underline">Seguir explorando</button>
+                <button onclick="irAlCarrito()" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition-colors shadow-md">Ir al carrito</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

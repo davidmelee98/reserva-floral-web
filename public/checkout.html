@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | Reserva Floral</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
+                    colors: { brandFuchsia: '#c2185b', brandLightPink: '#e91e63', brandDark: '#353535', brandGray: '#f8f9fa' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brandGray font-sans text-brandDark antialiased min-h-screen flex flex-col">
+
+    <header class="bg-white border-b border-gray-200 py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center">
+            <a href="/" class="flex items-center gap-2 cursor-pointer text-brandFuchsia">
+                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+                <span class="font-semibold text-2xl tracking-wide">reservafloral</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            
+            <!-- Formulario Logístico -->
+            <div class="lg:col-span-7 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-2xl font-semibold mb-6">Datos de Entrega</h2>
+                <form id="form-checkout" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de quien recibe</label>
+                            <input type="text" id="cliente" required class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono de contacto</label>
+                            <input type="tel" id="telefono" required class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dirección completa</label>
+                        <input type="text" id="direccion" required placeholder="Calle, Número, Colonia, Código Postal" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Entrega</label>
+                        <input type="date" id="fecha" required class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje para la tarjeta (Opcional)</label>
+                        <textarea id="dedicatoria" rows="3" placeholder="Escribe unas palabras bonitas..." class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink"></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-bold py-4 rounded-xl transition-colors shadow-md text-lg mt-4">
+                        Confirmar y Pagar Pedido
+                    </button>
+                </form>
+            </div>
+
+            <!-- Resumen del Carrito -->
+            <div class="lg:col-span-5">
+                <div class="bg-gray-50 p-8 rounded-2xl border border-gray-200 sticky top-6">
+                    <h3 class="text-xl font-semibold mb-6">Resumen de tu pedido</h3>
+                    <div id="resumen-items" class="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2">
+                        <!-- Items cargados por JS -->
+                    </div>
+                    <div class="border-t border-gray-300 pt-4 flex justify-between items-center text-xl font-bold">
+                        <span>Total:</span>
+                        <span>$<span id="resumen-total">0.00</span></span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        let carrito = JSON.parse(localStorage.getItem('carritoRF')) || [];
+        let totalPedido = 0;
+
+        function formatearPrecio(valor) { return (Number(valor)||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+        function cargarResumen() {
+            totalPedido = 0;
+            const contenedor = document.getElementById('resumen-items');
+            contenedor.innerHTML = '';
+            if (carrito.length === 0) {
+                window.location.href = '/'; // Regresar si está vacío
+                return;
+            }
+
+            carrito.forEach(item => {
+                totalPedido += item.precio;
+                contenedor.innerHTML += `
+                    <div class="flex items-center gap-4 bg-white p-3 rounded-lg border border-gray-100">
+                        <img src="${item.imagen}" class="w-16 h-16 object-cover rounded-md">
+                        <div class="flex-1">
+                            <h4 class="font-medium text-sm text-brandDark">${item.nombre}</h4>
+                            <p class="text-brandLightPink font-bold mt-1">$${formatearPrecio(item.precio)}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('resumen-total').innerText = formatearPrecio(totalPedido);
+        }
+
+        const fechaInput = document.getElementById('fecha');
+        fechaInput.min = new Date().toISOString().split('T')[0];
+
+        document.getElementById('form-checkout').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const orden = {
+                cliente: document.getElementById('cliente').value,
+                telefono: document.getElementById('telefono').value,
+                direccion: document.getElementById('direccion').value,
+                fecha: document.getElementById('fecha').value,
+                total: totalPedido,
+                carrito: carrito
+            };
+
+            try {
+                const respuesta = await fetch('/api/ordenes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orden)
+                });
+
+                const datos = await respuesta.json().catch(() => ({}));
+
+                if (respuesta.ok) {
+                    alert(`¡Pedido generado con éxito! Folio #${datos.orden?.id || ''}\nNos pondremos en contacto contigo.`);
+                    localStorage.removeItem('carritoRF');
+                    window.location.href = '/';
+                } else {
+                    alert(datos.error || 'Hubo un error al procesar la orden.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('No fue posible conectar con el servidor. Intenta nuevamente.');
+            }
+        });
+
+        cargarResumen();
+    </script>
+</body>
+</html>
