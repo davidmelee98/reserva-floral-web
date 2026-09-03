@@ -39,38 +39,28 @@
         #items-carrito::-webkit-scrollbar-track { background: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* Tarjetas del carrusel "Complementa tu regalo" */
-        #complementos-container {
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior-x: contain;
-            touch-action: pan-x;
-        }
+
+        /* Complementos: texto completo y tarjetas estables en desktop/móvil */
         #complementos-container .rf-complemento-card {
-            flex: 0 0 132px;
-            width: 132px;
-            min-width: 132px;
-            touch-action: manipulation;
+            flex: 0 0 110px;
+            width: 110px;
+            min-width: 110px;
             -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-        #complementos-container .rf-complemento-card img {
-            pointer-events: none;
         }
         #complementos-container .rf-complemento-nombre {
             display: -webkit-box;
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 3;
             overflow: hidden;
-            min-height: 42px;
-            line-height: 14px;
+            min-height: 32px;
+            line-height: 1.15;
         }
-        @media (max-width: 767px) {
-            #complementos-container .rf-complemento-card {
-                flex-basis: 136px;
-                width: 136px;
-                min-width: 136px;
-            }
+        #modal-complemento {
+            z-index: 300 !important;
+            pointer-events: auto;
+        }
+        #modal-complemento-content {
+            pointer-events: auto;
         }
         
         /* Estilos para el Mega Menú */
@@ -1320,8 +1310,6 @@ body.rf-mobile-menu-open{overflow:hidden}
             abrirConfirmacion(nombre, imagen);
         }
 
-        let complementosSugeridosActuales = [];
-
         function abrirConfirmacion(nombre, imagen) {
             document.getElementById('conf-nombre').innerText = nombre;
             document.getElementById('conf-img').src = imagen;
@@ -1330,29 +1318,25 @@ body.rf-mobile-menu-open{overflow:hidden}
             const contenedorComp = document.getElementById('complementos-container');
             contenedorComp.innerHTML = '';
             
-            // Filtramos para no mostrar el producto actual y guardamos los objetos
-            // fuera del HTML. Así evitamos problemas de comillas/JSON en onclick
-            // y hacemos que cada tarjeta sea un botón real, especialmente en iPhone.
-            complementosSugeridosActuales = todosLosArreglos
-                .filter(a => a.nombre !== nombre)
-                .slice(0, 6);
-
-            if (complementosSugeridosActuales.length > 0) {
-                complementosSugeridosActuales.forEach((comp, index) => {
-                    const urlImagenComp = comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=200&q=80';
-                    const safeName = String(comp.nombre || 'Producto');
-                    const safeAria = safeName.replace(/"/g, '&quot;');
-                    contenedorComp.insertAdjacentHTML('beforeend', `
-                        <button type="button"
-                                class="rf-complemento-card border border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:border-brandFuchsia transition-colors flex flex-col justify-between group/comp focus:outline-none focus:ring-2 focus:ring-brandFuchsia/30"
-                                data-complemento-index="${index}"
-                                aria-label="Ver ${safeAria}">
-                            <img src="${urlImagenComp}" class="w-14 h-14 mx-auto object-cover rounded mb-2 shadow-sm group-hover/comp:scale-105 transition-transform" alt="">
+            // Filtramos para no mostrar el producto actual.
+            // Guardamos los objetos fuera del HTML y pasamos únicamente el índice
+            // al onclick. Así el primer clic funciona aunque el nombre/descripción
+            // tenga comillas, apóstrofes u otros caracteres especiales.
+            complementosSugeridosActuales = todosLosArreglos.filter(a => a.nombre !== nombre).slice(0, 6);
+            const complementos = complementosSugeridosActuales;
+            
+            if (complementos.length > 0) {
+                complementos.forEach((comp, index) => {
+                    const urlImagenComp = escaparHtml(comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=200&q=80');
+                    const safeName = escaparHtml(comp.nombre || 'Producto');
+                    contenedorComp.innerHTML += `
+                        <button type="button" onclick="abrirComplementoPorIndice(${index})" class="rf-complemento-card border border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:border-brandFuchsia transition-colors flex flex-col justify-between group/comp focus:outline-none">
+                            <img src="${urlImagenComp}" class="w-12 h-12 mx-auto object-cover rounded mb-2 shadow-sm group-hover/comp:scale-105 transition-transform" alt="${safeName}">
                             <span class="rf-complemento-nombre text-[11px] text-gray-700">${safeName}</span>
                             <span class="font-bold text-xs mt-1 text-brandDark">$${formatearPrecio(comp.precio)}</span>
                             <span class="text-[10px] font-bold text-brandLightPink mt-1 hover:underline hidden md:block">+ Detalle</span>
                         </button>
-                    `);
+                    `;
                 });
             } else {
                 contenedorComp.innerHTML = '<p class="text-xs text-gray-500">Agrega más productos a tu inventario para ver complementos aquí.</p>';
@@ -1371,74 +1355,24 @@ body.rf-mobile-menu-open{overflow:hidden}
             document.body.style.overflow = 'hidden';
         }
 
-        // Una sola ruta de interacción para las tarjetas sugeridas.
-        // pointerup resuelve el primer toque en móviles; click queda como
-        // respaldo para mouse/teclado y se suprime si ya atendimos ese toque.
-        (function configurarClicksComplementos() {
-            const container = document.getElementById('complementos-container');
-            if (!container) return;
+        // Productos sugeridos de la confirmación actual.
+        let complementosSugeridosActuales = [];
+        let complementoActual = null;
 
-            let ultimoToqueAtendido = 0;
-            let inicioX = 0;
-            let punteroActivo = false;
+        // Entrada segura desde la tarjeta: solo recibe un número, nunca JSON dentro
+        // del HTML. Esto evita que el clic se rompa por contenido del producto.
+        function abrirComplementoPorIndice(index) {
+            const comp = complementosSugeridosActuales[Number(index)];
+            if (!comp) return;
+            abrirComplemento(comp);
+        }
 
-            container.addEventListener('pointerdown', (event) => {
-                const card = event.target.closest('.rf-complemento-card');
-                if (!card) return;
-                inicioX = event.clientX;
-                punteroActivo = true;
-            }, { passive: true });
-
-            container.addEventListener('pointerup', (event) => {
-                const card = event.target.closest('.rf-complemento-card');
-                if (!card || event.pointerType !== 'touch' || !punteroActivo) return;
-                punteroActivo = false;
-
-                // Un movimiento horizontal es desplazamiento del carrusel, no selección.
-                if (Math.abs(event.clientX - inicioX) > 10) return;
-
-                const index = Number(card.dataset.complementoIndex);
-                const comp = complementosSugeridosActuales[index];
-                if (!comp) return;
-
-                event.preventDefault();
-                ultimoToqueAtendido = Date.now();
-                abrirComplemento(comp);
-            }, { passive: false });
-
-            container.addEventListener('pointercancel', () => {
-                punteroActivo = false;
-            }, { passive: true });
-
-            container.addEventListener('click', (event) => {
-                const card = event.target.closest('.rf-complemento-card');
-                if (!card) return;
-
-                // En touch, pointerup ya abrió el producto.
-                if (Date.now() - ultimoToqueAtendido < 700) {
-                    event.preventDefault();
-                    return;
-                }
-
-                const index = Number(card.dataset.complementoIndex);
-                const comp = complementosSugeridosActuales[index];
-                if (!comp) return;
-
-                event.preventDefault();
-                abrirComplemento(comp);
-            });
-        })();
-
-        // Abre el mismo recuadro visual de complemento que ya existía.
-        // Recibe el objeto directamente: no serializamos el producto dentro del
-        // HTML ni lo pasamos por decodeURIComponent, evitando errores con nombres,
-        // descripciones o caracteres especiales y haciendo que el primer toque funcione.
+        // Función que abre el recuadro visual original del complemento.
         function abrirComplemento(comp) {
-            if (!comp || typeof comp !== 'object') return;
-
+            if (!comp) return;
+            complementoActual = comp;
             const urlImagen = comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
-            const nombre = comp.nombre || 'Producto';
-
+            
             const nombreEl = document.getElementById('comp-modal-nombre');
             const precioEl = document.getElementById('comp-modal-precio');
             const descEl = document.getElementById('comp-modal-desc');
@@ -1448,46 +1382,39 @@ body.rf-mobile-menu-open{overflow:hidden}
             const modal = document.getElementById('modal-complemento');
             const content = document.getElementById('modal-complemento-content');
 
-            if (!modal || !content || !imgEl || !nombreEl || !precioEl || !descEl) return;
+            if (!modal || !content) return;
 
-            nombreEl.innerText = nombre;
-            precioEl.innerText = '$' + formatearPrecio(comp.precio);
-            descEl.innerText = comp.descripcion || 'Complemento perfecto para tu regalo.';
+            nombreEl.innerText = comp.nombre || 'Producto';
+            precioEl.innerText = "$" + formatearPrecio(comp.precio);
+            descEl.innerText = comp.descripcion || "Complemento perfecto para tu regalo.";
             imgEl.src = urlImagen;
-            imgEl.alt = nombre;
+            imgEl.alt = comp.nombre || 'Producto';
+            
+            detallesBtn.onclick = function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                abrirPanelDescripcionRF(comp, false);
+            };
 
-            if (detallesBtn) {
-                detallesBtn.onclick = (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    abrirPanelDescripcionRF(comp, false);
-                };
-            }
+            agregarBtn.onclick = function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                ejecutarConUbicacionRF(() => {
+                    agregarItemCarrito({ id: comp.id, nombre: comp.nombre, precio: comp.precio, imagen: urlImagen, variante: null });
+                    cerrarComplemento();
+                });
+            };
 
-            if (agregarBtn) {
-                agregarBtn.onclick = (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    ejecutarConUbicacionRF(() => {
-                        agregarItemCarrito({
-                            id: comp.id,
-                            nombre: nombre,
-                            precio: comp.precio,
-                            imagen: urlImagen,
-                            variante: null
-                        });
-                        cerrarComplemento();
-                    });
-                };
-            }
-
-            // Aseguramos el estado inicial de la animación cada vez que se abre.
+            // Abrimos de forma explícita para que no dependa del orden de las clases
+            // Tailwind (hidden/flex), tanto en escritorio como en iOS.
             content.classList.remove('scale-100', 'opacity-100');
             content.classList.add('scale-95', 'opacity-0');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            modal.style.zIndex = '230';
-
+            modal.style.display = 'flex';
+            modal.style.zIndex = '300';
+            document.body.appendChild(modal);
+            
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     content.classList.remove('scale-95', 'opacity-0');
@@ -1506,6 +1433,7 @@ body.rf-mobile-menu-open{overflow:hidden}
             setTimeout(() => {
                 modal.classList.remove('flex');
                 modal.classList.add('hidden');
+                modal.style.display = '';
             }, 300);
         }
 
