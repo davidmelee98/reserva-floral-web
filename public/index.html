@@ -179,6 +179,37 @@
 .rf-occasion-next{right:12px;}
 @media (max-width:767px){.rf-occasion-card{flex-basis:78vw;}.rf-occasion-arrow{width:40px;height:40px;}.rf-occasion-prev{left:8px;}.rf-occasion-next{right:8px;}}
 
+
+
+/* Menú de navegación móvil */
+.rf-mobile-menu-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.42);z-index:9998;opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease;}
+.rf-mobile-menu-backdrop.is-open{opacity:1;visibility:visible;}
+.rf-mobile-drawer{position:fixed;top:0;left:0;height:100dvh;width:min(88vw,390px);background:#fff;z-index:9999;transform:translateX(-105%);transition:transform .24s ease;box-shadow:14px 0 35px rgba(0,0,0,.15);overflow-y:auto;padding-bottom:28px;}
+.rf-mobile-drawer.is-open{transform:translateX(0);}
+.rf-mobile-drawer-head{position:sticky;top:0;z-index:2;background:#c2185b;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:18px 18px 16px;box-shadow:0 2px 10px rgba(0,0,0,.08);}
+.rf-mobile-drawer-title{font-size:18px;font-weight:600;letter-spacing:.2px;}
+.rf-mobile-close{width:38px;height:38px;border:0;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;cursor:pointer;}
+.rf-mobile-menu-body{padding:8px 14px 20px;}
+.rf-mobile-home-link{display:flex;align-items:center;justify-content:space-between;width:100%;padding:15px 8px;border-bottom:1px solid #eee;color:#353535;font-size:15px;font-weight:600;text-decoration:none;}
+.rf-mobile-group{border-bottom:1px solid #eee;}
+.rf-mobile-group summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:15px 8px;color:#353535;font-size:15px;font-weight:600;}
+.rf-mobile-group summary::-webkit-details-marker{display:none;}
+.rf-mobile-group summary::after{content:'+';font-size:22px;font-weight:400;color:#9ca3af;line-height:1;transition:transform .18s ease;color:#c2185b;}
+.rf-mobile-group[open] summary::after{content:'−';}
+.rf-mobile-group-content{padding:0 8px 14px 16px;}
+.rf-mobile-view-all{display:block;color:#c2185b;font-size:13px;font-weight:600;text-decoration:none;padding:2px 0 12px;}
+.rf-mobile-subgroup{margin:0 0 14px;}
+.rf-mobile-subgroup-title{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;font-weight:600;margin:0 0 7px;}
+.rf-mobile-subgroup a{display:block;padding:7px 0;color:#4b5563;font-size:14px;line-height:1.35;text-decoration:none;}
+.rf-mobile-subgroup a:hover{color:#c2185b;}
+.rf-mobile-trigger{display:none;}
+@media (max-width:767px){
+  .rf-mobile-trigger{display:flex;width:40px;height:40px;border:0;border-radius:999px;background:transparent;color:#fff;align-items:center;justify-content:center;cursor:pointer;flex:0 0 40px;}
+  .rf-mobile-trigger svg{width:25px;height:25px;}
+  .rf-mobile-trigger:active{background:rgba(255,255,255,.12);}
+}
+@media (min-width:768px){.rf-mobile-menu-backdrop,.rf-mobile-drawer{display:none!important;}}
+
 </style>
 </head>
 <body class="bg-white font-sans text-brandDark antialiased">
@@ -187,9 +218,13 @@
     <header class="bg-brandFuchsia text-white z-50 relative">
         <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
+                <!-- Menú móvil -->
+                <button type="button" id="rf-mobile-menu-trigger" class="rf-mobile-trigger md:hidden" onclick="abrirMobileMenuRF()" aria-label="Abrir menú de categorías" aria-controls="rf-mobile-drawer" aria-expanded="false">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
                 <!-- Logo -->
                 <div class="flex-shrink-0 flex items-center cursor-pointer" onclick="cargarInventario()">
-                    <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
+                    <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="rf-mobile-logo w-[190px] h-14 object-contain object-left" draggable="false">
                 </div>
                 
                 <!-- Buscador global -->
@@ -512,6 +547,98 @@
             </ul>
         </div>
     </nav>
+
+
+    <!-- Navegación móvil: mismas categorías y subcategorías del mega menú de escritorio -->
+    <div id="rf-mobile-menu-backdrop" class="rf-mobile-menu-backdrop" onclick="cerrarMobileMenuRF()" aria-hidden="true"></div>
+    <aside id="rf-mobile-drawer" class="rf-mobile-drawer" aria-hidden="true" aria-label="Menú de categorías">
+        <div class="rf-mobile-drawer-head">
+            <span class="rf-mobile-drawer-title">Menú</span>
+            <button type="button" class="rf-mobile-close" onclick="cerrarMobileMenuRF()" aria-label="Cerrar menú">×</button>
+        </div>
+        <div class="rf-mobile-menu-body">
+            <a href="/" class="rf-mobile-home-link" onclick="cerrarMobileMenuRF()">Inicio <span>›</span></a>
+
+            <details class="rf-mobile-group">
+                <summary>Cumpleaños</summary>
+                <div class="rf-mobile-group-content">
+                    <a href="/categoria/cumpleanos" class="rf-mobile-view-all" onclick="cerrarMobileMenuRF()">Ver todo Cumpleaños →</a>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Flores y Plantas</div>
+                        <a href="/categoria/flores-y-plantas">Todas las flores</a><a href="/categoria/flores-y-plantas/rosas">Rosas</a><a href="/categoria/flores-y-plantas/gerberas">Gerberas</a><a href="/categoria/flores-y-plantas/tulipanes-y-cala-lilies">Tulipanes</a><a href="/categoria/flores-y-plantas/orquideas">Orquídeas</a><a href="/categoria/flores-y-plantas/combinados">Combinados</a><a href="/categoria/flores-y-plantas/flores-premium">Premium</a><a href="/categoria/flores-y-plantas/plantas">Plantas</a>
+                    </div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Globos</div>
+                        <a href="/categoria/globos">Todos los globos</a><a href="/categoria/globos/para-ella">Globos Personalizados</a><a href="/categoria/globos/combos">Combos con globo</a>
+                    </div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Regalos</div>
+                        <a href="/categoria/regalos/joyeria">Joyería</a><a href="/categoria/regalos/osos">Peluches</a><a href="/categoria/regalos/sets-de-belleza">Belleza y Fragancias</a><a href="/categoria/regalos/velas-y-aromas">Velas</a><a href="/categoria/regalos/diarios-y-agendas">Diarios y Agendas</a>
+                    </div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Para quién</div>
+                        <a href="/categoria/regalos/para-ella">Para Ella</a><a href="/categoria/regalos/para-el">Para Él</a><a href="/categoria/regalos/para-mama">Para Mamá</a><a href="/categoria/regalos/para-papa">Para Papá</a>
+                    </div>
+                </div>
+            </details>
+
+            <details class="rf-mobile-group">
+                <summary>Ocasiones</summary>
+                <div class="rf-mobile-group-content">
+                    <a href="/categoria/ocasiones" class="rf-mobile-view-all" onclick="cerrarMobileMenuRF()">Ver todo Ocasiones →</a>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Celebraciones</div>
+                        <a href="/categoria/ocasiones/amor-aniversario">Amor/Aniversario</a><a href="/categoria/ocasiones/cumpleanos">Cumpleaños</a><a href="/categoria/ocasiones/gracias">Gracias</a><a href="/categoria/ocasiones/nacimiento">Nacimiento</a><a href="/categoria/ocasiones/graduacion">Graduación</a><a href="/categoria/ocasiones/logros">Logros</a><a href="/categoria/ocasiones/felicitaciones">Felicitaciones</a><a href="/categoria/ocasiones/solo-porque-si">Solo porque sí</a>
+                    </div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Condolencias</div>
+                        <a href="/categoria/ocasiones/servicios-funerarios">Servicios Funerarios</a><a href="/categoria/ocasiones/consuelo-en-casa">Consuelo en Casa</a>
+                    </div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Momentos Difíciles</div>
+                        <a href="/categoria/ocasiones/mejorate-pronto">Mejórate pronto</a><a href="/categoria/ocasiones/perdon">Perdón</a>
+                    </div>
+                </div>
+            </details>
+
+            <details class="rf-mobile-group">
+                <summary>Flores y plantas</summary>
+                <div class="rf-mobile-group-content">
+                    <a href="/categoria/flores-y-plantas" class="rf-mobile-view-all" onclick="cerrarMobileMenuRF()">Ver todo Flores y plantas →</a>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Flores</div>
+                        <a href="/categoria/flores-y-plantas/combinados">Combinados</a><a href="/categoria/flores-y-plantas/gerberas">Gerberas</a><a href="/categoria/flores-y-plantas/girasoles">Girasoles</a><a href="/categoria/flores-y-plantas/lilys-y-stargazer">Lilys y Stargazer</a><a href="/categoria/flores-y-plantas/orquideas">Orquídeas</a><a href="/categoria/flores-y-plantas/rosas">Rosas</a><a href="/categoria/flores-y-plantas/tulipanes-y-cala-lilies">Tulipanes y Cala Lilies</a>
+                    </div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Por presentación</div>
+                        <a href="/categoria/flores-y-plantas/ramos">Ramos</a><a href="/categoria/flores-y-plantas/jarron">Jarrón</a><a href="/categoria/flores-y-plantas/cajas">Cajas</a><a href="/categoria/flores-y-plantas/coronas-funerarias">Coronas Funerarias</a><a href="/categoria/flores-y-plantas/canecas">Caneas</a>
+                    </div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Premium</div><a href="/categoria/flores-y-plantas/flores-premium">Flores premium</a></div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Condolencias</div><a href="/categoria/flores-y-plantas/servicios-funerarios">Servicios Funerarios</a><a href="/categoria/flores-y-plantas/consuelo-en-casa">Consuelo en Casa</a></div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Plantas</div><a href="/categoria/flores-y-plantas/mini-plantas">Mini plantas</a><a href="/categoria/flores-y-plantas/plantas-medianas">Plantas medianas</a><a href="/categoria/flores-y-plantas/plantas-con-regalos">Plantas con regalos</a></div>
+                </div>
+            </details>
+
+            <details class="rf-mobile-group">
+                <summary>Globos</summary>
+                <div class="rf-mobile-group-content">
+                    <a href="/categoria/globos" class="rf-mobile-view-all" onclick="cerrarMobileMenuRF()">Ver todo Globos →</a>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Por ocasión</div>
+                        <a href="/categoria/globos/cumpleanos">Cumpleaños</a><a href="/categoria/globos/graduacion">Graduación</a><a href="/categoria/globos/nacimiento">Nacimiento</a><a href="/categoria/globos/just-because">Just Because</a><a href="/categoria/globos/mejorate-pronto">Mejórate Pronto</a>
+                    </div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Por Tipo</div>
+                        <a href="/categoria/globos/metalicos">Metálicos</a><a href="/categoria/globos/esfera">Esfera</a><a href="/categoria/globos/burbuja">Burbuja</a><a href="/categoria/globos/ramilletes">Ramilletes</a><a href="/categoria/globos/combos">Combos</a>
+                    </div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Para quién</div><a href="/categoria/globos/para-ella">Para ella</a><a href="/categoria/globos/para-el">Para Él</a></div>
+                </div>
+            </details>
+
+            <details class="rf-mobile-group">
+                <summary>Regalos</summary>
+                <div class="rf-mobile-group-content">
+                    <a href="/categoria/regalos" class="rf-mobile-view-all" onclick="cerrarMobileMenuRF()">Ver todo Regalos →</a>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Para quién</div><a href="/categoria/regalos/para-ella">Para Ella</a><a href="/categoria/regalos/para-el">Para Él</a><a href="/categoria/regalos/para-mama">Para Mamá</a><a href="/categoria/regalos/para-papa">Para Papá</a></div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Joyería</div><a href="/categoria/regalos/collares">Collares</a><a href="/categoria/regalos/pulseras">Pulseras</a><a href="/categoria/regalos/aretes">Aretes</a><a href="/categoria/regalos/sets">Sets</a><a href="/categoria/regalos/combos">Combos</a></div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Peluches</div><a href="/categoria/regalos/osos">Osos</a><a href="/categoria/regalos/otros-peluches">Otros Peluches</a><a href="/categoria/regalos/combos-de-peluches">Combos de peluches</a></div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Belleza y Fragancias</div><a href="/categoria/regalos/mascarillas">Mascarillas</a><a href="/categoria/regalos/cremas">Cremas</a><a href="/categoria/regalos/sets-de-belleza">Sets de Belleza</a><a href="/categoria/regalos/perfumes">Perfumes</a><a href="/categoria/regalos/combos">Combos</a></div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Velas</div><a href="/categoria/regalos/velas-y-aromas">Velas y Aromas</a></div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Regalos Corporativos</div><a href="/categoria/regalos/personalizados">Personalizados</a><a href="/categoria/regalos/flores-y-plantas">Flores y Plantas</a><a href="/categoria/regalos/cajas-de-regalo">Cajas de Regalo</a></div>
+                    <div class="rf-mobile-subgroup"><div class="rf-mobile-subgroup-title">Otros Regalos</div><a href="/categoria/regalos/diarios-y-agendas">Diarios y Agendas</a><a href="/categoria/regalos/certificados">Certificados</a></div>
+                </div>
+            </details>
+        </div>
+    </aside>
 
     <!-- Hero Banner con Buscador -->
     <div class="relative mb-10 sm:mb-16 md:mb-8">
@@ -2118,5 +2245,33 @@
         </div>
     </div>
 
+
+<script>
+function abrirMobileMenuRF(){
+  const drawer=document.getElementById('rf-mobile-drawer');
+  const backdrop=document.getElementById('rf-mobile-menu-backdrop');
+  const trigger=document.getElementById('rf-mobile-menu-trigger');
+  if(!drawer||!backdrop) return;
+  drawer.classList.add('is-open');
+  backdrop.classList.add('is-open');
+  drawer.setAttribute('aria-hidden','false');
+  backdrop.setAttribute('aria-hidden','false');
+  trigger?.setAttribute('aria-expanded','true');
+  document.body.classList.add('rf-mobile-menu-open');
+}
+function cerrarMobileMenuRF(){
+  const drawer=document.getElementById('rf-mobile-drawer');
+  const backdrop=document.getElementById('rf-mobile-menu-backdrop');
+  const trigger=document.getElementById('rf-mobile-menu-trigger');
+  if(!drawer||!backdrop) return;
+  drawer.classList.remove('is-open');
+  backdrop.classList.remove('is-open');
+  drawer.setAttribute('aria-hidden','true');
+  backdrop.setAttribute('aria-hidden','true');
+  trigger?.setAttribute('aria-expanded','false');
+  document.body.classList.remove('rf-mobile-menu-open');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrarMobileMenuRF();});
+</script>
 </body>
 </html>
