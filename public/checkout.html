@@ -43,6 +43,8 @@
         .co-radio.is-activo::after{ content:''; width:8px; height:8px; border-radius:999px; background:#c2185b; }
         #mapa-leaflet{ z-index:0; }
         .rf-map-pin{ filter:drop-shadow(0 3px 6px rgba(0,0,0,.35)); }
+        #tabs-mensajes{ scrollbar-width:none; -ms-overflow-style:none; }
+        #tabs-mensajes::-webkit-scrollbar{ display:none; }
         ::-webkit-scrollbar{ width:7px; height:7px; }
         ::-webkit-scrollbar-thumb{ background:#e2c2d0; border-radius:999px; }
     </style>
@@ -131,6 +133,7 @@
                                 <input type="text" id="p2-buscar" placeholder="Calle, colonia, ciudad..." class="co-input !pl-9" autocomplete="off">
                             </div>
                             <div id="p2-sugerencias" class="hidden absolute z-20 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-64 overflow-y-auto"></div>
+                            <p id="p2-aviso-incompleto" class="hidden text-[11px] text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-2"></p>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -335,7 +338,8 @@
                 </button>
             </div>
             <div id="opciones-mensajes" class="max-h-[280px] overflow-y-auto mt-2"></div>
-            <button type="button" onclick="confirmarMensajeElegido()" class="w-full mt-4 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Confirmar</button>
+            <p class="text-[11px] text-gray-400 mt-2">El texto entre comillas es lo que se escribirá en tu tarjeta.</p>
+            <button type="button" onclick="confirmarMensajeElegido()" class="w-full mt-3 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Confirmar</button>
         </div>
     </div>
 
@@ -503,20 +507,54 @@
     }
     window.mostrarSugerenciasDireccion = mostrarSugerenciasDireccion;
 
-    function seleccionarDireccion(i) {
+    async function seleccionarDireccion(i) {
         const r = window._sugerenciasDireccion[i];
         if (!r) return;
-        const addr = r.address || {};
+        const textoEscritoPorElUsuario = document.getElementById('p2-buscar').value;
         document.getElementById('p2-buscar').value = r.display_name;
-        document.getElementById('p2-calle').value = addr.road || '';
-        document.getElementById('p2-numero').value = addr.house_number || '';
-        document.getElementById('p2-colonia').value = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || '';
+        document.getElementById('p2-sugerencias').classList.add('hidden');
+        estado.direccion.lat = Number(r.lat);
+        estado.direccion.lng = Number(r.lon);
+
+        let addr = r.address || {};
+        // La búsqueda normal a veces regresa solo el tramo de la calle, sin el
+        // número exacto ni la colonia. Un geocoding inverso en ese mismo punto
+        // (con más zoom) suele traer más detalle, así que lo intentamos también
+        // y combinamos lo más completo de los dos resultados.
+        try {
+            const urlInversa = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=${r.lat}&lon=${r.lon}`;
+            const respuesta = await fetch(urlInversa, { headers: { 'Accept-Language': 'es' } });
+            const inversa = await respuesta.json();
+            if (inversa && inversa.address) {
+                addr = { ...addr, ...Object.fromEntries(Object.entries(inversa.address).filter(([, v]) => v)) };
+            }
+        } catch (error) { /* si falla el geocoding inverso, seguimos con lo que ya teníamos */ }
+
+        document.getElementById('p2-calle').value = addr.road || addr.pedestrian || addr.residential || '';
+
+        let numero = addr.house_number || '';
+        if (!numero) {
+            // Si ni la búsqueda ni el geocoding inverso trajeron número, lo
+            // tomamos de lo que la persona ya había escrito (ej. "López Rayón 304").
+            const coincidencia = textoEscritoPorElUsuario.match(/\b(\d{1,5})\b/);
+            if (coincidencia) numero = coincidencia[1];
+        }
+        document.getElementById('p2-numero').value = numero;
+        document.getElementById('p2-colonia').value = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || addr.residential || addr.hamlet || addr.borough || '';
         document.getElementById('p2-cp').value = addr.postcode || '';
         document.getElementById('p2-estado').value = addr.state || '';
         document.getElementById('p2-ciudad').value = addr.city || addr.town || addr.village || addr.municipality || '';
-        estado.direccion.lat = Number(r.lat);
-        estado.direccion.lng = Number(r.lon);
-        document.getElementById('p2-sugerencias').classList.add('hidden');
+
+        const faltantes = [];
+        if (!document.getElementById('p2-numero').value) faltantes.push('número');
+        if (!document.getElementById('p2-colonia').value) faltantes.push('colonia');
+        const avisoEl = document.getElementById('p2-aviso-incompleto');
+        if (faltantes.length) {
+            avisoEl.innerText = `No pudimos completar ${faltantes.join(' y ')} automáticamente -- complétalo${faltantes.length > 1 ? 's' : ''} a mano abajo.`;
+            avisoEl.classList.remove('hidden');
+        } else {
+            avisoEl.classList.add('hidden');
+        }
     }
     window.seleccionarDireccion = seleccionarDireccion;
 
@@ -761,8 +799,8 @@
             <div class="co-msg-opcion" onclick="elegirMensaje(${i})">
                 <span class="co-radio ${mensajeElegidoIndex === i ? 'is-activo' : ''}"></span>
                 <div>
-                    <p class="text-sm font-semibold text-brandDark">${escaparHtml(m.titulo)}</p>
-                    <p class="text-xs text-gray-500">${escaparHtml(m.texto)}</p>
+                    <p class="text-[10px] uppercase tracking-wide text-gray-400 font-medium">${escaparHtml(m.titulo)}</p>
+                    <p class="text-sm font-semibold text-brandDark leading-snug">"${escaparHtml(m.texto)}"</p>
                 </div>
             </div>
         `).join('');

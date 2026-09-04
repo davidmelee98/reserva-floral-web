@@ -1419,13 +1419,21 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             const items = Array.isArray(o.carrito) ? o.carrito : (typeof o.carrito === 'string' ? JSON.parse(o.carrito || '[]') : []);
             const itemsHtml = items.map(it => {
                 const cantidad = Math.max(1, Number(it.cantidad) || 1);
+                const imgTag = it.imagen
+                    ? `<img src="${escaparHtmlAdmin(it.imagen)}" onerror="this.style.visibility='hidden'" class="w-10 h-10 object-cover rounded-md border border-gray-200 bg-white">`
+                    : `<div class="w-10 h-10 rounded-md border border-gray-200 bg-white flex items-center justify-center text-gray-300 text-[8px]">Sin foto</div>`;
                 return `
-                <div class="flex justify-between text-xs text-gray-600 py-1">
-                    <span>${escaparHtmlAdmin(it.nombre)}${cantidad > 1 ? ` <span class="text-gray-400">x${cantidad}</span>` : ''}${it.variante ? ` <span class="text-gray-400">(${escaparHtmlAdmin(it.variante)})</span>` : ''}</span>
-                    <span class="font-medium">$${formatearPrecioAdmin(it.precio * cantidad)}</span>
-                </div>`;
+                <a href="/producto/${it.id}" target="_blank" class="flex items-center gap-3 py-1.5 hover:bg-white/70 -mx-1 px-1 rounded-lg transition">
+                    ${imgTag}
+                    <span class="flex-1 text-xs text-gray-600">${escaparHtmlAdmin(it.nombre)}${cantidad > 1 ? ` <span class="text-gray-400">x${cantidad}</span>` : ''}${it.variante ? ` <span class="text-gray-400">(${escaparHtmlAdmin(it.variante)})</span>` : ''}</span>
+                    <span class="text-xs font-medium text-brandDark shrink-0">$${formatearPrecioAdmin(it.precio * cantidad)}</span>
+                </a>`;
             }).join('');
             const colorEstado = ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500';
+            const iconoTipo = { Casa: '🏠', Hotel: '🛏️', Restaurante: '🍴', 'Capilla Funeral': '✝️', Oficinas: '🏢', Hospital: '🏥' }[o.tipo_domicilio] || '📍';
+            const tieneMapa = o.lat && o.lng;
+            const envio = Number(o.envio || 0);
+            const subtotal = Number(o.total || 0) - envio;
             return `
                 <div class="px-6 py-4">
                     <div class="flex flex-wrap items-start justify-between gap-3">
@@ -1434,13 +1442,17 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                                 <p class="font-semibold text-brandDark text-sm">${escaparHtmlAdmin(o.cliente_nombre)}</p>
                                 <span class="adm-badge ${colorEstado}">${escaparHtmlAdmin(o.estado || 'Pendiente')}</span>
                             </div>
-                            <p class="text-xs text-gray-500 mt-0.5">${escaparHtmlAdmin(o.cliente_telefono)} · Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">📍 ${escaparHtmlAdmin(o.direccion_entrega)}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">🚚 Entrega: ${formatearFechaAdmin(o.fecha_entrega)}</p>
-                            ${o.dedicatoria ? `<p class="text-xs text-gray-500 mt-0.5 italic">💌 "${escaparHtmlAdmin(o.dedicatoria)}"</p>` : ''}
+                            <p class="text-xs text-gray-500 mt-0.5">☎️ Contacto: ${escaparHtmlAdmin(o.cliente_telefono)}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''} · Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">${iconoTipo} ${escaparHtmlAdmin(o.direccion_entrega)}
+                                ${tieneMapa ? ` · <a href="https://www.openstreetmap.org/?mlat=${o.lat}&mlon=${o.lng}#map=18/${o.lat}/${o.lng}" target="_blank" class="text-brandFuchsia font-medium hover:underline">Ver ubicación en el mapa</a>` : ''}
+                            </p>
+                            ${o.notas_entrega ? `<p class="text-xs text-gray-400 mt-0.5">Notas: ${escaparHtmlAdmin(o.notas_entrega)}</p>` : ''}
+                            <p class="text-xs text-gray-500 mt-0.5">🚚 Entrega: ${formatearFechaAdmin(o.fecha_entrega)}${o.horario_entrega ? ` · ${escaparHtmlAdmin(o.horario_entrega)}` : ''}</p>
+                            ${o.dedicatoria ? `<p class="text-xs text-gray-500 mt-0.5 italic">💌 "${escaparHtmlAdmin(o.dedicatoria)}" ${o.es_anonimo ? '<span class="text-gray-400">(anónimo)</span>' : (o.firma ? `<span class="text-gray-400">— ${escaparHtmlAdmin(o.firma)}</span>` : '')}</p>` : ''}
                         </div>
                         <div class="text-right shrink-0">
                             <p class="text-lg font-bold text-brandDark">$${formatearPrecioAdmin(o.total)}</p>
+                            ${envio > 0 ? `<p class="text-[10px] text-gray-400">Subtotal $${formatearPrecioAdmin(subtotal)} + envío $${formatearPrecioAdmin(envio)}</p>` : ''}
                             <select class="adm-input !w-auto text-xs mt-1" onchange="cambiarEstadoPedido(${o.id}, this.value)">
                                 ${ESTADOS_PEDIDO.map(e => `<option value="${e}" ${e === o.estado ? 'selected' : ''}>${e}</option>`).join('')}
                             </select>
@@ -1448,7 +1460,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     </div>
                     <details class="mt-2">
                         <summary class="text-xs text-brandFuchsia font-medium cursor-pointer select-none">Ver ${items.length} artículo${items.length === 1 ? '' : 's'} del pedido</summary>
-                        <div class="mt-2 border border-gray-100 rounded-lg px-3 py-2 bg-gray-50">${itemsHtml}</div>
+                        <div class="mt-2 border border-gray-100 rounded-lg px-3 py-1 bg-gray-50">${itemsHtml}</div>
                     </details>
                 </div>`;
         }).join('');
