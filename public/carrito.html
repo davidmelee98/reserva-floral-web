@@ -1384,8 +1384,15 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
         }
 
-        function renderSugeridosCarrito() {
-            const cont = document.getElementById('carrito-sugeridos');
+        function agregarSugeridoDirectoAlCarrito(id) {
+            const p = todosLosArreglos.find(x => Number(x.id) === Number(id));
+            if (!p) return;
+            const urlImagen = (obtenerImagenes(p)[0]) || '';
+            agregarItemCarrito({ id: p.id, nombre: p.nombre, precio: Number(p.precio), imagen: urlImagen, variante: null });
+        }
+        window.agregarSugeridoDirectoAlCarrito = agregarSugeridoDirectoAlCarrito;
+
+        function renderSugeridosCarrito() {            const cont = document.getElementById('carrito-sugeridos');
             if (!cont) return;
             const idsEnCarrito = new Set(carrito.map(i => String(i.id)));
             const candidatos = todosLosArreglos.filter(p => !idsEnCarrito.has(String(p.id)));
@@ -1397,13 +1404,22 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             cont.innerHTML = lista.map(p => {
                 const urlImagen = (obtenerImagenes(p)[0]) || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=300&q=80';
                 const data = encodeURIComponent(JSON.stringify(p));
+                const tieneVariantes = obtenerVariantes(p).length > 0;
+                const accionMas = tieneVariantes
+                    ? `abrirProducto('${data}', '${urlImagen}')`
+                    : `agregarSugeridoDirectoAlCarrito(${p.id})`;
                 return `
-                    <div onclick="abrirProducto('${data}', '${urlImagen}')" class="shrink-0 w-[150px] cursor-pointer group">
-                        <div class="w-[150px] h-[150px] rounded-xl overflow-hidden bg-gray-100">
+                    <div class="shrink-0 w-[150px] group relative">
+                        <div onclick="abrirProducto('${data}', '${urlImagen}')" class="w-[150px] h-[150px] rounded-xl overflow-hidden bg-gray-100 cursor-pointer relative">
                             <img src="${urlImagen}" alt="${escaparHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=300&q=80'">
                         </div>
-                        <p class="text-xs text-brandDark font-medium mt-2 line-clamp-2 leading-tight">${escaparHtml(p.nombre)}</p>
-                        <p class="text-xs font-bold text-brandDark mt-0.5">$${formatearPrecio(p.precio)}<span class="text-[8px] align-top ml-0.5 font-medium">MXN</span></p>
+                        <button type="button" onclick="event.stopPropagation(); ${accionMas}" title="Agregar al carrito" aria-label="Agregar al carrito" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-white shadow-md flex items-center justify-center text-brandFuchsia hover:bg-brandFuchsia hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                        <div onclick="abrirProducto('${data}', '${urlImagen}')" class="cursor-pointer">
+                            <p class="text-xs text-brandDark font-medium mt-2 line-clamp-2 leading-tight">${escaparHtml(p.nombre)}</p>
+                            <p class="text-xs font-bold text-brandDark mt-0.5">$${formatearPrecio(p.precio)}<span class="text-[8px] align-top ml-0.5 font-medium">MXN</span></p>
+                        </div>
                     </div>
                 `;
             }).join('');

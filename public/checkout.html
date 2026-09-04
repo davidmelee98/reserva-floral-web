@@ -368,6 +368,7 @@
         dedicatoria: { sinMensaje: false, mensaje: '', anonimo: false, firma: '' }
     };
 
+    function quitarAcentos(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
     function escaparHtml(str) {
         return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
@@ -545,6 +546,30 @@
         document.getElementById('p2-estado').value = addr.state || '';
         document.getElementById('p2-ciudad').value = addr.city || addr.town || addr.village || addr.municipality || '';
 
+        if (!document.getElementById('p2-colonia').value) {
+            // OpenStreetMap a veces no trae la colonia en ninguna de las dos
+            // consultas (es una limitación conocida de sus datos en México).
+            // Último recurso: la persona normalmente ya la escribió en el
+            // buscador (ej. "López Rayón 304 Ampliación Unidad Nacional"), así
+            // que quitamos del texto lo que ya identificamos (calle, número,
+            // ciudad, estado) y usamos lo que sobra como colonia.
+            const palabrasConocidas = new Set(['calle', 'avenida', 'av', 'colonia', 'col', 'fraccionamiento', 'fracc']);
+            [document.getElementById('p2-calle').value, document.getElementById('p2-ciudad').value, document.getElementById('p2-estado').value]
+                .join(' ').split(/\s+/).forEach(palabra => {
+                    const norm = quitarAcentos(palabra).toLowerCase().replace(/[,.]/g, '');
+                    if (norm) palabrasConocidas.add(norm);
+                });
+            const restantes = textoEscritoPorElUsuario.split(/\s+/).filter(palabra => {
+                const norm = quitarAcentos(palabra).toLowerCase().replace(/[,.]/g, '');
+                if (!norm || /^\d+$/.test(norm)) return false;
+                return !palabrasConocidas.has(norm);
+            });
+            const resto = restantes.join(' ').trim();
+            if (resto.length > 3) {
+                document.getElementById('p2-colonia').value = resto.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+            }
+        }
+
         const faltantes = [];
         if (!document.getElementById('p2-numero').value) faltantes.push('número');
         if (!document.getElementById('p2-colonia').value) faltantes.push('colonia');
@@ -571,9 +596,12 @@
     window.validarYAbrirMapa = validarYAbrirMapa;
 
     // --- Mapa (Leaflet + OpenStreetMap; el pin usa el logo de Reserva Floral) ---
+    // iconoPinRF se crea DENTRO de abrirModalMapa (no aquí arriba) a propósito:
+    // si el CDN de Leaflet llegara a fallar o tardar, un error aquí arriba
+    // detendría la ejecución de TODO el script que sigue (pasos 3, 4 y 5,
+    // mensajes de ejemplo, etc.), no solo el mapa.
     let mapaLeaflet = null;
     let marcadorLeaflet = null;
-    const iconoPinRF = L.icon({ iconUrl: '/apple-touch-icon.png', iconSize: [44, 44], iconAnchor: [22, 44], popupAnchor: [0, -40], className: 'rf-map-pin' });
 
     function abrirModalMapa() {
         const modal = document.getElementById('modal-mapa');
@@ -581,15 +609,21 @@
         const lat = estado.direccion.lat || 19.4326;
         const lng = estado.direccion.lng || -99.1332;
         setTimeout(() => {
-            if (!mapaLeaflet) {
-                mapaLeaflet = L.map('mapa-leaflet').setView([lat, lng], 16);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(mapaLeaflet);
-                marcadorLeaflet = L.marker([lat, lng], { icon: iconoPinRF, draggable: true }).addTo(mapaLeaflet);
-            } else {
-                mapaLeaflet.setView([lat, lng], 16);
-                marcadorLeaflet.setLatLng([lat, lng]);
+            try {
+                if (!mapaLeaflet) {
+                    const iconoPinRF = L.icon({ iconUrl: '/apple-touch-icon.png', iconSize: [44, 44], iconAnchor: [22, 44], popupAnchor: [0, -40], className: 'rf-map-pin' });
+                    mapaLeaflet = L.map('mapa-leaflet').setView([lat, lng], 16);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(mapaLeaflet);
+                    marcadorLeaflet = L.marker([lat, lng], { icon: iconoPinRF, draggable: true }).addTo(mapaLeaflet);
+                } else {
+                    mapaLeaflet.setView([lat, lng], 16);
+                    marcadorLeaflet.setLatLng([lat, lng]);
+                }
+                mapaLeaflet.invalidateSize();
+            } catch (error) {
+                console.error('No se pudo cargar el mapa', error);
+                document.getElementById('mapa-leaflet').innerHTML = '<p class="text-sm text-gray-500 p-4 text-center">No se pudo cargar el mapa. Puedes continuar sin ajustar el pin.</p>';
             }
-            mapaLeaflet.invalidateSize();
         }, 60);
     }
     window.abrirModalMapa = abrirModalMapa;
@@ -733,10 +767,6 @@
             { titulo: 'Un año más', texto: 'Un año más de ser increíble. ¡Feliz cumpleaños!' },
             { titulo: 'Deseos', texto: 'Que se cumplan todos tus deseos hoy y siempre.' }
         ]},
-        { nombre: 'Signos', mensajes: [
-            { titulo: 'Brillas distinto', texto: 'Mereces todo lo bueno que se te viene. ¡Feliz cumpleaños!' },
-            { titulo: 'Escrito en las estrellas', texto: 'Este año viene lleno de cosas buenas para ti.' }
-        ]},
         { nombre: 'Condolencias', mensajes: [
             { titulo: 'Te acompañamos', texto: 'Nuestro cariño y apoyo están contigo en este momento.' },
             { titulo: 'Con cariño', texto: 'Que encuentres consuelo en los buenos recuerdos.' },
@@ -854,9 +884,23 @@
             });
             const datos = await respuesta.json().catch(() => ({}));
             if (respuesta.ok) {
+                const resumenPedido = {
+                    id: datos.orden?.id || '',
+                    telefono: estado.telefono,
+                    destinatario: estado.destinatario.nombre,
+                    direccion: estado.direccion.textoCompleto,
+                    fecha: estado.entrega.fecha,
+                    horario: estado.entrega.horario,
+                    dedicatoria: estado.dedicatoria.sinMensaje ? '' : estado.dedicatoria.mensaje,
+                    firma: estado.dedicatoria.anonimo ? '' : estado.dedicatoria.firma,
+                    items: carrito,
+                    subtotal: subtotalCarrito(),
+                    envio: ENVIO_FIJO,
+                    total: subtotalCarrito() + ENVIO_FIJO
+                };
+                sessionStorage.setItem('rf_ultimo_pedido', JSON.stringify(resumenPedido));
                 localStorage.removeItem('carritoRF');
-                mostrarToast(`¡Pedido #${datos.orden?.id || ''} generado con éxito!`);
-                setTimeout(() => { window.location.href = '/'; }, 1600);
+                window.location.href = '/gracias.html';
             } else {
                 mostrarToast(datos.error || 'Hubo un error al procesar la orden.', 'error');
                 btn.disabled = false; btn.classList.remove('opacity-60'); btn.innerText = 'Completar compra';

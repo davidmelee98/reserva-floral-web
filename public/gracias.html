@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Gracias por tu compra! | Reserva Floral</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
+                    colors: { brandFuchsia: '#c2185b', brandLightPink: '#e91e63', brandDark: '#353535', brandGray: '#f8f9fa' }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes graciasPop{ 0%{transform:scale(.5); opacity:0;} 70%{transform:scale(1.08); opacity:1;} 100%{transform:scale(1);} }
+        .gracias-icono{ animation: graciasPop .5s cubic-bezier(.2,.9,.3,1.3) both; }
+    </style>
+</head>
+<body class="bg-brandGray font-sans text-brandDark antialiased min-h-screen flex flex-col">
+
+    <header class="bg-brandFuchsia text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-center h-16">
+                <a href="/" class="flex items-center">
+                    <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[170px] h-12 object-contain" draggable="false">
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-2xl mx-auto px-4 sm:px-6 py-12 w-full">
+
+        <div id="contenido-gracias">
+            <!-- Se llena por JS -->
+        </div>
+
+        <div id="contenido-sin-pedido" class="hidden text-center py-16">
+            <p class="text-lg font-semibold text-brandDark">No encontramos los detalles de un pedido reciente.</p>
+            <p class="text-sm text-gray-500 mt-1">Si acabas de comprar, revisa tu WhatsApp o llámanos para confirmar tu pedido.</p>
+            <a href="/" class="inline-block mt-6 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-3 rounded-full text-sm transition">Volver al inicio</a>
+        </div>
+
+    </main>
+
+<script>
+    function escaparHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function formatearPrecio(valor) { return (Number(valor) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function formatearFechaLarga(valor) {
+        if (!valor) return '';
+        const d = new Date(valor + 'T00:00:00');
+        return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, c => c.toUpperCase());
+    }
+
+    const raw = sessionStorage.getItem('rf_ultimo_pedido');
+    if (!raw) {
+        document.getElementById('contenido-sin-pedido').classList.remove('hidden');
+    } else {
+        let pedido;
+        try { pedido = JSON.parse(raw); } catch (e) { pedido = null; }
+        if (!pedido) {
+            document.getElementById('contenido-sin-pedido').classList.remove('hidden');
+        } else {
+            const itemsHtml = (pedido.items || []).map(item => {
+                const cantidad = Math.max(1, Number(item.cantidad) || 1);
+                return `
+                    <div class="flex items-center gap-3 py-3">
+                        <img src="${escaparHtml(item.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm text-brandDark truncate">${escaparHtml(item.nombre)}</p>
+                            <p class="text-xs text-gray-500">Cantidad: ${cantidad}</p>
+                        </div>
+                        <p class="font-semibold text-sm text-brandDark shrink-0">$${formatearPrecio(item.precio * cantidad)}</p>
+                    </div>`;
+            }).join('');
+
+            document.getElementById('contenido-gracias').innerHTML = `
+                <div class="text-center mb-8">
+                    <div class="gracias-icono w-16 h-16 rounded-full bg-green-50 text-green-500 flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    <h1 class="text-2xl font-semibold text-brandDark">¡Gracias por tu compra!</h1>
+                    <p class="text-sm text-gray-500 mt-1">Tu pedido <strong class="text-brandDark">#${escaparHtml(pedido.id)}</strong> fue registrado correctamente.</p>
+                    <p class="text-sm text-gray-500 mt-1">Nos pondremos en contacto al <strong class="text-brandDark">${escaparHtml(pedido.telefono)}</strong> para confirmar tu pedido y el pago.</p>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-4">
+                    <h2 class="font-semibold text-brandDark mb-3">Detalles de entrega</h2>
+                    <div class="space-y-1 text-sm text-gray-600">
+                        <p><strong class="text-brandDark">${escaparHtml(pedido.destinatario)}</strong></p>
+                        <p>${escaparHtml(pedido.direccion)}</p>
+                        <p>${formatearFechaLarga(pedido.fecha)}${pedido.horario ? ' · ' + escaparHtml(pedido.horario) : ''}</p>
+                        ${pedido.dedicatoria ? `<p class="italic mt-2">💌 "${escaparHtml(pedido.dedicatoria)}"${pedido.firma ? ` — ${escaparHtml(pedido.firma)}` : ''}</p>` : ''}
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-8">
+                    <h2 class="font-semibold text-brandDark mb-1">Tu pedido</h2>
+                    <div class="divide-y divide-gray-100">${itemsHtml}</div>
+                    <div class="flex justify-between text-sm text-gray-600 pt-3 mt-1 border-t border-gray-100">
+                        <span>Subtotal</span><span>$${formatearPrecio(pedido.subtotal)}</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-600 mt-1">
+                        <span>Envío</span><span>$${formatearPrecio(pedido.envio)}</span>
+                    </div>
+                    <div class="flex justify-between text-base font-bold text-brandDark pt-2 mt-1 border-t border-gray-100">
+                        <span>Total</span><span>$${formatearPrecio(pedido.total)}</span>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <a href="/" class="inline-block bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-8 py-3 rounded-full text-sm transition shadow-md">Volver al inicio</a>
+                </div>
+            `;
+            sessionStorage.removeItem('rf_ultimo_pedido');
+        }
+    }
+</script>
+</body>
+</html>
