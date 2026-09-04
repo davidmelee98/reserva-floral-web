@@ -42,6 +42,31 @@ const sql = `
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS usuarios_admin (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    rol VARCHAR(30) NOT NULL DEFAULT 'editor',
+    activo BOOLEAN DEFAULT true,
+    ultimo_acceso TIMESTAMP,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS zonas_cobertura (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) UNIQUE NOT NULL,
+    etiqueta VARCHAR(100) NOT NULL,
+    activa BOOLEAN DEFAULT true,
+    orden INTEGER DEFAULT 0,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS configuracion (
+    clave VARCHAR(100) PRIMARY KEY,
+    valor TEXT
+  );
+
   ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS imagenes TEXT;
   ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS especificaciones TEXT;
   ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS opcion_foto BOOLEAN DEFAULT false;
@@ -56,11 +81,23 @@ const sql = `
   ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS carrito JSONB NOT NULL DEFAULT '[]'::jsonb;
 `;
 
+const zonasIniciales = [
+  ['Tampico', 'Tampico', 1],
+  ['Madero', 'Cd. Madero', 2],
+  ['Altamira', 'Altamira', 3],
+  ['Monterrey', 'Monterrey', 4],
+  ['CDMX', 'CDMX', 5]
+];
+
 (async () => {
   try {
     console.log('Conectando a PostgreSQL...');
     await pool.query(sql);
+    for (const [nombre, etiqueta, orden] of zonasIniciales) {
+      await pool.query('INSERT INTO zonas_cobertura (nombre, etiqueta, orden) VALUES ($1,$2,$3) ON CONFLICT (nombre) DO NOTHING', [nombre, etiqueta, orden]);
+    }
     console.log('Base de datos lista. No se insertaron productos de prueba.');
+    console.log('Nota: la cuenta del panel de administración se crea desde /admin.html la primera vez que lo abras.');
   } catch (error) {
     console.error('Error al estructurar la base de datos:', error);
     process.exitCode = 1;

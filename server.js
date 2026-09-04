@@ -1,19 +1,19 @@
 require('dotenv').config();
 
+const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { Pool } = require('pg');
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
+const multer = require('multer');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Las páginas de producto usan el mismo cascarón de la tienda; el frontend carga el ID desde la URL.
-app.get('/producto/:id', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
 
 if (!process.env.DATABASE_URL) {
   console.error('Falta DATABASE_URL en las variables de entorno.');
@@ -22,6 +22,67 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+// ---------------------------------------------------------------------------
+// Sesiones (guardadas en PostgreSQL para que sobrevivan reinicios del server).
+// ---------------------------------------------------------------------------
+const pgSession = require('connect-pg-simple')(session);
+let sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  sessionSecret = crypto.randomBytes(32).toString('hex');
+  console.warn('⚠️  No hay SESSION_SECRET en las variables de entorno. Se generó uno temporal: ' +
+    'las sesiones activas se cerrarán cada vez que el servidor reinicie. Agrega SESSION_SECRET a tu .env para evitarlo.');
+}
+app.use(session({
+  store: new pgSession({ pool, tableName: 'sesiones_admin', createTableIfMissing: true }),
+  secret: sessionSecret,
+  name: 'rf_admin_sid',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
+    httpOnly: true,
+    sameSite: 'lax'
+    // 'secure' se deja apagado por compatibilidad -- actívalo (true) en cuanto
+    // confirmes que el sitio corre siempre bajo HTTPS.
+  }
+}));
+
+// ---------------------------------------------------------------------------
+// Subida de imágenes (se guardan en /public/uploads y se sirven como estáticas)
+// ---------------------------------------------------------------------------
+const CARPETA_SUBIDAS = path.join(__dirname, 'public', 'uploads');
+fs.mkdirSync(CARPETA_SUBIDAS, { recursive: true });
+
+const storageSubidas = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, CARPETA_SUBIDAS),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '') || '.jpg';
+    const nombre = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
+    cb(null, nombre);
+  }
+});
+const TIPOS_IMAGEN_VALIDOS = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
+const subirImagen = multer({
+  storage: storageSubidas,
+  limits: { fileSize: 6 * 1024 * 1024 }, // 6MB
+  fileFilter: (req, file, cb) => {
+    if (!TIPOS_IMAGEN_VALIDOS.has(file.mimetype)) {
+      return cb(new Error('Formato de imagen no permitido. Usa JPG, PNG, WEBP, GIF o AVIF.'));
+    }
+    cb(null, true);
+  }
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Las páginas de producto usan el mismo cascarón de la tienda; el frontend carga el ID desde la URL.
+app.get('/producto/:id', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ---------------------------------------------------------------------------
+// Esquema de base de datos
+// ---------------------------------------------------------------------------
 const columnasProducto = `
   nombre VARCHAR(255) NOT NULL,
   descripcion TEXT,
@@ -60,6 +121,31 @@ async function inicializarDB() {
       estado VARCHAR(50) DEFAULT 'Pendiente',
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS usuarios_admin (
+      id SERIAL PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL,
+      email VARCHAR(150) UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      rol VARCHAR(30) NOT NULL DEFAULT 'editor',
+      activo BOOLEAN DEFAULT true,
+      ultimo_acceso TIMESTAMP,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS zonas_cobertura (
+      id SERIAL PRIMARY KEY,
+      nombre VARCHAR(100) UNIQUE NOT NULL,
+      etiqueta VARCHAR(100) NOT NULL,
+      activa BOOLEAN DEFAULT true,
+      orden INTEGER DEFAULT 0,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS configuracion (
+      clave VARCHAR(100) PRIMARY KEY,
+      valor TEXT
+    );
   `);
 
   // Compatibilidad con instalaciones anteriores de la base de datos.
@@ -82,8 +168,279 @@ async function inicializarDB() {
     await pool.query(query);
   }
 
+  // Semilla de zonas de cobertura: mismas ciudades que ya se usaban a mano en
+  // el panel, para que los productos existentes (cuyo campo "cobertura" ya
+  // trae estos valores) no se queden huérfanos.
+  const zonasExistentes = await pool.query('SELECT COUNT(*)::int AS n FROM zonas_cobertura');
+  if (zonasExistentes.rows[0].n === 0) {
+    const zonasIniciales = [
+      ['Tampico', 'Tampico', 1],
+      ['Madero', 'Cd. Madero', 2],
+      ['Altamira', 'Altamira', 3],
+      ['Monterrey', 'Monterrey', 4],
+      ['CDMX', 'CDMX', 5]
+    ];
+    for (const [nombre, etiqueta, orden] of zonasIniciales) {
+      await pool.query('INSERT INTO zonas_cobertura (nombre, etiqueta, orden) VALUES ($1,$2,$3) ON CONFLICT (nombre) DO NOTHING', [nombre, etiqueta, orden]);
+    }
+  }
+
   console.log('Base de datos lista.');
 }
+
+// ---------------------------------------------------------------------------
+// Auth: middlewares y utilidades
+// ---------------------------------------------------------------------------
+const intentosLogin = new Map(); // email -> { fallos, bloqueadoHasta }
+const LIMITE_INTENTOS = 6;
+const BLOQUEO_MS = 15 * 60 * 1000;
+
+function registrarIntentoFallido(email) {
+  const clave = email.toLowerCase();
+  const registro = intentosLogin.get(clave) || { fallos: 0, bloqueadoHasta: 0 };
+  registro.fallos += 1;
+  if (registro.fallos >= LIMITE_INTENTOS) {
+    registro.bloqueadoHasta = Date.now() + BLOQUEO_MS;
+  }
+  intentosLogin.set(clave, registro);
+}
+function limpiarIntentos(email) {
+  intentosLogin.delete(email.toLowerCase());
+}
+function estaBloqueado(email) {
+  const registro = intentosLogin.get(email.toLowerCase());
+  if (!registro) return false;
+  if (registro.bloqueadoHasta && registro.bloqueadoHasta > Date.now()) return true;
+  if (registro.bloqueadoHasta && registro.bloqueadoHasta <= Date.now()) {
+    intentosLogin.delete(email.toLowerCase());
+    return false;
+  }
+  return false;
+}
+
+function requireAuth(req, res, next) {
+  if (req.session && req.session.usuarioId) return next();
+  res.status(401).json({ error: 'Debes iniciar sesión.' });
+}
+function requireAdmin(req, res, next) {
+  if (req.session && req.session.usuarioId && req.session.rol === 'admin') return next();
+  res.status(403).json({ error: 'Esta acción requiere permisos de administrador.' });
+}
+
+function usuarioPublico(row) {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    email: row.email,
+    rol: row.rol,
+    activo: row.activo,
+    ultimo_acceso: row.ultimo_acceso,
+    creado_en: row.creado_en
+  };
+}
+
+// --- Estado de sesión / primer arranque ---
+app.get('/api/admin/auth/estado', async (req, res) => {
+  try {
+    const conteo = await pool.query('SELECT COUNT(*)::int AS n FROM usuarios_admin');
+    const requiereConfiguracionInicial = conteo.rows[0].n === 0;
+    if (req.session && req.session.usuarioId) {
+      return res.json({
+        autenticado: true,
+        requiereConfiguracionInicial: false,
+        usuario: { id: req.session.usuarioId, nombre: req.session.nombre, email: req.session.email, rol: req.session.rol }
+      });
+    }
+    res.json({ autenticado: false, requiereConfiguracionInicial });
+  } catch (error) {
+    console.error('GET /api/admin/auth/estado:', error);
+    res.status(500).json({ error: 'No se pudo verificar la sesión.' });
+  }
+});
+
+// --- Crear la primera cuenta de administrador (solo si no existe ninguna) ---
+app.post('/api/admin/auth/configurar-inicial', async (req, res) => {
+  const { nombre, email, password } = req.body || {};
+  if (!nombre?.trim() || !email?.trim() || !password || password.length < 8) {
+    return res.status(400).json({ error: 'Nombre, correo y una contraseña de al menos 8 caracteres son obligatorios.' });
+  }
+  try {
+    const conteo = await pool.query('SELECT COUNT(*)::int AS n FROM usuarios_admin');
+    if (conteo.rows[0].n > 0) {
+      return res.status(409).json({ error: 'Ya existe una cuenta de administrador. Inicia sesión normalmente.' });
+    }
+    const hash = await bcrypt.hash(password, 12);
+    const resultado = await pool.query(
+      `INSERT INTO usuarios_admin (nombre, email, password_hash, rol, activo, ultimo_acceso)
+       VALUES ($1,$2,$3,'admin',true,CURRENT_TIMESTAMP) RETURNING *`,
+      [nombre.trim(), email.trim().toLowerCase(), hash]
+    );
+    const usuario = resultado.rows[0];
+    req.session.usuarioId = usuario.id;
+    req.session.nombre = usuario.nombre;
+    req.session.email = usuario.email;
+    req.session.rol = usuario.rol;
+    res.status(201).json({ usuario: usuarioPublico(usuario) });
+  } catch (error) {
+    console.error('POST /api/admin/auth/configurar-inicial:', error);
+    res.status(500).json({ error: 'No se pudo crear la cuenta de administrador.' });
+  }
+});
+
+// --- Login / logout ---
+app.post('/api/admin/auth/login', async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email?.trim() || !password) {
+    return res.status(400).json({ error: 'Ingresa tu correo y contraseña.' });
+  }
+  if (estaBloqueado(email)) {
+    return res.status(429).json({ error: 'Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo.' });
+  }
+  try {
+    const resultado = await pool.query('SELECT * FROM usuarios_admin WHERE lower(email) = lower($1)', [email.trim()]);
+    const usuario = resultado.rows[0];
+    if (!usuario || !usuario.activo) {
+      registrarIntentoFallido(email);
+      return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
+    }
+    const coincide = await bcrypt.compare(password, usuario.password_hash);
+    if (!coincide) {
+      registrarIntentoFallido(email);
+      return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
+    }
+    limpiarIntentos(email);
+    await pool.query('UPDATE usuarios_admin SET ultimo_acceso = CURRENT_TIMESTAMP WHERE id = $1', [usuario.id]);
+    req.session.regenerate((err) => {
+      if (err) {
+        console.error('Error regenerando sesión:', err);
+        return res.status(500).json({ error: 'No se pudo iniciar sesión.' });
+      }
+      req.session.usuarioId = usuario.id;
+      req.session.nombre = usuario.nombre;
+      req.session.email = usuario.email;
+      req.session.rol = usuario.rol;
+      res.json({ usuario: usuarioPublico(usuario) });
+    });
+  } catch (error) {
+    console.error('POST /api/admin/auth/login:', error);
+    res.status(500).json({ error: 'Error del servidor al iniciar sesión.' });
+  }
+});
+
+app.post('/api/admin/auth/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie('rf_admin_sid');
+    res.json({ exito: true });
+  });
+});
+
+app.patch('/api/admin/perfil/password', requireAuth, async (req, res) => {
+  const { passwordActual, passwordNueva } = req.body || {};
+  if (!passwordActual || !passwordNueva || passwordNueva.length < 8) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+  }
+  try {
+    const resultado = await pool.query('SELECT * FROM usuarios_admin WHERE id = $1', [req.session.usuarioId]);
+    const usuario = resultado.rows[0];
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado.' });
+    const coincide = await bcrypt.compare(passwordActual, usuario.password_hash);
+    if (!coincide) return res.status(401).json({ error: 'Tu contraseña actual no es correcta.' });
+    const hash = await bcrypt.hash(passwordNueva, 12);
+    await pool.query('UPDATE usuarios_admin SET password_hash = $1 WHERE id = $2', [hash, usuario.id]);
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('PATCH /api/admin/perfil/password:', error);
+    res.status(500).json({ error: 'No se pudo actualizar la contraseña.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Equipo (usuarios del panel) -- solo administradores
+// ---------------------------------------------------------------------------
+app.get('/api/admin/usuarios', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM usuarios_admin ORDER BY id ASC');
+    res.json(resultado.rows.map(usuarioPublico));
+  } catch (error) {
+    console.error('GET /api/admin/usuarios:', error);
+    res.status(500).json({ error: 'Error al cargar el equipo.' });
+  }
+});
+
+app.post('/api/admin/usuarios', requireAuth, requireAdmin, async (req, res) => {
+  const { nombre, email, password, rol } = req.body || {};
+  if (!nombre?.trim() || !email?.trim() || !password || password.length < 8) {
+    return res.status(400).json({ error: 'Nombre, correo y una contraseña de al menos 8 caracteres son obligatorios.' });
+  }
+  const rolFinal = rol === 'admin' ? 'admin' : 'editor';
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    const resultado = await pool.query(
+      `INSERT INTO usuarios_admin (nombre, email, password_hash, rol) VALUES ($1,$2,$3,$4) RETURNING *`,
+      [nombre.trim(), email.trim().toLowerCase(), hash, rolFinal]
+    );
+    res.status(201).json(usuarioPublico(resultado.rows[0]));
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'Ya existe una cuenta con ese correo.' });
+    }
+    console.error('POST /api/admin/usuarios:', error);
+    res.status(500).json({ error: 'No se pudo crear el usuario.' });
+  }
+});
+
+app.patch('/api/admin/usuarios/:id', requireAuth, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+
+  const campos = [];
+  const valores = [];
+  let i = 1;
+
+  if (typeof req.body.nombre === 'string' && req.body.nombre.trim()) { campos.push(`nombre=$${i++}`); valores.push(req.body.nombre.trim()); }
+  if (req.body.rol === 'admin' || req.body.rol === 'editor') { campos.push(`rol=$${i++}`); valores.push(req.body.rol); }
+  if (typeof req.body.activo === 'boolean') {
+    if (id === req.session.usuarioId && req.body.activo === false) {
+      return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta.' });
+    }
+    campos.push(`activo=$${i++}`); valores.push(req.body.activo);
+  }
+  if (typeof req.body.password === 'string' && req.body.password) {
+    if (req.body.password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
+    const hash = await bcrypt.hash(req.body.password, 12);
+    campos.push(`password_hash=$${i++}`); valores.push(hash);
+  }
+  if (campos.length === 0) return res.status(400).json({ error: 'No hay cambios para guardar.' });
+
+  valores.push(id);
+  try {
+    const resultado = await pool.query(`UPDATE usuarios_admin SET ${campos.join(', ')} WHERE id=$${i} RETURNING *`, valores);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
+    res.json(usuarioPublico(resultado.rows[0]));
+  } catch (error) {
+    console.error('PATCH /api/admin/usuarios/:id:', error);
+    res.status(500).json({ error: 'No se pudo actualizar el usuario.' });
+  }
+});
+
+app.delete('/api/admin/usuarios/:id', requireAuth, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  if (id === req.session.usuarioId) return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta.' });
+  try {
+    const admins = await pool.query(`SELECT COUNT(*)::int AS n FROM usuarios_admin WHERE rol='admin' AND activo=true`);
+    const objetivo = await pool.query('SELECT * FROM usuarios_admin WHERE id=$1', [id]);
+    if (objetivo.rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
+    if (objetivo.rows[0].rol === 'admin' && objetivo.rows[0].activo && admins.rows[0].n <= 1) {
+      return res.status(400).json({ error: 'Debe quedar al menos un administrador activo.' });
+    }
+    await pool.query('DELETE FROM usuarios_admin WHERE id=$1', [id]);
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/usuarios/:id:', error);
+    res.status(500).json({ error: 'No se pudo eliminar el usuario.' });
+  }
+});
 
 function productoValido(body) {
   const precio = Number(body.precio);
@@ -122,22 +479,29 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// API: Obtener catálogo disponible.
-// El panel de administración pasa ?todos=1 para ver también los productos
-// marcados como no disponibles (agotados) -- la tienda nunca manda ese parámetro,
-// así que su comportamiento no cambia.
+// API: Obtener catálogo disponible (pública, la usa la tienda).
 app.get('/api/catalogo', async (req, res) => {
-  const verTodos = req.query.todos === '1' || req.query.todos === 'true';
   try {
     const result = await pool.query(`
       SELECT *
       FROM arreglos_florales
-      ${verTodos ? '' : 'WHERE COALESCE(disponible, true) = true'}
+      WHERE COALESCE(disponible, true) = true
       ORDER BY id DESC
     `);
     res.json(result.rows);
   } catch (error) {
     console.error('GET /api/catalogo:', error);
+    res.status(500).json({ error: 'Error del servidor al cargar el catálogo.' });
+  }
+});
+
+// API: catálogo completo para el panel (incluye ocultos/agotados). Requiere sesión.
+app.get('/api/admin/catalogo', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM arreglos_florales ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('GET /api/admin/catalogo:', error);
     res.status(500).json({ error: 'Error del servidor al cargar el catálogo.' });
   }
 });
@@ -158,8 +522,8 @@ app.get('/api/catalogo/:id', async (req, res) => {
   }
 });
 
-// API: Crear producto.
-app.post('/api/catalogo', async (req, res) => {
+// API: Crear producto. Requiere sesión.
+app.post('/api/catalogo', requireAuth, async (req, res) => {
   if (!productoValido(req.body)) {
     return res.status(400).json({ error: 'Nombre y precio válido son obligatorios.' });
   }
@@ -183,8 +547,8 @@ app.post('/api/catalogo', async (req, res) => {
   }
 });
 
-// API: Editar producto.
-app.put('/api/catalogo/:id', async (req, res) => {
+// API: Editar producto. Requiere sesión.
+app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
   if (!productoValido(req.body)) {
     return res.status(400).json({ error: 'Nombre y precio válido son obligatorios.' });
   }
@@ -218,8 +582,8 @@ app.put('/api/catalogo/:id', async (req, res) => {
   }
 });
 
-// API: Eliminar producto.
-app.delete('/api/catalogo/:id', async (req, res) => {
+// API: Eliminar producto. Requiere sesión.
+app.delete('/api/catalogo/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: 'ID de producto inválido.' });
@@ -235,6 +599,17 @@ app.delete('/api/catalogo/:id', async (req, res) => {
     console.error('DELETE /api/catalogo/:id:', error);
     res.status(500).json({ error: 'Error al eliminar el producto.' });
   }
+});
+
+// API: Subir imagen (para el formulario del panel). Requiere sesión.
+app.post('/api/admin/subir-imagen', requireAuth, (req, res) => {
+  subirImagen.single('imagen')(req, res, (error) => {
+    if (error) {
+      return res.status(400).json({ error: error.message || 'No se pudo subir la imagen.' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No se recibió ningún archivo.' });
+    res.status(201).json({ url: `/uploads/${req.file.filename}` });
+  });
 });
 
 // API: Crear pedido.
@@ -303,12 +678,12 @@ app.get('/categoria/*splat', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'categoria.html'));
 });
 
-// --- Panel de administración: pedidos ---
-// No hay sistema de autenticación todavía (ver nota en README/entrega); estas
-// rutas quedan abiertas igual que las de /api/catalogo que ya existían.
+// ---------------------------------------------------------------------------
+// Panel de administración: pedidos
+// ---------------------------------------------------------------------------
 const ESTADOS_ORDEN_VALIDOS = ['Pendiente', 'Confirmado', 'En preparación', 'En camino', 'Entregado', 'Cancelado'];
 
-app.get('/api/admin/ordenes', async (req, res) => {
+app.get('/api/admin/ordenes', requireAuth, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM ordenes ORDER BY id DESC');
     res.json(result.rows);
@@ -318,7 +693,7 @@ app.get('/api/admin/ordenes', async (req, res) => {
   }
 });
 
-app.patch('/api/admin/ordenes/:id/estado', async (req, res) => {
+app.patch('/api/admin/ordenes/:id/estado', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: 'ID de pedido inválido.' });
@@ -336,6 +711,256 @@ app.patch('/api/admin/ordenes/:id/estado', async (req, res) => {
   } catch (error) {
     console.error('PATCH /api/admin/ordenes/:id/estado:', error);
     res.status(500).json({ error: 'Error al actualizar el pedido.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Panel de administración: dashboard
+// ---------------------------------------------------------------------------
+app.get('/api/admin/dashboard', requireAuth, async (req, res) => {
+  try {
+    const [productos, ordenesRecientes, stockBajo] = await Promise.all([
+      pool.query('SELECT id, disponible, stock, categoria FROM arreglos_florales'),
+      pool.query('SELECT * FROM ordenes ORDER BY id DESC LIMIT 400'),
+      pool.query(`SELECT id, nombre, stock FROM arreglos_florales WHERE COALESCE(disponible,true)=true AND COALESCE(stock,1) <= 2 ORDER BY stock ASC LIMIT 10`)
+    ]);
+
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const inicioSemana = new Date(hoy); inicioSemana.setDate(hoy.getDate() - 6);
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+
+    const ordenesActivas = ordenesRecientes.rows.filter(o => o.estado !== 'Cancelado');
+    const sumaEnRango = (desde) => ordenesActivas
+      .filter(o => new Date(o.creado_en) >= desde)
+      .reduce((s, o) => s + Number(o.total || 0), 0);
+    const contarEnRango = (desde) => ordenesActivas.filter(o => new Date(o.creado_en) >= desde).length;
+
+    const conteoProductos = {};
+    for (const orden of ordenesActivas) {
+      const items = Array.isArray(orden.carrito) ? orden.carrito : [];
+      for (const item of items) {
+        const clave = item.nombre || 'Producto';
+        conteoProductos[clave] = (conteoProductos[clave] || 0) + 1;
+      }
+    }
+    const productosPopulares = Object.entries(conteoProductos)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([nombre, cantidad]) => ({ nombre, cantidad }));
+
+    res.json({
+      productos: {
+        total: productos.rows.length,
+        disponibles: productos.rows.filter(p => p.disponible !== false).length,
+        agotados: productos.rows.filter(p => p.disponible === false).length,
+        categorias: new Set(productos.rows.map(p => p.categoria).filter(Boolean)).size
+      },
+      pedidos: {
+        hoy: contarEnRango(hoy),
+        semana: contarEnRango(inicioSemana),
+        pendientes: ordenesRecientes.rows.filter(o => o.estado === 'Pendiente').length,
+        totalHistorico: ordenesRecientes.rows.length
+      },
+      ingresos: {
+        hoy: sumaEnRango(hoy),
+        semana: sumaEnRango(inicioSemana),
+        mes: sumaEnRango(inicioMes)
+      },
+      productosPopulares,
+      stockBajo: stockBajo.rows,
+      ultimosPedidos: ordenesRecientes.rows.slice(0, 6)
+    });
+  } catch (error) {
+    console.error('GET /api/admin/dashboard:', error);
+    res.status(500).json({ error: 'No se pudo cargar el dashboard.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Panel de administración: finanzas
+// ---------------------------------------------------------------------------
+app.get('/api/admin/finanzas', requireAuth, async (req, res) => {
+  const dias = Math.min(Math.max(Number(req.query.dias) || 30, 7), 180);
+  try {
+    const serieDiaria = await pool.query(`
+      SELECT DATE(creado_en) AS fecha, COALESCE(SUM(total),0) AS total, COUNT(*)::int AS pedidos
+      FROM ordenes
+      WHERE estado != 'Cancelado' AND creado_en >= NOW() - INTERVAL '${dias} days'
+      GROUP BY DATE(creado_en)
+      ORDER BY fecha ASC
+    `);
+
+    const todas = await pool.query(`SELECT * FROM ordenes WHERE creado_en >= NOW() - INTERVAL '${dias} days'`);
+    const activas = todas.rows.filter(o => o.estado !== 'Cancelado');
+    const canceladas = todas.rows.length - activas.length;
+
+    const ingresoPorProducto = {};
+    for (const orden of activas) {
+      const items = Array.isArray(orden.carrito) ? orden.carrito : [];
+      for (const item of items) {
+        const clave = item.nombre || 'Producto';
+        if (!ingresoPorProducto[clave]) ingresoPorProducto[clave] = { nombre: clave, unidades: 0, ingresos: 0 };
+        ingresoPorProducto[clave].unidades += 1;
+        ingresoPorProducto[clave].ingresos += Number(item.precio || 0);
+      }
+    }
+    const topProductos = Object.values(ingresoPorProducto).sort((a, b) => b.ingresos - a.ingresos).slice(0, 8);
+
+    const ingresosTotales = activas.reduce((s, o) => s + Number(o.total || 0), 0);
+    const ticketPromedio = activas.length ? ingresosTotales / activas.length : 0;
+
+    const porEstado = {};
+    for (const o of todas.rows) porEstado[o.estado || 'Pendiente'] = (porEstado[o.estado || 'Pendiente'] || 0) + 1;
+
+    res.json({
+      rango_dias: dias,
+      resumen: {
+        ingresosTotales,
+        pedidosTotales: todas.rows.length,
+        pedidosCancelados: canceladas,
+        ticketPromedio
+      },
+      serieDiaria: serieDiaria.rows,
+      topProductos,
+      porEstado
+    });
+  } catch (error) {
+    console.error('GET /api/admin/finanzas:', error);
+    res.status(500).json({ error: 'No se pudo cargar la información financiera.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Panel de administración: clientes (derivados de los pedidos)
+// ---------------------------------------------------------------------------
+app.get('/api/admin/clientes', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT
+        cliente_telefono AS telefono,
+        (array_agg(cliente_nombre ORDER BY creado_en DESC))[1] AS nombre,
+        (array_agg(direccion_entrega ORDER BY creado_en DESC))[1] AS ultima_direccion,
+        COUNT(*)::int AS pedidos,
+        COALESCE(SUM(total) FILTER (WHERE estado != 'Cancelado'), 0) AS total_gastado,
+        MAX(creado_en) AS ultimo_pedido,
+        MIN(creado_en) AS primer_pedido
+      FROM ordenes
+      GROUP BY cliente_telefono
+      ORDER BY total_gastado DESC
+    `);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/admin/clientes:', error);
+    res.status(500).json({ error: 'No se pudo cargar la lista de clientes.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Panel de administración: zonas de cobertura (envíos)
+// ---------------------------------------------------------------------------
+app.get('/api/zonas', async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT nombre, etiqueta FROM zonas_cobertura WHERE activa=true ORDER BY orden ASC, etiqueta ASC');
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/zonas:', error);
+    res.status(500).json({ error: 'No se pudieron cargar las zonas.' });
+  }
+});
+
+app.get('/api/admin/zonas', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM zonas_cobertura ORDER BY orden ASC, etiqueta ASC');
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/admin/zonas:', error);
+    res.status(500).json({ error: 'No se pudieron cargar las zonas.' });
+  }
+});
+
+app.post('/api/admin/zonas', requireAuth, async (req, res) => {
+  const { nombre, etiqueta, orden } = req.body || {};
+  if (!nombre?.trim() || !etiqueta?.trim()) {
+    return res.status(400).json({ error: 'El nombre y la etiqueta son obligatorios.' });
+  }
+  try {
+    const resultado = await pool.query(
+      'INSERT INTO zonas_cobertura (nombre, etiqueta, orden) VALUES ($1,$2,$3) RETURNING *',
+      [nombre.trim(), etiqueta.trim(), Number.isFinite(Number(orden)) ? Number(orden) : 0]
+    );
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una zona con ese nombre.' });
+    console.error('POST /api/admin/zonas:', error);
+    res.status(500).json({ error: 'No se pudo crear la zona.' });
+  }
+});
+
+app.patch('/api/admin/zonas/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  const campos = []; const valores = []; let i = 1;
+  if (typeof req.body.etiqueta === 'string' && req.body.etiqueta.trim()) { campos.push(`etiqueta=$${i++}`); valores.push(req.body.etiqueta.trim()); }
+  if (typeof req.body.activa === 'boolean') { campos.push(`activa=$${i++}`); valores.push(req.body.activa); }
+  if (Number.isFinite(Number(req.body.orden))) { campos.push(`orden=$${i++}`); valores.push(Number(req.body.orden)); }
+  if (campos.length === 0) return res.status(400).json({ error: 'No hay cambios para guardar.' });
+  valores.push(id);
+  try {
+    const resultado = await pool.query(`UPDATE zonas_cobertura SET ${campos.join(', ')} WHERE id=$${i} RETURNING *`, valores);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Zona no encontrada.' });
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    console.error('PATCH /api/admin/zonas/:id:', error);
+    res.status(500).json({ error: 'No se pudo actualizar la zona.' });
+  }
+});
+
+app.delete('/api/admin/zonas/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const resultado = await pool.query('DELETE FROM zonas_cobertura WHERE id=$1', [id]);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Zona no encontrada.' });
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/zonas/:id:', error);
+    res.status(500).json({ error: 'No se pudo eliminar la zona.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Panel de administración: configuración general de la tienda
+// ---------------------------------------------------------------------------
+app.get('/api/admin/configuracion', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT clave, valor FROM configuracion');
+    const config = {};
+    for (const fila of resultado.rows) config[fila.clave] = fila.valor;
+    res.json(config);
+  } catch (error) {
+    console.error('GET /api/admin/configuracion:', error);
+    res.status(500).json({ error: 'No se pudo cargar la configuración.' });
+  }
+});
+
+app.put('/api/admin/configuracion', requireAuth, requireAdmin, async (req, res) => {
+  const entradas = Object.entries(req.body || {}).filter(([clave]) => typeof clave === 'string' && clave.trim());
+  if (entradas.length === 0) return res.status(400).json({ error: 'No hay valores para guardar.' });
+  try {
+    for (const [clave, valor] of entradas) {
+      await pool.query(
+        `INSERT INTO configuracion (clave, valor) VALUES ($1,$2)
+         ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`,
+        [clave.trim(), valor === null || valor === undefined ? null : String(valor)]
+      );
+    }
+    const resultado = await pool.query('SELECT clave, valor FROM configuracion');
+    const config = {};
+    for (const fila of resultado.rows) config[fila.clave] = fila.valor;
+    res.json(config);
+  } catch (error) {
+    console.error('PUT /api/admin/configuracion:', error);
+    res.status(500).json({ error: 'No se pudo guardar la configuración.' });
   }
 });
 
