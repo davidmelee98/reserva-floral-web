@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reserva Floral | Envío de Flores a Domicilio</title>
+    <title>Carrito | Reserva Floral</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
@@ -909,175 +909,67 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         </div>
     </nav>
 
-    <!-- Hero Banner con Buscador -->
-    <div class="relative mb-10 sm:mb-16 md:mb-8">
-        <div class="h-[320px] sm:h-[380px] md:h-[450px] w-full relative">
-            <img class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd?q=80&w=1920&auto=format&fit=crop" alt="Persona con flores">
-            <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-                <h1 class="text-4xl sm:text-5xl md:text-7xl text-white font-serif tracking-wide shadow-sm">Solo envía...</h1>
-            </div>
-        </div>
+    <!-- Página de Carrito -->
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-2xl md:text-3xl font-semibold text-brandDark mb-6">Carrito</h1>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
-        <!-- Buscador de Envíos: se superpone a la imagen usando un margen negativo
-             (en vez de position:absolute + translate), así su tamaño se ajusta solo
-             sin importar cuántas filas ocupe el formulario en cada pantalla. -->
-        <div class="relative z-10 px-4 sm:px-6 -mt-12 sm:-mt-16 md:-mt-20 md:flex md:justify-center">
-            <div class="w-full md:w-11/12 max-w-5xl mx-auto bg-white rounded-xl shadow-xl p-4 sm:p-6 border border-gray-100">
-                <h3 class="text-lg font-semibold mb-4">¿A dónde quieres enviar?</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                    <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="estado">
-                        <label class="block text-[10px] text-gray-500 uppercase">Estado</label>
-                        <button type="button" class="rf-home-trigger" id="home-estado-trigger" aria-expanded="false">Estado<span class="rf-home-chevron"></span></button>
-                        <div id="home-estado-menu" class="rf-home-menu hidden">
-                            <button type="button" class="rf-home-option" data-value="Ciudad de México">Ciudad de México</button>
-                            <button type="button" class="rf-home-option" data-value="Tamaulipas">Tamaulipas</button>
-                            <button type="button" class="rf-home-option" data-value="Nuevo León">Nuevo León</button>
-                        </div>
+            <!-- Columna izquierda: artículos + sugerencias -->
+            <div class="lg:col-span-2">
+                <div id="carrito-pagina-items" class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 px-4 sm:px-6"></div>
+
+                <div class="mt-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-semibold text-brandDark">Agrega un detalle</h2>
+                        <a href="/categoria/regalos" class="text-sm text-brandFuchsia font-medium hover:underline">Ver más</a>
                     </div>
-                    <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="ciudad">
-                        <label class="block text-[10px] text-gray-500 uppercase">Ciudad / Municipio</label>
-                        <button type="button" class="rf-home-trigger" id="home-ciudad-trigger" aria-expanded="false" disabled>Ciudad<span class="rf-home-chevron"></span></button>
-                        <div id="home-ciudad-menu" class="rf-home-menu hidden"></div>
-                    </div>
-                    <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="fecha">
-                        <label class="block text-[10px] text-gray-500 uppercase">Fecha de entrega</label>
-                        <button type="button" class="rf-home-trigger" id="home-fecha-trigger" aria-expanded="false" disabled>Fecha de entrega<span class="rf-home-chevron"></span></button>
-                        <div id="home-fecha-menu" class="rf-home-menu rf-home-date-menu hidden">
-                            <button type="button" class="rf-home-option" data-value="hoy">Hoy</button>
-                            <button type="button" class="rf-home-option" data-value="manana">Mañana</button>
-                            <button type="button" class="rf-home-option" data-value="otro">Otro día</button>
-                            <div id="home-otra-fecha-wrap" class="rf-home-date-wrap hidden">
-                                <div class="rf-home-date-title">Selecciona la fecha</div>
-                                <input id="home-otra-fecha" type="date" class="rf-home-date-input">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-span-1 sm:col-span-2 md:col-span-1">
-                        <button type="button" onclick="confirmarSelectorHomeRF()" class="w-full h-full py-3 md:py-0 bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold rounded-lg transition-colors">
-                            Ver regalos
+                    <div id="carrito-sugeridos" class="flex gap-4 overflow-x-auto no-scrollbar pb-2 scroll-smooth"></div>
+                </div>
+            </div>
+
+            <!-- Columna derecha: ubicación + resumen -->
+            <div class="space-y-4 lg:sticky lg:top-24">
+                <div class="bg-white rounded-2xl border border-gray-100 p-5">
+                    <h3 class="font-semibold text-brandDark mb-3">Enviar a:</h3>
+                    <div class="grid grid-cols-1 gap-3">
+                        <button type="button" onclick="abrirSelectorUbicacionDesdeCarrito()" class="border border-gray-300 rounded-lg p-3 flex items-center gap-2 text-left cursor-pointer hover:border-brandFuchsia transition-colors">
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21s7-6.1 7-11a7 7 0 10-14 0c0 4.9 7 11 7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+                            <span id="carrito-ciudad-seleccionada" class="text-sm text-gray-600 truncate">Selecciona tu ciudad</span>
+                        </button>
+                        <button type="button" onclick="abrirSelectorUbicacionDesdeCarrito()" class="border border-gray-300 rounded-lg p-3 flex items-center gap-2 text-left cursor-pointer hover:border-brandFuchsia transition-colors">
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3v4M17 3v4M3 10h18"></path></svg>
+                            <span id="carrito-fecha-seleccionada" class="text-sm text-gray-600 truncate">Selecciona fecha de entrega</span>
                         </button>
                     </div>
+                    <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Podrás elegir el horario de entrega al pagar.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-gray-100 p-5">
+                    <div class="flex items-center justify-between text-sm text-brandDark opacity-60">
+                        <span class="flex items-center gap-2 font-medium">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v3a2 2 0 01-2 2 2 2 0 012 2v3a2 2 0 002 2h2m6-14h2a2 2 0 012 2v3a2 2 0 002 2 2 2 0 00-2 2v3a2 2 0 01-2 2h-2" /></svg>
+                            Cupón de descuento
+                        </span>
+                        <span class="text-gray-400 font-medium text-xs">Próximamente</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-gray-100 p-5">
+                    <h3 class="font-semibold text-brandDark mb-3">Resumen del pedido</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between text-gray-600"><span>Subtotal</span><span id="carrito-pagina-subtotal" class="font-medium text-brandDark">$0.00</span></div>
+                        <div class="flex justify-between text-gray-600"><span>Envío</span><span class="text-gray-500 text-xs">Al ingresar la dirección</span></div>
+                        <div class="flex justify-between text-base font-bold text-brandDark pt-2 border-t border-gray-100 mt-1"><span>Total</span><span id="carrito-pagina-total">$0.00</span></div>
+                    </div>
+                    <button onclick="procesarPago()" class="w-full mt-4 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full transition-colors shadow-md">Continuar con la compra</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Carrusel de productos por categoría -->
-    <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-12">
-        <div class="rf-trending-heading">
-            <h2 id="titulo-catalogo">Flores y regalos en tendencia</h2>
-        </div>
-
-        <div class="rf-trending-tabs" role="tablist" aria-label="Categorías de productos">
-            <button type="button" class="rf-trending-tab is-active" data-filter="best" role="tab" aria-selected="true">Más vendidos</button>
-            <button type="button" class="rf-trending-tab" data-filter="flores" role="tab" aria-selected="false">Flores</button>
-            <button type="button" class="rf-trending-tab" data-filter="globos" role="tab" aria-selected="false">Globos</button>
-            <button type="button" class="rf-trending-tab" data-filter="regalos" role="tab" aria-selected="false">Regalos</button>
-            <button type="button" class="rf-trending-tab" data-filter="plantas" role="tab" aria-selected="false">Plantas</button>
-            <button type="button" class="rf-trending-tab" data-filter="joyeria" role="tab" aria-selected="false">Joyería</button>
-            <button type="button" class="rf-trending-tab" data-filter="premium" role="tab" aria-selected="false">Línea Premium</button>
-            <button type="button" class="rf-trending-tab" data-filter="desde249" role="tab" aria-selected="false">Desde $249</button>
-        </div>
-
-        <div class="rf-favorites-carousel-wrap rf-trending-products-wrap">
-            <button type="button" class="rf-favorite-arrow rf-favorite-prev" aria-label="Ver productos anteriores">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <div id="contenedor-arreglos" class="rf-favorites-track"></div>
-            <button type="button" class="rf-favorite-arrow rf-favorite-next" aria-label="Ver más productos">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-        </div>
-    </main>
-
-
-
-    <!-- Categorías Principales -->
-    <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" aria-label="Categorías destacadas">
-        <div class="text-center py-8">
-            <h2 class="text-2xl md:text-3xl font-semibold text-brandDark">Entregas el mismo día, de lunes a domingo, a todo México</h2>
-        </div>
-
-        <div class="rf-category-carousel-wrap">
-            <button type="button" class="rf-category-arrow rf-category-prev" aria-label="Ver categorías anteriores">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-
-            <div class="rf-category-track" id="rf-category-track">
-                <a href="/categoria/flores-y-plantas" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1591886960571-74d43a9d4166?q=80&w=900&auto=format&fit=crop" alt="Flores" loading="lazy">
-                    <span>Flores</span>
-                </a>
-                <a href="/categoria/globos" class="rf-category-card group">
-                    <img src="https://img.flowers.ua/images/Flowers/ext/1908_1.jpg" alt="Globos" loading="lazy">
-                    <span>Globos</span>
-                </a>
-                <a href="/categoria/regalos" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=900&auto=format&fit=crop" alt="Regalos" loading="lazy">
-                    <span>Regalos</span>
-                </a>
-                <a href="/categoria/flores-y-plantas/plantas" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=900&auto=format&fit=crop" alt="Plantas" loading="lazy">
-                    <span>Plantas</span>
-                </a>
-                <a href="/categoria/regalos/joyeria" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=900&auto=format&fit=crop" alt="Joyería" loading="lazy">
-                    <span>Joyería</span>
-                </a>
-                <a href="/categoria/flores-y-plantas/flores-premium" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=900&auto=format&fit=crop" alt="Línea Premium" loading="lazy">
-                    <span>Línea Premium</span>
-                </a>
-                <a href="/categoria/desde-249" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=900&auto=format&fit=crop" alt="Desde $249" loading="lazy">
-                    <span>Desde $249</span>
-                </a>
-            </div>
-
-            <button type="button" class="rf-category-arrow rf-category-next" aria-label="Ver más categorías">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-        </div>
-    </section>
-
-
-    <!-- Ocasiones -->
-    <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" aria-label="Ocasiones">
-        <div class="text-center py-8">
-            <h2 class="text-2xl md:text-3xl font-semibold text-brandDark">Ocasiones</h2>
-        </div>
-
-        <div class="rf-occasion-carousel-wrap">
-            <button type="button" class="rf-occasion-arrow rf-occasion-prev" aria-label="Ver ocasiones anteriores">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-
-            <div class="rf-occasion-track" id="rf-occasion-track">
-                <a href="/categoria/ocasiones/cumpleanos" class="rf-occasion-card rf-occasion-link" aria-label="Cumpleaños">
-                    <img src="/ocasiones/cumpleanos.jpg" alt="Cumpleaños" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/amor-aniversario" class="rf-occasion-card rf-occasion-link" aria-label="Amor y Aniversario">
-                    <img src="/ocasiones/amor-aniversario.jpg" alt="Amor/Aniversario" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/condolencias" class="rf-occasion-card rf-occasion-link" aria-label="Condolencias">
-                    <img src="/ocasiones/condolencias.jpg" alt="Condolencias" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/gracias" class="rf-occasion-card rf-occasion-link" aria-label="Gracias">
-                    <img src="/ocasiones/gracias.jpg" alt="Gracias" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/bride-to-be" class="rf-occasion-card rf-occasion-link" aria-label="Bride to be">
-                    <img src="/ocasiones/bride-to-be.jpg" alt="Bride to be" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/mejorate-pronto" class="rf-occasion-card rf-occasion-link" aria-label="Mejórate pronto">
-                    <img src="/ocasiones/mejorate-pronto.jpg" alt="Mejórate pronto" loading="lazy">
-                </a>
-            </div>
-
-            <button type="button" class="rf-occasion-arrow rf-occasion-next" aria-label="Ver más ocasiones">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-        </div>
-    </section>
 
 
     <!-- Botón Flotante WhatsApp -->
@@ -1175,7 +1067,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             <div class="flex justify-between items-center text-sm font-bold text-brandDark mb-4">
                 <p>Total</p><p>$<span id="total-carrito">0.00</span><span class="text-[8px] align-top ml-0.5 font-medium">MXN</span></p>
             </div>
-            <button onclick="window.location.href='/carrito.html'" class="w-full bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold py-3 rounded-full transition-colors text-sm shadow-sm">
+            <button onclick="procesarPago()" class="w-full bg-brandLightPink hover:bg-brandFuchsia text-white font-semibold py-3 rounded-full transition-colors text-sm shadow-sm">
                 Ir al carrito (<span id="contador-carrito-boton">0</span>)
             </button>
         </div>
@@ -1464,6 +1356,57 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             // Mantiene abierto el producto detrás del selector para que, al confirmar,
             // el usuario vuelva directamente al mismo producto con los datos actualizados.
             abrirModalUbicacion(() => actualizarUbicacionProductoRF());
+        }
+
+        // --- Mismos patrones, para la página de carrito completa (/carrito.html) ---
+        function actualizarUbicacionCarritoRF() {
+            const ciudad = document.getElementById('carrito-ciudad-seleccionada');
+            const fecha = document.getElementById('carrito-fecha-seleccionada');
+            if (!ciudad || !fecha) return;
+            const datos = obtenerUbicacionGuardadaRF();
+            ciudad.innerText = datos?.ciudad || 'Selecciona tu ciudad';
+            fecha.innerText = datos?.fecha ? formatearFechaProductoRF(datos.fecha) : 'Selecciona fecha de entrega';
+        }
+        function abrirSelectorUbicacionDesdeCarrito() {
+            abrirModalUbicacion(() => actualizarUbicacionCarritoRF());
+        }
+
+        async function cargarInventarioParaCarrito() {
+            // Versión ligera de cargarInventario() solo para esta página: no toca el
+            // grid de "favoritos" del inicio (aquí no existe), solo llena
+            // todosLosArreglos para armar "Agrega un detalle".
+            try {
+                const respuesta = await fetch('/api/catalogo');
+                todosLosArreglos = await respuesta.json();
+                renderSugeridosCarrito();
+            } catch (error) {
+                console.error('Error cargando catálogo para sugerencias del carrito', error);
+            }
+        }
+
+        function renderSugeridosCarrito() {
+            const cont = document.getElementById('carrito-sugeridos');
+            if (!cont) return;
+            const idsEnCarrito = new Set(carrito.map(i => String(i.id)));
+            const candidatos = todosLosArreglos.filter(p => !idsEnCarrito.has(String(p.id)));
+            const lista = [...candidatos].sort(() => Math.random() - 0.5).slice(0, 12);
+            if (lista.length === 0) {
+                cont.innerHTML = '<p class="text-sm text-gray-400 py-4">No hay más sugerencias por ahora.</p>';
+                return;
+            }
+            cont.innerHTML = lista.map(p => {
+                const urlImagen = (obtenerImagenes(p)[0]) || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=300&q=80';
+                const data = encodeURIComponent(JSON.stringify(p));
+                return `
+                    <div onclick="abrirProducto('${data}', '${urlImagen}')" class="shrink-0 w-[150px] cursor-pointer group">
+                        <div class="w-[150px] h-[150px] rounded-xl overflow-hidden bg-gray-100">
+                            <img src="${urlImagen}" alt="${escaparHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=300&q=80'">
+                        </div>
+                        <p class="text-xs text-brandDark font-medium mt-2 line-clamp-2 leading-tight">${escaparHtml(p.nombre)}</p>
+                        <p class="text-xs font-bold text-brandDark mt-0.5">$${formatearPrecio(p.precio)}<span class="text-[8px] align-top ml-0.5 font-medium">MXN</span></p>
+                    </div>
+                `;
+            }).join('');
         }
 
         let productoDescripcionActual = null;
@@ -1931,9 +1874,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
 
         function irAlCarrito() {
-            // El carrito ahora es una página completa (como enviaflores.com), no un
-            // desplegable -- "Ir al carrito" te manda directo ahí.
-            window.location.href = '/carrito.html';
+            cerrarConfirmacion();
+            setTimeout(() => {
+                const panel = document.getElementById('carrito-lateral');
+                if (!panel) return;
+                actualizarUI();
+                panel.classList.remove('carrito-cerrado');
+                panel.classList.add('carrito-abierto');
+            }, 320);
         }
 
         function actualizarUI() {
@@ -1980,6 +1928,46 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 });
             }
             document.getElementById('total-carrito').innerText = formatearPrecio(total);
+
+            // --- Vista de página completa del carrito (/carrito.html) ---
+            const contenedorPagina = document.getElementById('carrito-pagina-items');
+            if (contenedorPagina) {
+                if (carrito.length === 0) {
+                    contenedorPagina.innerHTML = '<div class="py-14 text-center text-sm text-gray-500">Tu carrito está vacío. <a href="/" class="text-brandFuchsia font-semibold hover:underline">Ver arreglos</a></div>';
+                } else {
+                    contenedorPagina.innerHTML = carrito.map((item, index) => {
+                        const cantidad = Math.max(1, Number(item.cantidad) || 1);
+                        const sku = String(item.id ?? '').padStart(3, '0');
+                        return `
+                            <div class="flex items-start gap-4 py-5">
+                                <img src="${escaparHtml(item.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-[96px] h-[96px] object-cover rounded-lg bg-gray-100 flex-shrink-0">
+                                <div class="min-w-0 flex-1">
+                                    <h4 class="font-medium text-sm text-brandDark leading-tight">${escaparHtml(item.nombre)}</h4>
+                                    <p class="text-xs text-gray-500 mt-1.5">Cantidad: ${cantidad}</p>
+                                    <div class="flex items-center border border-gray-900 rounded-[4px] h-8 overflow-hidden bg-white w-fit mt-2">
+                                        <button type="button" onclick="cambiarCantidadCarrito(${index}, -1)" class="w-8 h-full text-sm font-semibold hover:bg-gray-100">−</button>
+                                        <span class="w-7 text-center text-xs font-semibold">${cantidad}</span>
+                                        <button type="button" onclick="cambiarCantidadCarrito(${index}, 1)" class="w-8 h-full text-sm font-semibold hover:bg-gray-100">+</button>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-2">SKU: ${escaparHtml(sku)}</p>
+                                    ${item.variante ? `<p class="text-xs text-gray-500 mt-0.5">${escaparHtml(formatearVarianteCarrito(item.variante))}</p>` : ''}
+                                </div>
+                                <div class="flex flex-col items-end justify-between self-stretch shrink-0">
+                                    <p class="font-semibold text-sm text-brandDark">$${formatearPrecio(item.precio)}<span class="text-[9px] align-top ml-0.5 font-medium">MXN</span></p>
+                                    <button type="button" onclick="eliminarDelCarrito(${index})" class="w-9 h-9 flex items-center justify-center rounded-md text-gray-700 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer" aria-label="Eliminar producto" title="Eliminar producto">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 7h12M9 7V5h6v2m2 0v13H7V7m3 4v6m4-6v6"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                const subtotalEl = document.getElementById('carrito-pagina-subtotal');
+                const totalEl = document.getElementById('carrito-pagina-total');
+                if (subtotalEl) subtotalEl.innerText = '$' + formatearPrecio(total);
+                if (totalEl) totalEl.innerText = '$' + formatearPrecio(total);
+                renderSugeridosCarrito();
+            }
         }
 
         function formatearVarianteCarrito(variante) {
@@ -2600,7 +2588,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
             normalizarCarrito();
             actualizarUI();
-            inicializarSelectorHomeRF();
             document.querySelectorAll('.rf-select-trigger').forEach(trigger => {
                 trigger.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); abrirDropdownRF(trigger.dataset.target, trigger); });
             });
@@ -2647,8 +2634,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             });
         });
 
-        cargarInventario();
-        abrirProductoDesdeRuta();
+        cargarInventarioParaCarrito();
+        actualizarUbicacionCarritoRF();
     </script>
 
     <!-- Panel lateral de descripción del producto -->

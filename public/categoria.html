@@ -731,7 +731,7 @@ function instalarEventosUbicacion(){
 
 document.addEventListener('click',e=>{if(document.getElementById('modal-ubicacion')?.classList.contains('hidden'))return;if(!e.target.closest('#modal-ubicacion .rf-location-field-wrap'))closeDrops();});
 document.addEventListener('DOMContentLoaded',()=>{instalarEventosUbicacion();init()});
-function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[]');if(c.length)location.href='/checkout.html';}
+function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[]');if(c.length)location.href='/carrito.html';}
 </script>
 
 <script>
