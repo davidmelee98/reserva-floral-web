@@ -161,7 +161,16 @@ async function inicializarDB() {
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 1',
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS disponible BOOLEAN DEFAULT true',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS dedicatoria TEXT',
-    "ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS carrito JSONB NOT NULL DEFAULT '[]'::jsonb"
+    "ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS carrito JSONB NOT NULL DEFAULT '[]'::jsonb",
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS destinatario_telefono VARCHAR(20)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS tipo_domicilio VARCHAR(50)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS notas_entrega TEXT',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS horario_entrega VARCHAR(50)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS lat DECIMAL(10,7)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS lng DECIMAL(10,7)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS firma VARCHAR(150)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS es_anonimo BOOLEAN DEFAULT false',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS envio DECIMAL(10,2) DEFAULT 0'
   ];
 
   for (const query of alterQueries) {
@@ -614,8 +623,14 @@ app.post('/api/admin/subir-imagen', requireAuth, (req, res) => {
 
 // API: Crear pedido.
 // El total se calcula en el servidor usando los precios de PostgreSQL.
+const ENVIO_FIJO = 80;
+
 app.post('/api/ordenes', async (req, res) => {
-  const { cliente, telefono, direccion, fecha, dedicatoria, carrito } = req.body;
+  const {
+    cliente, telefono, direccion, fecha, dedicatoria, carrito,
+    destinatarioTelefono, tipoDomicilio, notasEntrega, horarioEntrega,
+    lat, lng, firma, esAnonimo, conEnvio
+  } = req.body;
 
   if (!cliente?.trim() || !telefono?.trim() || !direccion?.trim() || !fecha || !Array.isArray(carrito) || carrito.length === 0) {
     return res.status(400).json({ error: 'Faltan datos obligatorios del pedido.' });
@@ -644,24 +659,43 @@ app.post('/api/ordenes', async (req, res) => {
     const porId = new Map(productos.rows.map(p => [p.id, p]));
     const carritoConfirmado = carrito.map(item => {
       const producto = porId.get(Number(item.id));
+      const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
       return {
         id: producto.id,
         nombre: producto.nombre,
         precio: Number(producto.precio),
+        cantidad,
         imagen: producto.imagen_url || null,
         variante: typeof item.variante === 'string' ? item.variante.trim() || null : null
       };
     });
 
-    const total = carritoConfirmado.reduce((sum, item) => sum + item.precio, 0);
+    const subtotal = carritoConfirmado.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
+    const envio = conEnvio ? ENVIO_FIJO : 0;
+    const total = subtotal + envio;
+
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
 
     const result = await client.query(`
       INSERT INTO ordenes
-        (cliente_nombre, cliente_telefono, direccion_entrega, fecha_entrega, dedicatoria, carrito, total)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
+        (cliente_nombre, cliente_telefono, direccion_entrega, fecha_entrega, dedicatoria, carrito, total,
+         destinatario_telefono, tipo_domicilio, notas_entrega, horario_entrega, lat, lng, firma, es_anonimo, envio)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       RETURNING *
-    `, [cliente.trim(), telefono.trim(), direccion.trim(), fecha,
-        dedicatoria?.trim() || null, JSON.stringify(carritoConfirmado), total]);
+    `, [
+      cliente.trim(), telefono.trim(), direccion.trim(), fecha,
+      dedicatoria?.trim() || null, JSON.stringify(carritoConfirmado), total,
+      destinatarioTelefono?.trim() || null,
+      tipoDomicilio?.trim() || null,
+      notasEntrega?.trim() || null,
+      horarioEntrega?.trim() || null,
+      Number.isFinite(latNum) ? latNum : null,
+      Number.isFinite(lngNum) ? lngNum : null,
+      firma?.trim() || null,
+      Boolean(esAnonimo),
+      envio
+    ]);
 
     await client.query('COMMIT');
     res.status(201).json({ exito: true, orden: result.rows[0] });
@@ -740,7 +774,8 @@ app.get('/api/admin/dashboard', requireAuth, async (req, res) => {
       const items = Array.isArray(orden.carrito) ? orden.carrito : [];
       for (const item of items) {
         const clave = item.nombre || 'Producto';
-        conteoProductos[clave] = (conteoProductos[clave] || 0) + 1;
+        const cantidad = Math.max(1, Number(item.cantidad) || 1);
+        conteoProductos[clave] = (conteoProductos[clave] || 0) + cantidad;
       }
     }
     const productosPopulares = Object.entries(conteoProductos)
@@ -799,9 +834,10 @@ app.get('/api/admin/finanzas', requireAuth, async (req, res) => {
       const items = Array.isArray(orden.carrito) ? orden.carrito : [];
       for (const item of items) {
         const clave = item.nombre || 'Producto';
+        const cantidad = Math.max(1, Number(item.cantidad) || 1);
         if (!ingresoPorProducto[clave]) ingresoPorProducto[clave] = { nombre: clave, unidades: 0, ingresos: 0 };
-        ingresoPorProducto[clave].unidades += 1;
-        ingresoPorProducto[clave].ingresos += Number(item.precio || 0);
+        ingresoPorProducto[clave].unidades += cantidad;
+        ingresoPorProducto[clave].ingresos += Number(item.precio || 0) * cantidad;
       }
     }
     const topProductos = Object.values(ingresoPorProducto).sort((a, b) => b.ingresos - a.ingresos).slice(0, 8);

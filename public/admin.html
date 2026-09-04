@@ -1417,11 +1417,14 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         if (lista.length === 0) { cont.innerHTML = '<p class="text-center py-10 text-gray-500 text-sm">No hay pedidos que coincidan con el filtro.</p>'; return; }
         cont.innerHTML = lista.map(o => {
             const items = Array.isArray(o.carrito) ? o.carrito : (typeof o.carrito === 'string' ? JSON.parse(o.carrito || '[]') : []);
-            const itemsHtml = items.map(it => `
+            const itemsHtml = items.map(it => {
+                const cantidad = Math.max(1, Number(it.cantidad) || 1);
+                return `
                 <div class="flex justify-between text-xs text-gray-600 py-1">
-                    <span>${escaparHtmlAdmin(it.nombre)}${it.variante ? ` <span class="text-gray-400">(${escaparHtmlAdmin(it.variante)})</span>` : ''}</span>
-                    <span class="font-medium">$${formatearPrecioAdmin(it.precio)}</span>
-                </div>`).join('');
+                    <span>${escaparHtmlAdmin(it.nombre)}${cantidad > 1 ? ` <span class="text-gray-400">x${cantidad}</span>` : ''}${it.variante ? ` <span class="text-gray-400">(${escaparHtmlAdmin(it.variante)})</span>` : ''}</span>
+                    <span class="font-medium">$${formatearPrecioAdmin(it.precio * cantidad)}</span>
+                </div>`;
+            }).join('');
             const colorEstado = ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500';
             return `
                 <div class="px-6 py-4">

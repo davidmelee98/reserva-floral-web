@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout | Reserva Floral</title>
+    <title>Proceso de compra | Reserva Floral</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -20,142 +21,821 @@
             }
         }
     </script>
+    <style>
+        .co-input{ width:100%; border:1px solid #d1d5db; border-radius:10px; padding:.65rem .85rem; font-size:.875rem; outline:none; transition:border-color .15s ease, box-shadow .15s ease; background:#fff; }
+        .co-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.10); }
+        .co-input.is-invalid{ border-color:#dc2626; }
+        .co-label{ font-size:.72rem; color:#6b6b6b; font-weight:500; margin-bottom:.25rem; display:block; }
+        .co-circulo{ width:28px; height:28px; border-radius:999px; border:2px solid #c2185b; color:#c2185b; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; flex:0 0 auto; transition:all .15s ease; }
+        .co-circulo.is-lleno{ background:#c2185b; color:#fff; }
+        .co-card{ background:#fff; border:1px solid #ececec; border-radius:16px; padding:1.5rem; transition:opacity .15s ease; }
+        .co-card.is-inactiva{ opacity:.55; }
+        .co-slot{ border:1px solid #d1d5db; border-radius:999px; padding:.6rem 1.1rem; font-size:.82rem; font-weight:500; cursor:pointer; transition:all .12s ease; }
+        .co-slot:hover{ border-color:#c2185b; }
+        .co-slot.is-activo{ background:#c2185b; border-color:#c2185b; color:#fff; }
+        .co-sugerencia{ padding:.6rem .85rem; font-size:.82rem; cursor:pointer; border-bottom:1px solid #f0f0f0; }
+        .co-sugerencia:hover{ background:#fdf1f6; }
+        .co-tab{ padding:.4rem .1rem; font-size:.8rem; font-weight:500; color:#8a8a8a; white-space:nowrap; cursor:pointer; border-bottom:2px solid transparent; }
+        .co-tab.is-activo{ color:#c2185b; font-weight:700; border-bottom-color:#c2185b; }
+        .co-msg-opcion{ display:flex; gap:.6rem; padding:.65rem 0; border-bottom:1px solid #f3f3f3; cursor:pointer; }
+        .co-radio{ width:16px; height:16px; border-radius:999px; border:2px solid #c9c9c9; flex:0 0 auto; margin-top:2px; display:flex; align-items:center; justify-content:center; }
+        .co-radio.is-activo{ border-color:#c2185b; }
+        .co-radio.is-activo::after{ content:''; width:8px; height:8px; border-radius:999px; background:#c2185b; }
+        #mapa-leaflet{ z-index:0; }
+        .rf-map-pin{ filter:drop-shadow(0 3px 6px rgba(0,0,0,.35)); }
+        ::-webkit-scrollbar{ width:7px; height:7px; }
+        ::-webkit-scrollbar-thumb{ background:#e2c2d0; border-radius:999px; }
+    </style>
 </head>
-<body class="bg-brandGray font-sans text-brandDark antialiased min-h-screen flex flex-col">
+<body class="bg-brandGray font-sans text-brandDark antialiased min-h-screen">
 
-    <header class="bg-white border-b border-gray-200 py-4">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center">
-            <a href="/" class="flex items-center gap-2 cursor-pointer text-brandFuchsia">
-                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-                <span class="font-semibold text-2xl tracking-wide">reservafloral</span>
-            </a>
+    <header class="bg-brandFuchsia text-white sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="/" class="flex items-center">
+                    <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[170px] h-12 object-contain object-left" draggable="false">
+                </a>
+                <div class="flex items-center gap-4 text-sm font-medium">
+                    <div class="hidden sm:flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                        Español $MXN
+                    </div>
+                    <a href="/carrito.html" class="relative p-1 hover:text-gray-200 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        <span id="contador-carrito" class="absolute -top-1 -right-1 block h-4 w-4 rounded-full bg-white text-brandFuchsia text-[10px] font-bold flex items-center justify-center">0</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </header>
 
-    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            
-            <!-- Formulario Logístico -->
-            <div class="lg:col-span-7 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                <h2 class="text-2xl font-semibold mb-6">Datos de Entrega</h2>
-                <form id="form-checkout" class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-2xl md:text-3xl font-semibold text-brandDark mb-6">Proceso de compra</h1>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+            <!-- ================= PASOS ================= -->
+            <div class="lg:col-span-7 space-y-4">
+
+                <!-- PASO 1 -->
+                <div class="co-card" id="paso-1">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="co-circulo" id="circulo-1">1</span>
+                            <h2 class="font-semibold text-brandDark">Confirma tu teléfono</h2>
+                        </div>
+                        <button type="button" id="editar-1" onclick="reabrirPaso(1)" class="hidden text-brandFuchsia text-sm font-medium hover:underline">Editar</button>
+                    </div>
+
+                    <div id="form-paso-1" class="mt-4 ml-10">
+                        <p class="text-sm text-gray-500">Este es el teléfono de contacto para tu pedido.<br>Lo usaremos para comunicarnos contigo si hay algún inconveniente.</p>
+                        <label class="co-label mt-4">Número de teléfono</label>
+                        <div class="flex gap-2 max-w-sm">
+                            <select id="p1-lada" class="co-input !w-20">
+                                <option value="+52" selected>+52</option>
+                            </select>
+                            <input type="tel" id="p1-telefono" maxlength="10" placeholder="10 dígitos" class="co-input flex-1">
+                        </div>
+                        <p class="hidden text-xs text-red-600 mt-1" id="error-p1">Ingresa un teléfono válido a 10 dígitos.</p>
+                        <button type="button" onclick="confirmarPaso1()" class="mt-4 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Siguiente</button>
+                    </div>
+                    <div id="resumen-paso-1" class="hidden mt-2 ml-10 text-sm text-gray-600"></div>
+                </div>
+
+                <!-- PASO 2 -->
+                <div class="co-card is-inactiva" id="paso-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="co-circulo" id="circulo-2">2</span>
+                            <h2 class="font-semibold text-brandDark">Elige a quién enviarlo</h2>
+                        </div>
+                        <button type="button" id="editar-2" onclick="reabrirPaso(2)" class="hidden text-brandFuchsia text-sm font-medium hover:underline">Cambiar</button>
+                    </div>
+
+                    <div id="form-paso-2" class="hidden mt-4 ml-10 space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="co-label">Nombre y apellido</label>
+                                <input type="text" id="p2-nombre" class="co-input">
+                            </div>
+                            <div class="flex gap-2">
+                                <select id="p2-lada" class="co-input !w-20"><option value="+52" selected>+52</option></select>
+                                <input type="tel" id="p2-telefono" maxlength="10" placeholder="Teléfono del destinatario" class="co-input flex-1">
+                            </div>
+                        </div>
+
+                        <div class="relative">
+                            <label class="co-label">Buscar dirección</label>
+                            <div class="relative">
+                                <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 114 10.5a6.5 6.5 0 0113 0z" /></svg>
+                                <input type="text" id="p2-buscar" placeholder="Calle, colonia, ciudad..." class="co-input !pl-9" autocomplete="off">
+                            </div>
+                            <div id="p2-sugerencias" class="hidden absolute z-20 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-64 overflow-y-auto"></div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label class="co-label">Calle</label><input type="text" id="p2-calle" class="co-input"></div>
+                            <div><label class="co-label">Número</label><input type="text" id="p2-numero" class="co-input"></div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label class="co-label">Colonia</label><input type="text" id="p2-colonia" class="co-input"></div>
+                            <div>
+                                <label class="co-label">Tipo de domicilio</label>
+                                <select id="p2-tipo" class="co-input">
+                                    <option value="" selected disabled>Selecciona...</option>
+                                    <option value="Casa">🏠 Casa</option>
+                                    <option value="Hotel">🛏️ Hotel</option>
+                                    <option value="Restaurante">🍴 Restaurante</option>
+                                    <option value="Capilla Funeral">✝️ Capilla Funeral</option>
+                                    <option value="Oficinas">🏢 Oficinas</option>
+                                    <option value="Hospital">🏥 Hospital</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label class="co-label">Código postal</label><input type="text" id="p2-cp" class="co-input"></div>
+                            <div><label class="co-label">Estado</label><input type="text" id="p2-estado" class="co-input"></div>
+                        </div>
+                        <div><label class="co-label">Ciudad</label><input type="text" id="p2-ciudad" class="co-input"></div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de quien recibe</label>
-                            <input type="text" id="cliente" required class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                            <label class="co-label">Referencias y notas para el repartidor</label>
+                            <textarea id="p2-referencias" rows="3" class="co-input"></textarea>
+                            <p class="text-[11px] text-gray-400 mt-1">Incluye el color de la fachada, el número interior si es un lugar privado, o indica entre qué calles está.</p>
+                        </div>
+                        <p class="hidden text-xs text-red-600" id="error-p2">Completa nombre, calle, número, colonia y tipo de domicilio.</p>
+                        <button type="button" onclick="validarYAbrirMapa()" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Siguiente</button>
+                    </div>
+                    <div id="resumen-paso-2" class="hidden mt-2 ml-10 text-sm text-gray-600"></div>
+                </div>
+
+                <!-- PASO 3 -->
+                <div class="co-card is-inactiva" id="paso-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="co-circulo" id="circulo-3">3</span>
+                            <h2 class="font-semibold text-brandDark">Escoge un horario</h2>
+                        </div>
+                        <button type="button" id="editar-3" onclick="reabrirPaso(3)" class="hidden text-brandFuchsia text-sm font-medium hover:underline">Cambiar</button>
+                    </div>
+
+                    <div id="form-paso-3" class="hidden mt-4 ml-10 space-y-4">
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm font-semibold text-brandDark flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path stroke-linecap="round" stroke-linejoin="round" d="M7 3v4M17 3v4M3 10h18"></path></svg>
+                                    Fecha
+                                </p>
+                                <button type="button" onclick="document.getElementById('p3-fecha-wrap').classList.toggle('hidden')" class="text-brandFuchsia text-xs font-medium hover:underline">Cambiar</button>
+                            </div>
+                            <p id="p3-fecha-texto" class="text-sm text-gray-600 mt-1">Selecciona una fecha</p>
+                            <div id="p3-fecha-wrap" class="hidden mt-2">
+                                <input type="date" id="p3-fecha" class="co-input max-w-xs">
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono de contacto</label>
-                            <input type="tel" id="telefono" required class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                            <p class="text-sm font-semibold text-brandDark flex items-center gap-1.5 mb-1">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 3"></path></svg>
+                                Horario
+                            </p>
+                            <p class="text-xs text-gray-500 mb-2">Cargo por envío: $80.00 <span class="text-[9px] align-top">MXN</span></p>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" class="co-slot" data-horario="9:00 AM - 1:00 PM" onclick="elegirHorario(this)">9:00AM - 1:00PM</button>
+                                <button type="button" class="co-slot" data-horario="1:00 PM - 5:00 PM" onclick="elegirHorario(this)">1:00PM - 5:00PM</button>
+                            </div>
                         </div>
+                        <p class="hidden text-xs text-red-600" id="error-p3">Elige fecha y horario de entrega.</p>
+                        <button type="button" onclick="confirmarPaso3()" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Siguiente</button>
+                    </div>
+                    <div id="resumen-paso-3" class="hidden mt-2 ml-10 text-sm text-gray-600"></div>
+                </div>
+
+                <!-- PASO 4 -->
+                <div class="co-card is-inactiva" id="paso-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="co-circulo" id="circulo-4">4</span>
+                            <h2 class="font-semibold text-brandDark">Agrega una dedicatoria</h2>
+                        </div>
+                        <button type="button" id="editar-4" onclick="reabrirPaso(4)" class="hidden text-brandFuchsia text-sm font-medium hover:underline">Editar</button>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Dirección completa</label>
-                        <input type="text" id="direccion" required placeholder="Calle, Número, Colonia, Código Postal" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                    <div id="form-paso-4" class="hidden mt-4 ml-10 space-y-3">
+                        <p class="text-sm text-gray-500">Incluiremos una tarjeta con tu mensaje y firma.</p>
+                        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="p4-sin-mensaje" class="w-4 h-4"> Sin mensaje
+                        </label>
+
+                        <div id="p4-mensaje-bloque">
+                            <button type="button" onclick="abrirModalMensajes()" class="text-brandFuchsia text-sm font-medium hover:underline">Ver ejemplos de mensajes</button>
+                            <textarea id="p4-mensaje" rows="4" placeholder="Mensaje" class="co-input mt-2"></textarea>
+                        </div>
+
+                        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="p4-anonimo" class="w-4 h-4"> Anónimo
+                        </label>
+
+                        <div id="p4-firma-bloque">
+                            <input type="text" id="p4-firma" maxlength="110" placeholder="Firma" class="co-input" oninput="document.getElementById('p4-contador').innerText = this.value.length">
+                            <p class="text-[11px] text-gray-400 mt-1"><span id="p4-contador">0</span>/110 caracteres</p>
+                        </div>
+
+                        <button type="button" onclick="confirmarPaso4()" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Siguiente</button>
+                    </div>
+                    <div id="resumen-paso-4" class="hidden mt-2 ml-10 text-sm text-gray-600"></div>
+                </div>
+
+                <!-- PASO 5 -->
+                <div class="co-card is-inactiva" id="paso-5">
+                    <div class="flex items-center gap-3">
+                        <span class="co-circulo" id="circulo-5">5</span>
+                        <h2 class="font-semibold text-brandDark">Completa el pago</h2>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Entrega</label>
-                        <input type="date" id="fecha" required class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje para la tarjeta (Opcional)</label>
-                        <textarea id="dedicatoria" rows="3" placeholder="Escribe unas palabras bonitas..." class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brandLightPink"></textarea>
-                    </div>
-
-                    <button type="submit" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-bold py-4 rounded-xl transition-colors shadow-md text-lg mt-4">
-                        Confirmar y Pagar Pedido
-                    </button>
-                </form>
-            </div>
-
-            <!-- Resumen del Carrito -->
-            <div class="lg:col-span-5">
-                <div class="bg-gray-50 p-8 rounded-2xl border border-gray-200 sticky top-6">
-                    <h3 class="text-xl font-semibold mb-6">Resumen de tu pedido</h3>
-                    <div id="resumen-items" class="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2">
-                        <!-- Items cargados por JS -->
-                    </div>
-                    <div class="border-t border-gray-300 pt-4 flex justify-between items-center text-xl font-bold">
-                        <span>Total:</span>
-                        <span>$<span id="resumen-total">0.00</span></span>
+                    <div id="form-paso-5" class="hidden mt-4 ml-10 space-y-4">
+                        <label class="flex items-center justify-between border border-gray-300 rounded-lg px-4 py-3 cursor-pointer">
+                            <span class="flex items-center gap-2 text-sm font-medium"><input type="radio" name="p5-metodo" checked class="w-4 h-4"> Tarjeta de crédito o débito</span>
+                            <span class="text-xs text-gray-400">VISA · Mastercard · AMEX</span>
+                        </label>
+                        <p class="text-xs text-gray-400">Es posible que la información que nos proporciones sea validada por uno de nuestros agentes.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <input type="text" placeholder="Nombre" class="co-input" disabled>
+                            <input type="text" placeholder="Apellido" class="co-input" disabled>
+                        </div>
+                        <input type="text" placeholder="Número de tarjeta" class="co-input" disabled>
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="text" placeholder="MM/AA" class="co-input" disabled>
+                            <input type="text" placeholder="CVV" class="co-input" disabled>
+                        </div>
+                        <div class="space-y-2 pt-1">
+                            <label class="flex items-center gap-2 text-sm text-gray-400"><input type="radio" name="p5-metodo" disabled class="w-4 h-4"> PayPal</label>
+                            <label class="flex items-center gap-2 text-sm text-gray-400"><input type="radio" name="p5-metodo" disabled class="w-4 h-4"> Mercado Pago</label>
+                            <label class="flex items-center gap-2 text-sm text-gray-400"><input type="radio" name="p5-metodo" disabled class="w-4 h-4"> OXXO</label>
+                            <label class="flex items-center gap-2 text-sm text-gray-400"><input type="radio" name="p5-metodo" disabled class="w-4 h-4"> SPEI</label>
+                        </div>
+                        <p class="text-[11px] text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">El cobro con tarjeta se configurará más adelante. Por ahora, "Completar compra" registra tu pedido y nos pondremos en contacto contigo para confirmar el pago.</p>
+                        <button type="button" id="btn-completar-compra" onclick="completarCompra()" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3.5 rounded-full text-sm transition shadow-md">Completar compra</button>
                     </div>
                 </div>
             </div>
 
+            <!-- ================= RESUMEN ================= -->
+            <div class="lg:col-span-5 lg:sticky lg:top-24 space-y-4">
+                <div class="bg-white rounded-2xl border border-gray-100 p-5">
+                    <h3 class="font-semibold text-brandDark mb-3">Resumen del pedido</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between text-gray-600"><span>Subtotal</span><span id="resumen-subtotal" class="font-medium text-brandDark">$0.00 <span class="text-[9px] align-top">mxn</span></span></div>
+                        <div class="flex justify-between text-gray-600"><span>Envío</span><span id="resumen-envio" class="text-gray-500 text-xs">Al ingresar la dirección</span></div>
+                        <div class="flex justify-between text-base font-bold text-brandDark pt-2 border-t border-gray-100 mt-1"><span>Total</span><span id="resumen-total">$0.00 <span class="text-[9px] align-top font-medium">mxn</span></span></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl border border-gray-100 p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-brandDark">Tus productos</h3>
+                        <a href="/carrito.html" class="text-brandFuchsia text-sm font-medium hover:underline">Ir al carrito</a>
+                    </div>
+                    <div id="resumen-items" class="divide-y divide-gray-100"></div>
+                </div>
+            </div>
         </div>
     </main>
 
-    <script>
-        let carrito = JSON.parse(localStorage.getItem('carritoRF')) || [];
-        let totalPedido = 0;
+    <!-- Modal: mapa para confirmar dirección -->
+    <div id="modal-mapa" class="fixed inset-0 z-[300] hidden items-center justify-center">
+        <div class="absolute inset-0 bg-black/50" onclick="cerrarModalMapa()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-[480px] mx-4 p-6">
+            <div class="flex items-start justify-between mb-1">
+                <h3 class="text-lg font-semibold text-brandDark">Confirma la dirección</h3>
+                <button type="button" onclick="cerrarModalMapa()" class="text-gray-400 hover:text-brandDark">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Mueve el marcador hacia la ubicación más precisa del lugar de entrega.</p>
+            <div id="mapa-leaflet" class="w-full h-[280px] rounded-xl overflow-hidden border border-gray-200 bg-gray-100"></div>
+            <button type="button" onclick="confirmarPin()" class="w-full mt-4 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Confirmar dirección</button>
+        </div>
+    </div>
 
-        function formatearPrecio(valor) { return (Number(valor)||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    <!-- Modal: ejemplos de mensajes -->
+    <div id="modal-mensajes" class="fixed inset-0 z-[300] hidden items-center justify-center">
+        <div class="absolute inset-0 bg-black/50" onclick="cerrarModalMensajes()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-[480px] mx-4 p-6">
+            <div class="flex items-start justify-between mb-1">
+                <h3 class="text-lg font-semibold text-brandDark">¿Qué te gustaría decirle? 💌</h3>
+                <button type="button" onclick="cerrarModalMensajes()" class="text-gray-400 hover:text-brandDark">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="flex items-center gap-1 mt-3 border-b border-gray-100">
+                <button type="button" onclick="desplazarTabsMensajes(-1)" class="shrink-0 text-gray-400 hover:text-brandDark p-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <div id="tabs-mensajes" class="flex-1 flex gap-4 overflow-x-auto no-scrollbar"></div>
+                <button type="button" onclick="desplazarTabsMensajes(1)" class="shrink-0 text-gray-400 hover:text-brandDark p-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </button>
+            </div>
+            <div id="opciones-mensajes" class="max-h-[280px] overflow-y-auto mt-2"></div>
+            <button type="button" onclick="confirmarMensajeElegido()" class="w-full mt-4 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Confirmar</button>
+        </div>
+    </div>
 
-        function cargarResumen() {
-            totalPedido = 0;
-            const contenedor = document.getElementById('resumen-items');
-            contenedor.innerHTML = '';
-            if (carrito.length === 0) {
-                window.location.href = '/'; // Regresar si está vacío
-                return;
-            }
+    <!-- Toasts -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[400] flex flex-col gap-2"></div>
 
-            carrito.forEach(item => {
-                totalPedido += item.precio;
-                contenedor.innerHTML += `
-                    <div class="flex items-center gap-4 bg-white p-3 rounded-lg border border-gray-100">
-                        <img src="${item.imagen}" class="w-16 h-16 object-cover rounded-md">
-                        <div class="flex-1">
-                            <h4 class="font-medium text-sm text-brandDark">${item.nombre}</h4>
-                            <p class="text-brandLightPink font-bold mt-1">$${formatearPrecio(item.precio)}</p>
-                        </div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // =======================================================================
+    // Estado
+    // =======================================================================
+    let carrito = JSON.parse(localStorage.getItem('carritoRF') || '[]');
+    if (!Array.isArray(carrito) || carrito.length === 0) {
+        window.location.href = '/carrito.html';
+    }
+
+    let pasoAbierto = 1;
+    const pasosCompletados = new Set();
+    const ENVIO_FIJO = 80;
+
+    const estado = {
+        telefono: '',
+        destinatario: { nombre: '', telefono: '' },
+        direccion: { calle: '', numero: '', colonia: '', tipo: '', cp: '', estado: '', ciudad: '', referencias: '', textoCompleto: '', lat: null, lng: null },
+        entrega: { fecha: '', horario: '' },
+        dedicatoria: { sinMensaje: false, mensaje: '', anonimo: false, firma: '' }
+    };
+
+    function escaparHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function formatearPrecio(valor) { return (Number(valor) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function mostrarToast(mensaje, tipo) {
+        const cont = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `bg-white border ${tipo === 'error' ? 'border-red-200' : 'border-green-200'} rounded-xl px-4 py-3 shadow-lg text-sm font-medium text-brandDark`;
+        el.innerText = mensaje;
+        cont.appendChild(el);
+        setTimeout(() => { el.style.transition = 'opacity .2s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 200); }, 3200);
+    }
+
+    // =======================================================================
+    // Resumen del pedido (columna derecha)
+    // =======================================================================
+    function totalUnidades() { return carrito.reduce((s, i) => s + (Number(i.cantidad) || 1), 0); }
+    function subtotalCarrito() { return carrito.reduce((s, i) => s + Number(i.precio) * (Number(i.cantidad) || 1), 0); }
+
+    function renderResumen() {
+        document.getElementById('contador-carrito').innerText = totalUnidades();
+        const subtotal = subtotalCarrito();
+        document.getElementById('resumen-subtotal').innerHTML = `$${formatearPrecio(subtotal)} <span class="text-[9px] align-top">mxn</span>`;
+
+        const envioEl = document.getElementById('resumen-envio');
+        const conEnvio = pasosCompletados.has(3);
+        if (conEnvio) envioEl.innerHTML = `$${formatearPrecio(ENVIO_FIJO)} <span class="text-[9px] align-top">mxn</span>`;
+        else envioEl.innerText = 'Al ingresar la dirección';
+        envioEl.className = conEnvio ? 'font-medium text-brandDark' : 'text-gray-500 text-xs';
+
+        const total = subtotal + (conEnvio ? ENVIO_FIJO : 0);
+        document.getElementById('resumen-total').innerHTML = `$${formatearPrecio(total)} <span class="text-[9px] align-top font-medium">mxn</span>`;
+
+        const cont = document.getElementById('resumen-items');
+        cont.innerHTML = carrito.map(item => {
+            const cantidad = Math.max(1, Number(item.cantidad) || 1);
+            const sku = String(item.id ?? '').padStart(3, '0');
+            return `
+                <div class="flex items-center gap-3 py-3">
+                    <img src="${escaparHtml(item.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-medium text-sm text-brandDark truncate">${escaparHtml(item.nombre)}</h4>
+                        <p class="text-xs text-gray-500">Cantidad: ${cantidad}</p>
+                        <p class="text-xs text-gray-400">SKU: ${escaparHtml(sku)}</p>
                     </div>
-                `;
-            });
-            document.getElementById('resumen-total').innerText = formatearPrecio(totalPedido);
+                    <p class="font-semibold text-sm text-brandDark shrink-0">$${formatearPrecio(item.precio * cantidad)} <span class="text-[9px] align-top">mxn</span></p>
+                </div>`;
+        }).join('');
+    }
+
+    // =======================================================================
+    // Navegación entre pasos
+    // =======================================================================
+    function renderPasos() {
+        for (let i = 1; i <= 5; i++) {
+            const form = document.getElementById(`form-paso-${i}`);
+            const resumen = document.getElementById(`resumen-paso-${i}`);
+            const editar = document.getElementById(`editar-${i}`);
+            const circulo = document.getElementById(`circulo-${i}`);
+            const card = document.getElementById(`paso-${i}`);
+            const abierto = i === pasoAbierto;
+            const completado = pasosCompletados.has(i);
+
+            form.classList.toggle('hidden', !abierto);
+            if (resumen) resumen.classList.toggle('hidden', !(completado && !abierto));
+            if (editar) editar.classList.toggle('hidden', !(completado && !abierto));
+            circulo.classList.toggle('is-lleno', abierto || completado);
+            card.classList.toggle('is-inactiva', !abierto && !completado);
         }
+    }
+    function irAPaso(n) {
+        pasoAbierto = n;
+        renderPasos();
+        setTimeout(() => document.getElementById(`paso-${n}`).scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    }
+    function reabrirPaso(n) {
+        pasosCompletados.delete(n);
+        // Si reabres un paso, los pasos posteriores ya confirmados siguen
+        // completados -- no se pierden, solo se vuelve a mostrar este.
+        irAPaso(n);
+        renderResumen();
+    }
+    window.reabrirPaso = reabrirPaso;
 
-        const fechaInput = document.getElementById('fecha');
-        fechaInput.min = new Date().toISOString().split('T')[0];
+    function marcarError(id, mostrar) {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', !mostrar);
+    }
 
-        document.getElementById('form-checkout').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const orden = {
-                cliente: document.getElementById('cliente').value,
-                telefono: document.getElementById('telefono').value,
-                direccion: document.getElementById('direccion').value,
-                fecha: document.getElementById('fecha').value,
-                total: totalPedido,
-                carrito: carrito
-            };
+    // =======================================================================
+    // PASO 1
+    // =======================================================================
+    function confirmarPaso1() {
+        const telefono = document.getElementById('p1-telefono').value.trim();
+        if (!/^\d{10}$/.test(telefono)) { marcarError('error-p1', true); return; }
+        marcarError('error-p1', false);
+        estado.telefono = document.getElementById('p1-lada').value + ' ' + telefono;
+        document.getElementById('resumen-paso-1').innerText = estado.telefono;
+        pasosCompletados.add(1);
+        irAPaso(2);
+    }
+    window.confirmarPaso1 = confirmarPaso1;
 
-            try {
-                const respuesta = await fetch('/api/ordenes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(orden)
-                });
+    // =======================================================================
+    // PASO 2: búsqueda de dirección (OpenStreetMap Nominatim, sin costo)
+    // =======================================================================
+    let debounceBusqueda = null;
+    document.getElementById('p2-buscar').addEventListener('input', (e) => {
+        clearTimeout(debounceBusqueda);
+        const q = e.target.value.trim();
+        if (q.length < 4) { document.getElementById('p2-sugerencias').classList.add('hidden'); return; }
+        debounceBusqueda = setTimeout(() => buscarDireccion(q), 450);
+    });
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#p2-buscar') && !e.target.closest('#p2-sugerencias')) {
+            document.getElementById('p2-sugerencias').classList.add('hidden');
+        }
+    });
 
-                const datos = await respuesta.json().catch(() => ({}));
+    async function buscarDireccion(q) {
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=mx&q=${encodeURIComponent(q)}`;
+            const respuesta = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+            const resultados = await respuesta.json();
+            mostrarSugerenciasDireccion(resultados);
+        } catch (error) {
+            console.error('Error buscando dirección', error);
+        }
+    }
 
-                if (respuesta.ok) {
-                    alert(`¡Pedido generado con éxito! Folio #${datos.orden?.id || ''}\nNos pondremos en contacto contigo.`);
-                    localStorage.removeItem('carritoRF');
-                    window.location.href = '/';
-                } else {
-                    alert(datos.error || 'Hubo un error al procesar la orden.');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('No fue posible conectar con el servidor. Intenta nuevamente.');
+    function mostrarSugerenciasDireccion(resultados) {
+        const cont = document.getElementById('p2-sugerencias');
+        if (!resultados.length) { cont.classList.add('hidden'); return; }
+        cont.innerHTML = resultados.map((r, i) => `<div class="co-sugerencia" onclick="seleccionarDireccion(${i})">${escaparHtml(r.display_name)}</div>`).join('');
+        window._sugerenciasDireccion = resultados;
+        cont.classList.remove('hidden');
+    }
+    window.mostrarSugerenciasDireccion = mostrarSugerenciasDireccion;
+
+    function seleccionarDireccion(i) {
+        const r = window._sugerenciasDireccion[i];
+        if (!r) return;
+        const addr = r.address || {};
+        document.getElementById('p2-buscar').value = r.display_name;
+        document.getElementById('p2-calle').value = addr.road || '';
+        document.getElementById('p2-numero').value = addr.house_number || '';
+        document.getElementById('p2-colonia').value = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || '';
+        document.getElementById('p2-cp').value = addr.postcode || '';
+        document.getElementById('p2-estado').value = addr.state || '';
+        document.getElementById('p2-ciudad').value = addr.city || addr.town || addr.village || addr.municipality || '';
+        estado.direccion.lat = Number(r.lat);
+        estado.direccion.lng = Number(r.lon);
+        document.getElementById('p2-sugerencias').classList.add('hidden');
+    }
+    window.seleccionarDireccion = seleccionarDireccion;
+
+    function validarYAbrirMapa() {
+        const nombre = document.getElementById('p2-nombre').value.trim();
+        const calle = document.getElementById('p2-calle').value.trim();
+        const numero = document.getElementById('p2-numero').value.trim();
+        const colonia = document.getElementById('p2-colonia').value.trim();
+        const tipo = document.getElementById('p2-tipo').value;
+        if (!nombre || !calle || !numero || !colonia || !tipo) { marcarError('error-p2', true); return; }
+        marcarError('error-p2', false);
+        abrirModalMapa();
+    }
+    window.validarYAbrirMapa = validarYAbrirMapa;
+
+    // --- Mapa (Leaflet + OpenStreetMap; el pin usa el logo de Reserva Floral) ---
+    let mapaLeaflet = null;
+    let marcadorLeaflet = null;
+    const iconoPinRF = L.icon({ iconUrl: '/apple-touch-icon.png', iconSize: [44, 44], iconAnchor: [22, 44], popupAnchor: [0, -40], className: 'rf-map-pin' });
+
+    function abrirModalMapa() {
+        const modal = document.getElementById('modal-mapa');
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+        const lat = estado.direccion.lat || 19.4326;
+        const lng = estado.direccion.lng || -99.1332;
+        setTimeout(() => {
+            if (!mapaLeaflet) {
+                mapaLeaflet = L.map('mapa-leaflet').setView([lat, lng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(mapaLeaflet);
+                marcadorLeaflet = L.marker([lat, lng], { icon: iconoPinRF, draggable: true }).addTo(mapaLeaflet);
+            } else {
+                mapaLeaflet.setView([lat, lng], 16);
+                marcadorLeaflet.setLatLng([lat, lng]);
             }
-        });
+            mapaLeaflet.invalidateSize();
+        }, 60);
+    }
+    window.abrirModalMapa = abrirModalMapa;
 
-        cargarResumen();
-    </script>
+    function cerrarModalMapa() {
+        document.getElementById('modal-mapa').classList.add('hidden');
+        document.getElementById('modal-mapa').classList.remove('flex');
+    }
+    window.cerrarModalMapa = cerrarModalMapa;
+
+    function confirmarPin() {
+        if (marcadorLeaflet) {
+            const pos = marcadorLeaflet.getLatLng();
+            estado.direccion.lat = pos.lat;
+            estado.direccion.lng = pos.lng;
+        }
+        cerrarModalMapa();
+        confirmarPaso2();
+    }
+    window.confirmarPin = confirmarPin;
+
+    function confirmarPaso2() {
+        estado.destinatario.nombre = document.getElementById('p2-nombre').value.trim();
+        estado.destinatario.telefono = (document.getElementById('p2-lada').value + ' ' + document.getElementById('p2-telefono').value.trim()).trim();
+        estado.direccion.calle = document.getElementById('p2-calle').value.trim();
+        estado.direccion.numero = document.getElementById('p2-numero').value.trim();
+        estado.direccion.colonia = document.getElementById('p2-colonia').value.trim();
+        estado.direccion.tipo = document.getElementById('p2-tipo').value;
+        estado.direccion.cp = document.getElementById('p2-cp').value.trim();
+        estado.direccion.estado = document.getElementById('p2-estado').value.trim();
+        estado.direccion.ciudad = document.getElementById('p2-ciudad').value.trim();
+        estado.direccion.referencias = document.getElementById('p2-referencias').value.trim();
+        estado.direccion.textoCompleto = [
+            `${estado.direccion.calle} ${estado.direccion.numero}`.trim(),
+            estado.direccion.colonia, estado.direccion.cp,
+            estado.direccion.ciudad, estado.direccion.estado
+        ].filter(Boolean).join(', ');
+
+        document.getElementById('resumen-paso-2').innerHTML = `
+            <p class="font-semibold text-brandDark flex items-center gap-1.5">${iconoTipoDomicilio(estado.direccion.tipo)} ${escaparHtml(estado.destinatario.nombre)}</p>
+            <p>${escaparHtml(estado.direccion.calle)} ${escaparHtml(estado.direccion.numero)}, ${escaparHtml(estado.direccion.colonia)}${estado.direccion.cp ? ', ' + escaparHtml(estado.direccion.cp) : ''}</p>
+            <p>${escaparHtml(estado.direccion.ciudad)}${estado.direccion.ciudad && estado.direccion.estado ? ', ' : ''}${escaparHtml(estado.direccion.estado)}</p>
+            <p>${escaparHtml(estado.destinatario.telefono)}</p>
+        `;
+        pasosCompletados.add(2);
+        prellenarFechaGuardada();
+        irAPaso(3);
+    }
+    function iconoTipoDomicilio(tipo) {
+        return { Casa: '🏠', Hotel: '🛏️', Restaurante: '🍴', 'Capilla Funeral': '✝️', Oficinas: '🏢', Hospital: '🏥' }[tipo] || '📍';
+    }
+
+    // =======================================================================
+    // PASO 3: horario (la fecha viene de lo que ya habías elegido en el carrito)
+    // =======================================================================
+    function prellenarFechaGuardada() {
+        let fechaGuardada = '';
+        try {
+            const datos = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null');
+            fechaGuardada = datos?.fecha || '';
+        } catch (e) { /* sin datos guardados */ }
+        const input = document.getElementById('p3-fecha');
+        const manana = new Date(); manana.setDate(manana.getDate() + 1);
+        input.min = new Date().toISOString().split('T')[0];
+        input.value = fechaGuardada || manana.toISOString().split('T')[0];
+        estado.entrega.fecha = input.value;
+        actualizarTextoFecha();
+    }
+    function actualizarTextoFecha() {
+        const valor = document.getElementById('p3-fecha').value;
+        estado.entrega.fecha = valor;
+        if (!valor) { document.getElementById('p3-fecha-texto').innerText = 'Selecciona una fecha'; return; }
+        const d = new Date(valor + 'T00:00:00');
+        document.getElementById('p3-fecha-texto').innerText = d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+            .replace(/^\w/, c => c.toUpperCase());
+    }
+    document.getElementById('p3-fecha').addEventListener('change', actualizarTextoFecha);
+
+    function elegirHorario(btn) {
+        document.querySelectorAll('.co-slot').forEach(b => b.classList.remove('is-activo'));
+        btn.classList.add('is-activo');
+        estado.entrega.horario = btn.dataset.horario;
+    }
+    window.elegirHorario = elegirHorario;
+
+    function confirmarPaso3() {
+        if (!estado.entrega.fecha || !estado.entrega.horario) { marcarError('error-p3', true); return; }
+        marcarError('error-p3', false);
+        document.getElementById('resumen-paso-3').innerHTML = `
+            <p><strong class="text-brandDark">Fecha:</strong> ${document.getElementById('p3-fecha-texto').innerText}</p>
+            <p><strong class="text-brandDark">Horario:</strong> ${escaparHtml(estado.entrega.horario)}</p>
+        `;
+        pasosCompletados.add(3);
+        renderResumen();
+        irAPaso(4);
+    }
+    window.confirmarPaso3 = confirmarPaso3;
+
+    // =======================================================================
+    // PASO 4: dedicatoria
+    // =======================================================================
+    document.getElementById('p4-sin-mensaje').addEventListener('change', (e) => {
+        document.getElementById('p4-mensaje-bloque').classList.toggle('hidden', e.target.checked);
+    });
+    document.getElementById('p4-anonimo').addEventListener('change', (e) => {
+        document.getElementById('p4-firma-bloque').classList.toggle('hidden', e.target.checked);
+    });
+
+    function confirmarPaso4() {
+        estado.dedicatoria.sinMensaje = document.getElementById('p4-sin-mensaje').checked;
+        estado.dedicatoria.mensaje = estado.dedicatoria.sinMensaje ? '' : document.getElementById('p4-mensaje').value.trim();
+        estado.dedicatoria.anonimo = document.getElementById('p4-anonimo').checked;
+        estado.dedicatoria.firma = estado.dedicatoria.anonimo ? '' : document.getElementById('p4-firma').value.trim();
+
+        let resumenTxt = '';
+        if (estado.dedicatoria.sinMensaje) resumenTxt = '<p class="italic text-gray-400">Sin mensaje</p>';
+        else resumenTxt = `<p>${escaparHtml(estado.dedicatoria.mensaje || '(sin texto)')}</p><p class="mt-1">${estado.dedicatoria.anonimo ? '<span class="italic text-gray-400">Anónimo</span>' : escaparHtml(estado.dedicatoria.firma || '')}</p>`;
+        document.getElementById('resumen-paso-4').innerHTML = resumenTxt;
+        pasosCompletados.add(4);
+        irAPaso(5);
+    }
+    window.confirmarPaso4 = confirmarPaso4;
+
+    // --- Modal de ejemplos de mensajes ---
+    const CATEGORIAS_MENSAJES = [
+        { nombre: 'Amor', mensajes: [
+            { titulo: 'Mi persona favorita', texto: 'Contigo hasta el café de la mañana sabe mejor.' },
+            { titulo: 'Sin ti no es lo mismo', texto: 'Cada día contigo se siente especial. Te amo.' },
+            { titulo: 'Para siempre', texto: 'Elijo quererte hoy, mañana y todos los días.' },
+            { titulo: 'Eres mi calma', texto: 'Gracias por ser mi lugar seguro.' }
+        ]},
+        { nombre: 'Conquista', mensajes: [
+            { titulo: '¿Nos damos una oportunidad?', texto: 'Llevo pensando en ti más de lo que admito.' },
+            { titulo: 'Me gustas', texto: 'Solo quería que lo supieras.' },
+            { titulo: '¿Qué dices?', texto: '¿Te animas a que nos conozcamos mejor?' },
+            { titulo: 'Desde que te vi', texto: 'No he dejado de pensar en ti.' }
+        ]},
+        { nombre: 'Cumpleaños', mensajes: [
+            { titulo: '¡Feliz cumpleaños!', texto: 'Que este nuevo año te traiga muchas alegrías.' },
+            { titulo: 'A celebrar', texto: 'Espero que tu día esté lleno de risas y sorpresas.' },
+            { titulo: 'Un año más', texto: 'Un año más de ser increíble. ¡Feliz cumpleaños!' },
+            { titulo: 'Deseos', texto: 'Que se cumplan todos tus deseos hoy y siempre.' }
+        ]},
+        { nombre: 'Signos', mensajes: [
+            { titulo: 'Brillas distinto', texto: 'Mereces todo lo bueno que se te viene. ¡Feliz cumpleaños!' },
+            { titulo: 'Escrito en las estrellas', texto: 'Este año viene lleno de cosas buenas para ti.' }
+        ]},
+        { nombre: 'Condolencias', mensajes: [
+            { titulo: 'Te acompañamos', texto: 'Nuestro cariño y apoyo están contigo en este momento.' },
+            { titulo: 'Con cariño', texto: 'Que encuentres consuelo en los buenos recuerdos.' },
+            { titulo: 'Fuerza', texto: 'Estamos aquí para lo que necesites.' }
+        ]},
+        { nombre: 'Mejórate Pronto', mensajes: [
+            { titulo: 'Pronta recuperación', texto: 'Cuídate mucho, pronto estarás mejor.' },
+            { titulo: 'Un abrazo', texto: 'Que te sientas mejor muy pronto. Te mando un abrazo.' }
+        ]},
+        { nombre: 'Gracias', mensajes: [
+            { titulo: 'Gracias por todo', texto: 'Tu apoyo significa mucho para mí.' },
+            { titulo: 'Con gratitud', texto: 'Gracias por estar siempre.' }
+        ]},
+        { nombre: 'Perdón', mensajes: [
+            { titulo: 'Lo siento', texto: 'Espero que podamos arreglar las cosas.' },
+            { titulo: 'Disculpa', texto: 'Sé que me equivoqué, perdón.' }
+        ]}
+    ];
+    let categoriaMensajeActual = 0;
+    let mensajeElegidoIndex = null;
+
+    function abrirModalMensajes() {
+        renderTabsMensajes();
+        renderOpcionesMensajes();
+        const modal = document.getElementById('modal-mensajes');
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+    }
+    window.abrirModalMensajes = abrirModalMensajes;
+    function cerrarModalMensajes() {
+        document.getElementById('modal-mensajes').classList.add('hidden');
+        document.getElementById('modal-mensajes').classList.remove('flex');
+    }
+    window.cerrarModalMensajes = cerrarModalMensajes;
+
+    function renderTabsMensajes() {
+        const cont = document.getElementById('tabs-mensajes');
+        cont.innerHTML = CATEGORIAS_MENSAJES.map((c, i) => `<div class="co-tab ${i === categoriaMensajeActual ? 'is-activo' : ''}" onclick="irACategoriaMensaje(${i})">${escaparHtml(c.nombre)}</div>`).join('');
+        const activo = cont.querySelector('.is-activo');
+        if (activo) activo.scrollIntoView({ inline: 'center', block: 'nearest' });
+    }
+    function irACategoriaMensaje(i) {
+        categoriaMensajeActual = i;
+        mensajeElegidoIndex = null;
+        renderTabsMensajes();
+        renderOpcionesMensajes();
+    }
+    window.irACategoriaMensaje = irACategoriaMensaje;
+    function desplazarTabsMensajes(dir) {
+        categoriaMensajeActual = Math.max(0, Math.min(CATEGORIAS_MENSAJES.length - 1, categoriaMensajeActual + dir));
+        mensajeElegidoIndex = null;
+        renderTabsMensajes();
+        renderOpcionesMensajes();
+    }
+    window.desplazarTabsMensajes = desplazarTabsMensajes;
+
+    function renderOpcionesMensajes() {
+        const cont = document.getElementById('opciones-mensajes');
+        const cat = CATEGORIAS_MENSAJES[categoriaMensajeActual];
+        cont.innerHTML = cat.mensajes.map((m, i) => `
+            <div class="co-msg-opcion" onclick="elegirMensaje(${i})">
+                <span class="co-radio ${mensajeElegidoIndex === i ? 'is-activo' : ''}"></span>
+                <div>
+                    <p class="text-sm font-semibold text-brandDark">${escaparHtml(m.titulo)}</p>
+                    <p class="text-xs text-gray-500">${escaparHtml(m.texto)}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+    function elegirMensaje(i) {
+        mensajeElegidoIndex = i;
+        renderOpcionesMensajes();
+    }
+    window.elegirMensaje = elegirMensaje;
+    function confirmarMensajeElegido() {
+        if (mensajeElegidoIndex !== null) {
+            const m = CATEGORIAS_MENSAJES[categoriaMensajeActual].mensajes[mensajeElegidoIndex];
+            document.getElementById('p4-mensaje').value = m.texto;
+        }
+        cerrarModalMensajes();
+    }
+    window.confirmarMensajeElegido = confirmarMensajeElegido;
+
+    // =======================================================================
+    // PASO 5: enviar pedido
+    // =======================================================================
+    async function completarCompra() {
+        const btn = document.getElementById('btn-completar-compra');
+        btn.disabled = true;
+        btn.classList.add('opacity-60');
+        btn.innerText = 'Procesando...';
+
+        const orden = {
+            cliente: estado.destinatario.nombre,
+            telefono: estado.telefono,
+            direccion: estado.direccion.textoCompleto,
+            fecha: estado.entrega.fecha,
+            dedicatoria: estado.dedicatoria.sinMensaje ? '' : estado.dedicatoria.mensaje,
+            carrito: carrito,
+            destinatarioTelefono: estado.destinatario.telefono,
+            tipoDomicilio: estado.direccion.tipo,
+            notasEntrega: estado.direccion.referencias,
+            horarioEntrega: estado.entrega.horario,
+            lat: estado.direccion.lat,
+            lng: estado.direccion.lng,
+            firma: estado.dedicatoria.anonimo ? '' : estado.dedicatoria.firma,
+            esAnonimo: estado.dedicatoria.anonimo,
+            conEnvio: true
+        };
+
+        try {
+            const respuesta = await fetch('/api/ordenes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orden)
+            });
+            const datos = await respuesta.json().catch(() => ({}));
+            if (respuesta.ok) {
+                localStorage.removeItem('carritoRF');
+                mostrarToast(`¡Pedido #${datos.orden?.id || ''} generado con éxito!`);
+                setTimeout(() => { window.location.href = '/'; }, 1600);
+            } else {
+                mostrarToast(datos.error || 'Hubo un error al procesar la orden.', 'error');
+                btn.disabled = false; btn.classList.remove('opacity-60'); btn.innerText = 'Completar compra';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            mostrarToast('No fue posible conectar con el servidor. Intenta nuevamente.', 'error');
+            btn.disabled = false; btn.classList.remove('opacity-60'); btn.innerText = 'Completar compra';
+        }
+    }
+    window.completarCompra = completarCompra;
+
+    // =======================================================================
+    // Inicio
+    // =======================================================================
+    renderResumen();
+    renderPasos();
+</script>
 </body>
 </html>
