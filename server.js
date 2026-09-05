@@ -146,6 +146,17 @@ async function inicializarDB() {
       clave VARCHAR(100) PRIMARY KEY,
       valor TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS clientes_cuenta (
+      id SERIAL PRIMARY KEY,
+      nombre VARCHAR(100) NOT NULL,
+      apellido VARCHAR(100) NOT NULL,
+      genero VARCHAR(20),
+      email VARCHAR(150) UNIQUE NOT NULL,
+      telefono VARCHAR(20),
+      password_hash TEXT NOT NULL,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Compatibilidad con instalaciones anteriores de la base de datos.
@@ -170,7 +181,8 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS lng DECIMAL(10,7)',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS firma VARCHAR(150)',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS es_anonimo BOOLEAN DEFAULT false',
-    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS envio DECIMAL(10,2) DEFAULT 0'
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS envio DECIMAL(10,2) DEFAULT 0',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS cliente_cuenta_id INTEGER REFERENCES clientes_cuenta(id) ON DELETE SET NULL'
   ];
 
   for (const query of alterQueries) {
@@ -364,8 +376,172 @@ app.patch('/api/admin/perfil/password', requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Equipo (usuarios del panel) -- solo administradores
+// Cuentas de cliente (tienda) -- independientes de las cuentas del panel.
 // ---------------------------------------------------------------------------
+const intentosLoginCliente = new Map();
+function clienteEstaBloqueado(email) {
+  const registro = intentosLoginCliente.get(email.toLowerCase());
+  if (!registro) return false;
+  if (registro.bloqueadoHasta && registro.bloqueadoHasta > Date.now()) return true;
+  if (registro.bloqueadoHasta && registro.bloqueadoHasta <= Date.now()) { intentosLoginCliente.delete(email.toLowerCase()); return false; }
+  return false;
+}
+function registrarIntentoFallidoCliente(email) {
+  const clave = email.toLowerCase();
+  const registro = intentosLoginCliente.get(clave) || { fallos: 0, bloqueadoHasta: 0 };
+  registro.fallos += 1;
+  if (registro.fallos >= LIMITE_INTENTOS) registro.bloqueadoHasta = Date.now() + BLOQUEO_MS;
+  intentosLoginCliente.set(clave, registro);
+}
+
+function requireClienteAuth(req, res, next) {
+  if (req.session && req.session.clienteId) return next();
+  res.status(401).json({ error: 'Debes iniciar sesión.' });
+}
+
+function clientePublico(row) {
+  return { id: row.id, nombre: row.nombre, apellido: row.apellido, genero: row.genero, email: row.email, telefono: row.telefono, creado_en: row.creado_en };
+}
+
+app.get('/api/cuenta/sesion', (req, res) => {
+  if (req.session && req.session.clienteId) {
+    return res.json({ autenticado: true, cliente: { id: req.session.clienteId, nombre: req.session.clienteNombre, apellido: req.session.clienteApellido } });
+  }
+  res.json({ autenticado: false });
+});
+
+app.post('/api/cuenta/registro', async (req, res) => {
+  const { nombre, apellido, genero, email, telefono, password } = req.body || {};
+  if (!nombre?.trim() || !apellido?.trim() || !email?.trim() || !password || password.length < 8) {
+    return res.status(400).json({ error: 'Nombre, apellido, correo y una contraseña de al menos 8 caracteres son obligatorios.' });
+  }
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    const resultado = await pool.query(
+      `INSERT INTO clientes_cuenta (nombre, apellido, genero, email, telefono, password_hash) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [nombre.trim(), apellido.trim(), genero || null, email.trim().toLowerCase(), telefono?.trim() || null, hash]
+    );
+    const cliente = resultado.rows[0];
+    req.session.regenerate((err) => {
+      if (err) return res.status(500).json({ error: 'No se pudo crear la cuenta.' });
+      req.session.clienteId = cliente.id;
+      req.session.clienteNombre = cliente.nombre;
+      req.session.clienteApellido = cliente.apellido;
+      res.status(201).json({ cliente: clientePublico(cliente) });
+    });
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una cuenta con ese correo.' });
+    console.error('POST /api/cuenta/registro:', error);
+    res.status(500).json({ error: 'No se pudo crear la cuenta.' });
+  }
+});
+
+app.post('/api/cuenta/login', async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email?.trim() || !password) return res.status(400).json({ error: 'Ingresa tu correo y contraseña.' });
+  if (clienteEstaBloqueado(email)) return res.status(429).json({ error: 'Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo.' });
+  try {
+    const resultado = await pool.query('SELECT * FROM clientes_cuenta WHERE lower(email) = lower($1)', [email.trim()]);
+    const cliente = resultado.rows[0];
+    if (!cliente) { registrarIntentoFallidoCliente(email); return res.status(401).json({ error: 'Correo o contraseña incorrectos.' }); }
+    const coincide = await bcrypt.compare(password, cliente.password_hash);
+    if (!coincide) { registrarIntentoFallidoCliente(email); return res.status(401).json({ error: 'Correo o contraseña incorrectos.' }); }
+    intentosLoginCliente.delete(email.toLowerCase());
+    req.session.regenerate((err) => {
+      if (err) return res.status(500).json({ error: 'No se pudo iniciar sesión.' });
+      req.session.clienteId = cliente.id;
+      req.session.clienteNombre = cliente.nombre;
+      req.session.clienteApellido = cliente.apellido;
+      res.json({ cliente: clientePublico(cliente) });
+    });
+  } catch (error) {
+    console.error('POST /api/cuenta/login:', error);
+    res.status(500).json({ error: 'Error del servidor al iniciar sesión.' });
+  }
+});
+
+app.post('/api/cuenta/logout', (req, res) => {
+  delete req.session.clienteId;
+  delete req.session.clienteNombre;
+  delete req.session.clienteApellido;
+  res.json({ exito: true });
+});
+
+app.get('/api/cuenta/perfil', requireClienteAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM clientes_cuenta WHERE id=$1', [req.session.clienteId]);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Cuenta no encontrada.' });
+    res.json(clientePublico(resultado.rows[0]));
+  } catch (error) {
+    console.error('GET /api/cuenta/perfil:', error);
+    res.status(500).json({ error: 'No se pudo cargar tu perfil.' });
+  }
+});
+
+app.patch('/api/cuenta/perfil', requireClienteAuth, async (req, res) => {
+  const campos = []; const valores = []; let i = 1;
+  if (typeof req.body.nombre === 'string' && req.body.nombre.trim()) { campos.push(`nombre=$${i++}`); valores.push(req.body.nombre.trim()); }
+  if (typeof req.body.apellido === 'string' && req.body.apellido.trim()) { campos.push(`apellido=$${i++}`); valores.push(req.body.apellido.trim()); }
+  if (typeof req.body.genero === 'string') { campos.push(`genero=$${i++}`); valores.push(req.body.genero || null); }
+  if (typeof req.body.telefono === 'string') { campos.push(`telefono=$${i++}`); valores.push(req.body.telefono.trim() || null); }
+  if (campos.length === 0) return res.status(400).json({ error: 'No hay cambios para guardar.' });
+  valores.push(req.session.clienteId);
+  try {
+    const resultado = await pool.query(`UPDATE clientes_cuenta SET ${campos.join(', ')} WHERE id=$${i} RETURNING *`, valores);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Cuenta no encontrada.' });
+    req.session.clienteNombre = resultado.rows[0].nombre;
+    req.session.clienteApellido = resultado.rows[0].apellido;
+    res.json(clientePublico(resultado.rows[0]));
+  } catch (error) {
+    console.error('PATCH /api/cuenta/perfil:', error);
+    res.status(500).json({ error: 'No se pudo actualizar tu perfil.' });
+  }
+});
+
+app.patch('/api/cuenta/password', requireClienteAuth, async (req, res) => {
+  const { passwordActual, passwordNueva } = req.body || {};
+  if (!passwordActual || !passwordNueva || passwordNueva.length < 8) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
+  }
+  try {
+    const resultado = await pool.query('SELECT * FROM clientes_cuenta WHERE id=$1', [req.session.clienteId]);
+    const cliente = resultado.rows[0];
+    if (!cliente) return res.status(404).json({ error: 'Cuenta no encontrada.' });
+    const coincide = await bcrypt.compare(passwordActual, cliente.password_hash);
+    if (!coincide) return res.status(401).json({ error: 'Tu contraseña actual no es correcta.' });
+    const hash = await bcrypt.hash(passwordNueva, 12);
+    await pool.query('UPDATE clientes_cuenta SET password_hash=$1 WHERE id=$2', [hash, cliente.id]);
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('PATCH /api/cuenta/password:', error);
+    res.status(500).json({ error: 'No se pudo actualizar la contraseña.' });
+  }
+});
+
+app.delete('/api/cuenta', requireClienteAuth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM clientes_cuenta WHERE id=$1', [req.session.clienteId]);
+    delete req.session.clienteId;
+    delete req.session.clienteNombre;
+    delete req.session.clienteApellido;
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/cuenta:', error);
+    res.status(500).json({ error: 'No se pudo eliminar la cuenta.' });
+  }
+});
+
+app.get('/api/cuenta/pedidos', requireClienteAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM ordenes WHERE cliente_cuenta_id=$1 ORDER BY id DESC', [req.session.clienteId]);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/cuenta/pedidos:', error);
+    res.status(500).json({ error: 'No se pudieron cargar tus pedidos.' });
+  }
+});
+
+
 app.get('/api/admin/usuarios', requireAuth, requireAdmin, async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM usuarios_admin ORDER BY id ASC');
@@ -680,8 +856,8 @@ app.post('/api/ordenes', async (req, res) => {
     const result = await client.query(`
       INSERT INTO ordenes
         (cliente_nombre, cliente_telefono, direccion_entrega, fecha_entrega, dedicatoria, carrito, total,
-         destinatario_telefono, tipo_domicilio, notas_entrega, horario_entrega, lat, lng, firma, es_anonimo, envio)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+         destinatario_telefono, tipo_domicilio, notas_entrega, horario_entrega, lat, lng, firma, es_anonimo, envio, cliente_cuenta_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
       RETURNING *
     `, [
       cliente.trim(), telefono.trim(), direccion.trim(), fecha,
@@ -694,7 +870,10 @@ app.post('/api/ordenes', async (req, res) => {
       Number.isFinite(lngNum) ? lngNum : null,
       firma?.trim() || null,
       Boolean(esAnonimo),
-      envio
+      envio,
+      // El ID de cuenta se toma de la sesión del servidor, nunca de lo que
+      // mande el cliente -- así nadie puede adjudicarse pedidos ajenos.
+      req.session && req.session.clienteId ? req.session.clienteId : null
     ]);
 
     await client.query('COMMIT');
