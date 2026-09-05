@@ -106,9 +106,11 @@
                             <input type="tel" id="p1-telefono" maxlength="10" placeholder="10 dígitos" class="co-input flex-1">
                         </div>
                         <p class="hidden text-xs text-red-600 mt-1" id="error-p1">Ingresa un teléfono válido a 10 dígitos.</p>
-                        <label class="co-label mt-4">Correo electrónico</label>
-                        <input type="email" id="p1-email" placeholder="tucorreo@ejemplo.com" class="co-input max-w-sm">
-                        <p class="hidden text-xs text-red-600 mt-1" id="error-p1-email">Ingresa un correo electrónico válido.</p>
+                        <div id="bloque-correo-paso1">
+                            <label class="co-label mt-4">Correo electrónico</label>
+                            <input type="email" id="p1-email" placeholder="tucorreo@ejemplo.com" class="co-input max-w-sm">
+                            <p class="hidden text-xs text-red-600 mt-1" id="error-p1-email">Ingresa un correo electrónico válido.</p>
+                        </div>
                         <button type="button" onclick="confirmarPaso1()" class="mt-4 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Siguiente</button>
                     </div>
                     <div id="resumen-paso-1" class="hidden mt-2 ml-10 text-sm text-gray-600"></div>
@@ -435,9 +437,13 @@
             const r = await fetch('/api/cuenta/sesion');
             const datos = await r.json();
             sesionCliente = datos.autenticado ? datos.cliente : null;
-            if (sesionCliente && sesionCliente.email) {
-                const campoEmail = document.getElementById('p1-email');
-                if (campoEmail && !campoEmail.value) campoEmail.value = sesionCliente.email;
+            const bloqueCorreo = document.getElementById('bloque-correo-paso1');
+            if (sesionCliente) {
+                // Ya sabemos tu correo por tu cuenta -- no hace falta pedirlo de nuevo.
+                if (bloqueCorreo) bloqueCorreo.classList.add('hidden');
+                if (sesionCliente.email) document.getElementById('p1-email').value = sesionCliente.email;
+            } else if (bloqueCorreo) {
+                bloqueCorreo.classList.remove('hidden');
             }
         } catch (e) { sesionCliente = null; }
         renderWidgetCuenta();
@@ -495,8 +501,10 @@
     window.mostrarProximamenteCuenta = mostrarProximamenteCuenta;
 
     function continuarComoInvitado() {
+        const accion = accionTrasCuenta;
+        accionTrasCuenta = null;
         cerrarModalCuenta();
-        if (accionTrasCuenta) { const accion = accionTrasCuenta; accionTrasCuenta = null; accion(); }
+        if (accion) accion();
     }
     window.continuarComoInvitado = continuarComoInvitado;
 
@@ -513,8 +521,10 @@
             if (!r.ok) throw new Error(datos.error || 'No se pudo iniciar sesión.');
             sesionCliente = datos.cliente;
             renderWidgetCuenta();
+            const accion = accionTrasCuenta;
+            accionTrasCuenta = null;
             cerrarModalCuenta();
-            if (accionTrasCuenta) { const accion = accionTrasCuenta; accionTrasCuenta = null; accion(); }
+            if (accion) accion();
         } catch (error) {
             errorEl.innerText = error.message;
             errorEl.classList.remove('hidden');
@@ -542,8 +552,10 @@
             if (!r.ok) throw new Error(datos.error || 'No se pudo crear la cuenta.');
             sesionCliente = datos.cliente;
             renderWidgetCuenta();
+            const accion = accionTrasCuenta;
+            accionTrasCuenta = null;
             cerrarModalCuenta();
-            if (accionTrasCuenta) { const accion = accionTrasCuenta; accionTrasCuenta = null; accion(); }
+            if (accion) accion();
         } catch (error) {
             errorEl.innerText = error.message;
             errorEl.classList.remove('hidden');
@@ -679,10 +691,12 @@
     // =======================================================================
     function confirmarPaso1() {
         const telefono = document.getElementById('p1-telefono').value.trim();
-        const email = document.getElementById('p1-email').value.trim();
+        const email = sesionCliente ? (sesionCliente.email || document.getElementById('p1-email').value.trim()) : document.getElementById('p1-email').value.trim();
         let valido = true;
         if (!/^\d{10}$/.test(telefono)) { marcarError('error-p1', true); valido = false; } else marcarError('error-p1', false);
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { marcarError('error-p1-email', true); valido = false; } else marcarError('error-p1-email', false);
+        if (!sesionCliente) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { marcarError('error-p1-email', true); valido = false; } else marcarError('error-p1-email', false);
+        }
         if (!valido) return;
         estado.telefono = document.getElementById('p1-lada').value + ' ' + telefono;
         estado.email = email;

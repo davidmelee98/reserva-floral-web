@@ -2947,8 +2947,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     window.mostrarProximamenteCuenta = mostrarProximamenteCuenta;
 
     function continuarComoInvitado() {
+        const accion = accionTrasCuenta;
+        accionTrasCuenta = null;
         cerrarModalCuenta();
-        if (accionTrasCuenta) { const accion = accionTrasCuenta; accionTrasCuenta = null; accion(); }
+        if (accion) accion();
     }
     window.continuarComoInvitado = continuarComoInvitado;
 
@@ -2965,8 +2967,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (!r.ok) throw new Error(datos.error || 'No se pudo iniciar sesión.');
             sesionCliente = datos.cliente;
             renderWidgetCuenta();
+            const accion = accionTrasCuenta;
+            accionTrasCuenta = null;
             cerrarModalCuenta();
-            if (accionTrasCuenta) { const accion = accionTrasCuenta; accionTrasCuenta = null; accion(); }
+            if (accion) accion();
         } catch (error) {
             errorEl.innerText = error.message;
             errorEl.classList.remove('hidden');
@@ -2994,8 +2998,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (!r.ok) throw new Error(datos.error || 'No se pudo crear la cuenta.');
             sesionCliente = datos.cliente;
             renderWidgetCuenta();
+            const accion = accionTrasCuenta;
+            accionTrasCuenta = null;
             cerrarModalCuenta();
-            if (accionTrasCuenta) { const accion = accionTrasCuenta; accionTrasCuenta = null; accion(); }
+            if (accion) accion();
         } catch (error) {
             errorEl.innerText = error.message;
             errorEl.classList.remove('hidden');
