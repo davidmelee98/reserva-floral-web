@@ -210,7 +210,8 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS firma VARCHAR(150)',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS es_anonimo BOOLEAN DEFAULT false',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS envio DECIMAL(10,2) DEFAULT 0',
-    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS cliente_cuenta_id INTEGER REFERENCES clientes_cuenta(id) ON DELETE SET NULL'
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS cliente_cuenta_id INTEGER REFERENCES clientes_cuenta(id) ON DELETE SET NULL',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS email_contacto VARCHAR(150)'
   ];
 
   for (const query of alterQueries) {
@@ -433,7 +434,7 @@ function clientePublico(row) {
 
 app.get('/api/cuenta/sesion', (req, res) => {
   if (req.session && req.session.clienteId) {
-    return res.json({ autenticado: true, cliente: { id: req.session.clienteId, nombre: req.session.clienteNombre, apellido: req.session.clienteApellido } });
+    return res.json({ autenticado: true, cliente: { id: req.session.clienteId, nombre: req.session.clienteNombre, apellido: req.session.clienteApellido, email: req.session.clienteEmail } });
   }
   res.json({ autenticado: false });
 });
@@ -455,6 +456,7 @@ app.post('/api/cuenta/registro', async (req, res) => {
       req.session.clienteId = cliente.id;
       req.session.clienteNombre = cliente.nombre;
       req.session.clienteApellido = cliente.apellido;
+      req.session.clienteEmail = cliente.email;
       res.status(201).json({ cliente: clientePublico(cliente) });
     });
   } catch (error) {
@@ -480,6 +482,7 @@ app.post('/api/cuenta/login', async (req, res) => {
       req.session.clienteId = cliente.id;
       req.session.clienteNombre = cliente.nombre;
       req.session.clienteApellido = cliente.apellido;
+      req.session.clienteEmail = cliente.email;
       res.json({ cliente: clientePublico(cliente) });
     });
   } catch (error) {
@@ -981,11 +984,14 @@ app.post('/api/ordenes', async (req, res) => {
   const {
     cliente, telefono, direccion, fecha, dedicatoria, carrito,
     destinatarioTelefono, tipoDomicilio, notasEntrega, horarioEntrega,
-    lat, lng, firma, esAnonimo, conEnvio
+    lat, lng, firma, esAnonimo, conEnvio, emailContacto
   } = req.body;
 
   if (!cliente?.trim() || !telefono?.trim() || !direccion?.trim() || !fecha || !Array.isArray(carrito) || carrito.length === 0) {
     return res.status(400).json({ error: 'Faltan datos obligatorios del pedido.' });
+  }
+  if (!emailContacto?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailContacto.trim())) {
+    return res.status(400).json({ error: 'Ingresa un correo electrónico válido.' });
   }
 
   const idsCarrito = carrito.map(item => Number(item.id));
@@ -1032,8 +1038,8 @@ app.post('/api/ordenes', async (req, res) => {
     const result = await client.query(`
       INSERT INTO ordenes
         (cliente_nombre, cliente_telefono, direccion_entrega, fecha_entrega, dedicatoria, carrito, total,
-         destinatario_telefono, tipo_domicilio, notas_entrega, horario_entrega, lat, lng, firma, es_anonimo, envio, cliente_cuenta_id)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+         destinatario_telefono, tipo_domicilio, notas_entrega, horario_entrega, lat, lng, firma, es_anonimo, envio, cliente_cuenta_id, email_contacto)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
       RETURNING *
     `, [
       cliente.trim(), telefono.trim(), direccion.trim(), fecha,
@@ -1049,7 +1055,8 @@ app.post('/api/ordenes', async (req, res) => {
       envio,
       // El ID de cuenta se toma de la sesión del servidor, nunca de lo que
       // mande el cliente -- así nadie puede adjudicarse pedidos ajenos.
-      req.session && req.session.clienteId ? req.session.clienteId : null
+      req.session && req.session.clienteId ? req.session.clienteId : null,
+      emailContacto.trim().toLowerCase()
     ]);
 
     await client.query('COMMIT');

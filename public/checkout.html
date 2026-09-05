@@ -91,13 +91,13 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <span class="co-circulo" id="circulo-1">1</span>
-                            <h2 class="font-semibold text-brandDark">Confirma tu teléfono</h2>
+                            <h2 class="font-semibold text-brandDark">Confirma tus datos de contacto</h2>
                         </div>
                         <button type="button" id="editar-1" onclick="reabrirPaso(1)" class="hidden text-brandFuchsia text-sm font-medium hover:underline">Editar</button>
                     </div>
 
                     <div id="form-paso-1" class="mt-4 ml-10">
-                        <p class="text-sm text-gray-500">Este es el teléfono de contacto para tu pedido.<br>Lo usaremos para comunicarnos contigo si hay algún inconveniente.</p>
+                        <p class="text-sm text-gray-500">Los usaremos para comunicarnos contigo y enviarte la confirmación de tu pedido.</p>
                         <label class="co-label mt-4">Número de teléfono</label>
                         <div class="flex gap-2 max-w-sm">
                             <select id="p1-lada" class="co-input !w-20">
@@ -106,6 +106,9 @@
                             <input type="tel" id="p1-telefono" maxlength="10" placeholder="10 dígitos" class="co-input flex-1">
                         </div>
                         <p class="hidden text-xs text-red-600 mt-1" id="error-p1">Ingresa un teléfono válido a 10 dígitos.</p>
+                        <label class="co-label mt-4">Correo electrónico</label>
+                        <input type="email" id="p1-email" placeholder="tucorreo@ejemplo.com" class="co-input max-w-sm">
+                        <p class="hidden text-xs text-red-600 mt-1" id="error-p1-email">Ingresa un correo electrónico válido.</p>
                         <button type="button" onclick="confirmarPaso1()" class="mt-4 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Siguiente</button>
                     </div>
                     <div id="resumen-paso-1" class="hidden mt-2 ml-10 text-sm text-gray-600"></div>
@@ -432,6 +435,10 @@
             const r = await fetch('/api/cuenta/sesion');
             const datos = await r.json();
             sesionCliente = datos.autenticado ? datos.cliente : null;
+            if (sesionCliente && sesionCliente.email) {
+                const campoEmail = document.getElementById('p1-email');
+                if (campoEmail && !campoEmail.value) campoEmail.value = sesionCliente.email;
+            }
         } catch (e) { sesionCliente = null; }
         renderWidgetCuenta();
     }
@@ -570,6 +577,7 @@
 
     const estado = {
         telefono: '',
+        email: '',
         destinatario: { nombre: '', telefono: '' },
         direccion: { calle: '', numero: '', colonia: '', tipo: '', cp: '', estado: '', ciudad: '', referencias: '', textoCompleto: '', lat: null, lng: null },
         entrega: { fecha: '', horario: '' },
@@ -671,10 +679,14 @@
     // =======================================================================
     function confirmarPaso1() {
         const telefono = document.getElementById('p1-telefono').value.trim();
-        if (!/^\d{10}$/.test(telefono)) { marcarError('error-p1', true); return; }
-        marcarError('error-p1', false);
+        const email = document.getElementById('p1-email').value.trim();
+        let valido = true;
+        if (!/^\d{10}$/.test(telefono)) { marcarError('error-p1', true); valido = false; } else marcarError('error-p1', false);
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { marcarError('error-p1-email', true); valido = false; } else marcarError('error-p1-email', false);
+        if (!valido) return;
         estado.telefono = document.getElementById('p1-lada').value + ' ' + telefono;
-        document.getElementById('resumen-paso-1').innerText = estado.telefono;
+        estado.email = email;
+        document.getElementById('resumen-paso-1').innerHTML = `${escaparHtml(estado.telefono)}<br>${escaparHtml(estado.email)}`;
         pasosCompletados.add(1);
         irAPaso(2);
     }
@@ -1069,6 +1081,7 @@
         const orden = {
             cliente: estado.destinatario.nombre,
             telefono: estado.telefono,
+            emailContacto: estado.email,
             direccion: estado.direccion.textoCompleto,
             fecha: estado.entrega.fecha,
             dedicatoria: estado.dedicatoria.sinMensaje ? '' : estado.dedicatoria.mensaje,
@@ -1095,6 +1108,7 @@
                 const resumenPedido = {
                     id: datos.orden?.id || '',
                     telefono: estado.telefono,
+                    email: estado.email,
                     destinatario: estado.destinatario.nombre,
                     direccion: estado.direccion.textoCompleto,
                     fecha: estado.entrega.fecha,

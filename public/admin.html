@@ -1442,7 +1442,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                                 <p class="font-semibold text-brandDark text-sm">${escaparHtmlAdmin(o.cliente_nombre)}</p>
                                 <span class="adm-badge ${colorEstado}">${escaparHtmlAdmin(o.estado || 'Pendiente')}</span>
                             </div>
-                            <p class="text-xs text-gray-500 mt-0.5">☎️ Contacto: ${escaparHtmlAdmin(o.cliente_telefono)}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''} · Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">☎️ Contacto: ${escaparHtmlAdmin(o.cliente_telefono)}${o.email_contacto ? ` · ${escaparHtmlAdmin(o.email_contacto)}` : ''}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''} · Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</p>
                             <p class="text-xs text-gray-500 mt-0.5">${iconoTipo} ${escaparHtmlAdmin(o.direccion_entrega)}
                                 ${tieneMapa ? ` · <a href="https://www.openstreetmap.org/?mlat=${o.lat}&mlon=${o.lng}#map=18/${o.lat}/${o.lng}" target="_blank" class="text-brandFuchsia font-medium hover:underline">Ver ubicación en el mapa</a>` : ''}
                             </p>

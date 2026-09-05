@@ -298,7 +298,7 @@
                     </div>
                     <h1 class="text-2xl font-semibold text-brandDark">¡Gracias por tu compra!</h1>
                     <p class="text-sm text-gray-500 mt-1">Tu pedido <strong class="text-brandDark">#${escaparHtml(pedido.id)}</strong> fue registrado correctamente.</p>
-                    <p class="text-sm text-gray-500 mt-1">Nos pondremos en contacto al <strong class="text-brandDark">${escaparHtml(pedido.telefono)}</strong> para confirmar tu pedido y el pago.</p>
+                    <p class="text-sm text-gray-500 mt-1">Nos pondremos en contacto al <strong class="text-brandDark">${escaparHtml(pedido.telefono)}</strong>${pedido.email ? ` y a <strong class="text-brandDark">${escaparHtml(pedido.email)}</strong>` : ''} para confirmar tu pedido y el pago.</p>
                 </div>
 
                 <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-4">
