@@ -157,6 +157,34 @@ async function inicializarDB() {
       password_hash TEXT NOT NULL,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS direcciones_cliente (
+      id SERIAL PRIMARY KEY,
+      cliente_cuenta_id INTEGER NOT NULL REFERENCES clientes_cuenta(id) ON DELETE CASCADE,
+      nombre_destinatario VARCHAR(150) NOT NULL,
+      telefono_destinatario VARCHAR(20),
+      calle VARCHAR(200),
+      numero VARCHAR(20),
+      colonia VARCHAR(150),
+      cp VARCHAR(10),
+      ciudad VARCHAR(100),
+      estado VARCHAR(100),
+      tipo_domicilio VARCHAR(50),
+      notas_entrega TEXT,
+      lat DECIMAL(10,7),
+      lng DECIMAL(10,7),
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS recordatorios_cliente (
+      id SERIAL PRIMARY KEY,
+      cliente_cuenta_id INTEGER NOT NULL REFERENCES clientes_cuenta(id) ON DELETE CASCADE,
+      titulo VARCHAR(150) NOT NULL,
+      fecha DATE NOT NULL,
+      repetir_anual BOOLEAN DEFAULT true,
+      notas TEXT,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Compatibilidad con instalaciones anteriores de la base de datos.
@@ -538,6 +566,154 @@ app.get('/api/cuenta/pedidos', requireClienteAuth, async (req, res) => {
   } catch (error) {
     console.error('GET /api/cuenta/pedidos:', error);
     res.status(500).json({ error: 'No se pudieron cargar tus pedidos.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Direcciones de envío guardadas (libreta de direcciones del cliente)
+// ---------------------------------------------------------------------------
+app.get('/api/cuenta/direcciones', requireClienteAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM direcciones_cliente WHERE cliente_cuenta_id=$1 ORDER BY id DESC', [req.session.clienteId]);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/cuenta/direcciones:', error);
+    res.status(500).json({ error: 'No se pudieron cargar tus direcciones.' });
+  }
+});
+
+function normalizarDireccionBody(body) {
+  return {
+    nombre_destinatario: String(body.nombreDestinatario || '').trim(),
+    telefono_destinatario: String(body.telefonoDestinatario || '').trim() || null,
+    calle: String(body.calle || '').trim() || null,
+    numero: String(body.numero || '').trim() || null,
+    colonia: String(body.colonia || '').trim() || null,
+    cp: String(body.cp || '').trim() || null,
+    ciudad: String(body.ciudad || '').trim() || null,
+    estado: String(body.estado || '').trim() || null,
+    tipo_domicilio: String(body.tipoDomicilio || '').trim() || null,
+    notas_entrega: String(body.notasEntrega || '').trim() || null,
+    lat: Number.isFinite(Number(body.lat)) ? Number(body.lat) : null,
+    lng: Number.isFinite(Number(body.lng)) ? Number(body.lng) : null
+  };
+}
+
+app.post('/api/cuenta/direcciones', requireClienteAuth, async (req, res) => {
+  const d = normalizarDireccionBody(req.body);
+  if (!d.nombre_destinatario || !d.calle) return res.status(400).json({ error: 'Nombre del destinatario y calle son obligatorios.' });
+  try {
+    const resultado = await pool.query(`
+      INSERT INTO direcciones_cliente
+        (cliente_cuenta_id, nombre_destinatario, telefono_destinatario, calle, numero, colonia, cp, ciudad, estado, tipo_domicilio, notas_entrega, lat, lng)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *
+    `, [req.session.clienteId, d.nombre_destinatario, d.telefono_destinatario, d.calle, d.numero, d.colonia, d.cp, d.ciudad, d.estado, d.tipo_domicilio, d.notas_entrega, d.lat, d.lng]);
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    console.error('POST /api/cuenta/direcciones:', error);
+    res.status(500).json({ error: 'No se pudo guardar la dirección.' });
+  }
+});
+
+app.put('/api/cuenta/direcciones/:id', requireClienteAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  const d = normalizarDireccionBody(req.body);
+  if (!d.nombre_destinatario || !d.calle) return res.status(400).json({ error: 'Nombre del destinatario y calle son obligatorios.' });
+  try {
+    const resultado = await pool.query(`
+      UPDATE direcciones_cliente SET
+        nombre_destinatario=$1, telefono_destinatario=$2, calle=$3, numero=$4, colonia=$5, cp=$6,
+        ciudad=$7, estado=$8, tipo_domicilio=$9, notas_entrega=$10, lat=$11, lng=$12
+      WHERE id=$13 AND cliente_cuenta_id=$14 RETURNING *
+    `, [d.nombre_destinatario, d.telefono_destinatario, d.calle, d.numero, d.colonia, d.cp, d.ciudad, d.estado, d.tipo_domicilio, d.notas_entrega, d.lat, d.lng, id, req.session.clienteId]);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Dirección no encontrada.' });
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    console.error('PUT /api/cuenta/direcciones/:id:', error);
+    res.status(500).json({ error: 'No se pudo actualizar la dirección.' });
+  }
+});
+
+app.delete('/api/cuenta/direcciones/:id', requireClienteAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const resultado = await pool.query('DELETE FROM direcciones_cliente WHERE id=$1 AND cliente_cuenta_id=$2', [id, req.session.clienteId]);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Dirección no encontrada.' });
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/cuenta/direcciones/:id:', error);
+    res.status(500).json({ error: 'No se pudo eliminar la dirección.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Recordatorios de fechas especiales
+// Nota: esto guarda y muestra las fechas, pero todavía no envía avisos por
+// correo/SMS (no hay un servicio de envíos configurado) -- eso quedaría como
+// siguiente paso una vez que se dé de alta un proveedor de correo.
+// ---------------------------------------------------------------------------
+app.get('/api/cuenta/recordatorios', requireClienteAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM recordatorios_cliente WHERE cliente_cuenta_id=$1 ORDER BY fecha ASC', [req.session.clienteId]);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/cuenta/recordatorios:', error);
+    res.status(500).json({ error: 'No se pudieron cargar tus recordatorios.' });
+  }
+});
+
+app.post('/api/cuenta/recordatorios', requireClienteAuth, async (req, res) => {
+  const { titulo, fecha, repetirAnual, notas } = req.body || {};
+  if (!titulo?.trim() || !fecha) return res.status(400).json({ error: 'Título y fecha son obligatorios.' });
+  try {
+    const resultado = await pool.query(
+      `INSERT INTO recordatorios_cliente (cliente_cuenta_id, titulo, fecha, repetir_anual, notas) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [req.session.clienteId, titulo.trim(), fecha, repetirAnual !== false, notas?.trim() || null]
+    );
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    console.error('POST /api/cuenta/recordatorios:', error);
+    res.status(500).json({ error: 'No se pudo guardar el recordatorio.' });
+  }
+});
+
+app.delete('/api/cuenta/recordatorios/:id', requireClienteAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const resultado = await pool.query('DELETE FROM recordatorios_cliente WHERE id=$1 AND cliente_cuenta_id=$2', [id, req.session.clienteId]);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Recordatorio no encontrado.' });
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/cuenta/recordatorios/:id:', error);
+    res.status(500).json({ error: 'No se pudo eliminar el recordatorio.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Programa de puntos -- se calcula en vivo a partir de pedidos ENTREGADOS
+// (1 punto por cada $1 MXN gastado en productos, sin contar el envío). No hay
+// una tabla de puntos que se pueda desincronizar: siempre refleja tus pedidos reales.
+// ---------------------------------------------------------------------------
+const META_PUNTOS = 3000;
+app.get('/api/cuenta/puntos', requireClienteAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT id, creado_en, total, envio FROM ordenes WHERE cliente_cuenta_id=$1 AND estado='Entregado' ORDER BY creado_en ASC`,
+      [req.session.clienteId]
+    );
+    const historial = resultado.rows.map(o => ({
+      orden_id: o.id,
+      fecha: o.creado_en,
+      puntos: Math.max(0, Math.round(Number(o.total) - Number(o.envio || 0)))
+    }));
+    const totalPuntos = historial.reduce((s, h) => s + h.puntos, 0);
+    res.json({ puntos: totalPuntos % META_PUNTOS, puntosTotales: totalPuntos, meta: META_PUNTOS, cuponesDisponibles: Math.floor(totalPuntos / META_PUNTOS), historial });
+  } catch (error) {
+    console.error('GET /api/cuenta/puntos:', error);
+    res.status(500).json({ error: 'No se pudo cargar tu programa de puntos.' });
   }
 });
 

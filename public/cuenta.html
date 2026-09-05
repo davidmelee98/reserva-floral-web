@@ -9,6 +9,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -27,6 +28,8 @@
         .cu-nav-item:hover{ background:#fdf1f6; color:#c2185b; }
         .cu-nav-item.is-activo{ background:#c2185b; color:#fff; font-weight:600; }
         .cu-fila{ display:flex; align-items:center; justify-content:space-between; padding:1rem 0; border-bottom:1px solid #f0f0f0; }
+        .co-sugerencia{ padding:.6rem .85rem; font-size:.82rem; cursor:pointer; border-bottom:1px solid #f0f0f0; }
+        .co-sugerencia:hover{ background:#fdf1f6; }
         .adm-badge{ display:inline-flex; align-items:center; gap:.3rem; font-size:.68rem; font-weight:700; padding:.18rem .55rem; border-radius:999px; }
     </style>
 </head>
@@ -73,15 +76,15 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14l-1 12H6L5 8zm0 0L4 4H2m9 8v4m4-4v4"></path></svg>
                     Mis pedidos
                 </div>
-                <div class="cu-nav-item" onclick="mostrarProximamenteCuentaPagina()">
+                <div class="cu-nav-item" data-vista="direcciones" onclick="cambiarVistaCuenta('direcciones')">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21s7-6.1 7-11a7 7 0 10-14 0c0 4.9 7 11 7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
                     Direcciones de envío
                 </div>
-                <div class="cu-nav-item" onclick="mostrarProximamenteCuentaPagina()">
+                <div class="cu-nav-item" data-vista="recordatorios" onclick="cambiarVistaCuenta('recordatorios')">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path stroke-linecap="round" stroke-linejoin="round" d="M7 3v4M17 3v4M3 10h18"></path></svg>
                     Recordatorios
                 </div>
-                <div class="cu-nav-item" onclick="mostrarProximamenteCuentaPagina()">
+                <div class="cu-nav-item" data-vista="puntos" onclick="cambiarVistaCuenta('puntos')">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.958a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.447a1 1 0 00-.363 1.118l1.287 3.957c.3.922-.755 1.688-1.538 1.118l-3.367-2.446a1 1 0 00-1.176 0l-3.367 2.446c-.783.57-1.838-.196-1.538-1.118l1.287-3.957a1 1 0 00-.363-1.118L2.063 9.385c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 00.95-.69l1.285-3.958z"></path></svg>
                     Programa de puntos
                 </div>
@@ -141,6 +144,117 @@
                     <div id="lista-mis-pedidos" class="space-y-4"></div>
                 </section>
 
+                <!-- VISTA: Direcciones de envío -->
+                <section id="vista-direcciones" class="hidden">
+                    <h1 class="text-xl font-semibold text-brandDark mb-4">Direcciones de envío</h1>
+                    <button type="button" onclick="abrirFormularioDireccion()" class="text-brandFuchsia font-semibold text-sm hover:underline mb-4">+ Agregar una nueva dirección</button>
+
+                    <div class="relative mb-5">
+                        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 114 10.5a6.5 6.5 0 0113 0z" /></svg>
+                        <input type="text" id="buscar-direccion-guardada" oninput="renderDirecciones()" placeholder="Busca por destinatario, ciudad o estado..." class="cta-input !pl-9">
+                    </div>
+
+                    <!-- Formulario (oculto hasta que se abre) -->
+                    <div id="form-direccion-wrap" class="hidden bg-white rounded-2xl border border-gray-100 p-6 mb-5">
+                        <h2 id="titulo-form-direccion" class="font-semibold text-brandDark mb-3">Nueva dirección</h2>
+                        <form id="form-direccion" class="space-y-3">
+                            <input type="hidden" id="dir-id">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input type="text" id="dir-nombre" placeholder="Nombre y apellido del destinatario" required class="cta-input">
+                                <input type="tel" id="dir-telefono" maxlength="12" placeholder="Teléfono del destinatario" class="cta-input">
+                            </div>
+                            <div class="relative">
+                                <input type="text" id="dir-buscar" placeholder="Buscar dirección..." autocomplete="off" class="cta-input">
+                                <div id="dir-sugerencias" class="hidden absolute z-20 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto"></div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input type="text" id="dir-calle" placeholder="Calle" required class="cta-input">
+                                <input type="text" id="dir-numero" placeholder="Número" class="cta-input">
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input type="text" id="dir-colonia" placeholder="Colonia" class="cta-input">
+                                <select id="dir-tipo" class="cta-input">
+                                    <option value="" selected disabled>Tipo de domicilio</option>
+                                    <option value="Casa">🏠 Casa</option>
+                                    <option value="Hotel">🛏️ Hotel</option>
+                                    <option value="Restaurante">🍴 Restaurante</option>
+                                    <option value="Capilla Funeral">✝️ Capilla Funeral</option>
+                                    <option value="Oficinas">🏢 Oficinas</option>
+                                    <option value="Hospital">🏥 Hospital</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input type="text" id="dir-cp" placeholder="Código postal" class="cta-input">
+                                <input type="text" id="dir-estado" placeholder="Estado" class="cta-input">
+                            </div>
+                            <input type="text" id="dir-ciudad" placeholder="Ciudad" class="cta-input">
+                            <textarea id="dir-notas" rows="2" placeholder="Referencias y notas para el repartidor" class="cta-input"></textarea>
+                            <p id="error-direccion" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></p>
+                            <div class="flex gap-2">
+                                <button type="submit" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-2 px-5 rounded-full text-sm transition">Guardar dirección</button>
+                                <button type="button" onclick="cerrarFormularioDireccion()" class="bg-gray-100 hover:bg-gray-200 text-brandDark font-semibold py-2 px-5 rounded-full text-sm transition">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="lista-direcciones" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </section>
+
+                <!-- VISTA: Recordatorios -->
+                <section id="vista-recordatorios" class="hidden">
+                    <h1 class="text-xl font-semibold text-brandDark mb-4">Recordatorios</h1>
+                    <div class="bg-white rounded-2xl border border-gray-100 p-6">
+                        <button type="button" onclick="abrirFormularioRecordatorio()" class="text-brandFuchsia font-semibold text-sm hover:underline">+ Agregar una nueva fecha</button>
+                        <div id="form-recordatorio-wrap" class="hidden mt-4 border-t border-gray-100 pt-4">
+                            <form id="form-recordatorio" class="space-y-3 max-w-md">
+                                <input type="text" id="rec-titulo" placeholder="¿Qué quieres recordar? (ej. Cumpleaños de mamá)" required class="cta-input">
+                                <input type="date" id="rec-fecha" required class="cta-input">
+                                <label class="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" id="rec-anual" checked class="w-4 h-4"> Repetir cada año</label>
+                                <textarea id="rec-notas" rows="2" placeholder="Notas (opcional)" class="cta-input"></textarea>
+                                <div class="flex gap-2">
+                                    <button type="submit" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-2 px-5 rounded-full text-sm transition">Guardar</button>
+                                    <button type="button" onclick="document.getElementById('form-recordatorio-wrap').classList.add('hidden')" class="bg-gray-100 hover:bg-gray-200 text-brandDark font-semibold py-2 px-5 rounded-full text-sm transition">Cancelar</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div id="lista-recordatorios" class="mt-4"></div>
+                        <p class="text-[11px] text-gray-400 mt-4 border-t border-gray-100 pt-3">Por ahora esto guarda tus fechas para que las tengas en un solo lugar. El aviso automático por correo antes de la fecha lo activaremos cuando conectemos un servicio de envío de correos.</p>
+                    </div>
+                </section>
+
+                <!-- VISTA: Programa de puntos -->
+                <section id="vista-puntos" class="hidden">
+                    <h1 class="text-xl font-semibold text-brandDark mb-4">Programa de puntos</h1>
+                    <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <svg class="w-5 h-5 text-brandFuchsia" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.958a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.447a1 1 0 00-.363 1.118l1.287 3.957c.3.922-.755 1.688-1.538 1.118l-3.367-2.446a1 1 0 00-1.176 0l-3.367 2.446c-.783.57-1.838-.196-1.538-1.118l1.287-3.957a1 1 0 00-.363-1.118L2.063 9.385c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 00.95-.69l1.285-3.958z"></path></svg>
+                            <span id="puntos-actual" class="text-lg font-bold text-brandDark">0</span>
+                            <span class="text-sm text-gray-500">/ 3000 pts</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div id="puntos-barra" class="h-full bg-brandFuchsia rounded-full transition-all" style="width:0%"></div>
+                        </div>
+                        <p id="puntos-mensaje" class="text-xs text-gray-500 mt-2">Envía tu primer regalo y comienza a recibir puntos. 🎁 <a href="/" class="text-brandFuchsia font-semibold hover:underline">Ir al catálogo</a></p>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-100 p-6 mb-5">
+                        <button type="button" onclick="document.getElementById('historial-puntos').classList.toggle('hidden')" class="w-full flex items-center justify-between text-sm font-semibold text-brandDark">
+                            Historial de puntos
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                        <div id="historial-puntos" class="hidden mt-3 divide-y divide-gray-100"></div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-100 p-6">
+                        <h2 class="font-semibold text-brandDark mb-3">¿Cómo funciona?</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                            <div><p class="font-semibold text-brandDark">🛍️ $1 mxn = 1 punto</p><p class="text-xs text-gray-500 mt-1">Cada peso gastado en regalos equivale a un punto (sin contar el precio de envío).</p></div>
+                            <div><p class="font-semibold text-brandDark">✉️ Sorprende y acumula</p><p class="text-xs text-gray-500 mt-1">Los puntos se suman una vez que tus regalos son entregados.</p></div>
+                            <div><p class="font-semibold text-brandDark">🎁 Disfruta tu cupón</p><p class="text-xs text-gray-500 mt-1">Cada 3,000 puntos desbloqueas un cupón para tu próximo pedido.</p></div>
+                        </div>
+                    </div>
+                </section>
+
             </div>
         </div>
     </main>
@@ -152,6 +266,8 @@
     let sesionCliente = null;
     let miPerfil = null;
     let misPedidos = [];
+    let misDirecciones = [];
+    let misRecordatorios = [];
 
     function escaparHtml(str) {
         return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -178,10 +294,14 @@
     window.alternarPanel = alternarPanel;
 
     function cambiarVistaCuenta(vista) {
-        document.getElementById('vista-perfil').classList.toggle('hidden', vista !== 'perfil');
-        document.getElementById('vista-pedidos').classList.toggle('hidden', vista !== 'pedidos');
+        ['perfil', 'pedidos', 'direcciones', 'recordatorios', 'puntos'].forEach(v => {
+            document.getElementById('vista-' + v).classList.toggle('hidden', vista !== v);
+        });
         document.querySelectorAll('.cu-nav-item[data-vista]').forEach(el => el.classList.toggle('is-activo', el.dataset.vista === vista));
         if (vista === 'pedidos' && misPedidos.length === 0) cargarMisPedidos();
+        if (vista === 'direcciones' && misDirecciones.length === 0) cargarDirecciones();
+        if (vista === 'recordatorios' && misRecordatorios.length === 0) cargarRecordatorios();
+        if (vista === 'puntos') cargarPuntos();
     }
     window.cambiarVistaCuenta = cambiarVistaCuenta;
 
@@ -362,6 +482,305 @@
                     <div class="mt-3 border-t border-gray-100 pt-2">${itemsHtml}</div>
                 </div>`;
         }).join('');
+    }
+
+    // =======================================================================
+    // Direcciones de envío
+    // =======================================================================
+    async function cargarDirecciones() {
+        try {
+            const r = await fetch('/api/cuenta/direcciones');
+            misDirecciones = await r.json();
+            renderDirecciones();
+        } catch (error) {
+            console.error('Error cargando direcciones', error);
+        }
+    }
+    function direccionesFiltradas() {
+        const texto = (document.getElementById('buscar-direccion-guardada')?.value || '').trim().toLowerCase();
+        if (!texto) return misDirecciones;
+        return misDirecciones.filter(d =>
+            String(d.nombre_destinatario || '').toLowerCase().includes(texto) ||
+            String(d.ciudad || '').toLowerCase().includes(texto) ||
+            String(d.estado || '').toLowerCase().includes(texto)
+        );
+    }
+    function iconoTipoDom(tipo) {
+        return { Casa: '🏠', Hotel: '🛏️', Restaurante: '🍴', 'Capilla Funeral': '✝️', Oficinas: '🏢', Hospital: '🏥' }[tipo] || '📍';
+    }
+    function renderDirecciones() {
+        const cont = document.getElementById('lista-direcciones');
+        const lista = direccionesFiltradas();
+        if (misDirecciones.length === 0) {
+            cont.innerHTML = '<p class="text-sm text-gray-400 col-span-2">Aún no tienes direcciones guardadas.</p>';
+            return;
+        }
+        if (lista.length === 0) {
+            cont.innerHTML = '<p class="text-sm text-gray-400 col-span-2">No hay direcciones que coincidan con tu búsqueda.</p>';
+            return;
+        }
+        cont.innerHTML = lista.map(d => `
+            <div class="bg-white rounded-2xl border border-gray-100 p-5">
+                <div class="flex items-start justify-between">
+                    <p class="font-semibold text-brandDark text-sm">${iconoTipoDom(d.tipo_domicilio)} ${escaparHtml(d.nombre_destinatario)}</p>
+                    <div class="flex gap-2 shrink-0">
+                        <button type="button" onclick="abrirFormularioDireccion(${d.id})" title="Editar" class="text-gray-400 hover:text-brandFuchsia"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                        <button type="button" onclick="eliminarDireccion(${d.id})" title="Eliminar" class="text-gray-400 hover:text-red-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V5h6v2m2 0v13H7V7m3 4v6m4-6v6" /></svg></button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">${escaparHtml(d.calle || '')} ${escaparHtml(d.numero || '')}, ${escaparHtml(d.colonia || '')}${d.cp ? ', ' + escaparHtml(d.cp) : ''}</p>
+                <p class="text-xs text-gray-500">${escaparHtml(d.ciudad || '')}${d.ciudad && d.estado ? ', ' : ''}${escaparHtml(d.estado || '')}</p>
+                ${d.telefono_destinatario ? `<p class="text-xs text-gray-500">${escaparHtml(d.telefono_destinatario)}</p>` : ''}
+                <button type="button" onclick="duplicarDireccionOtroDestinatario(${d.id})" class="text-[11px] text-brandFuchsia font-medium hover:underline mt-2">¿Misma dirección, diferente destinatario?</button>
+            </div>
+        `).join('');
+    }
+
+    function limpiarFormularioDireccion() {
+        document.getElementById('form-direccion').reset();
+        document.getElementById('dir-id').value = '';
+        document.getElementById('titulo-form-direccion').innerText = 'Nueva dirección';
+        document.getElementById('error-direccion').classList.add('hidden');
+    }
+    function abrirFormularioDireccion(id) {
+        limpiarFormularioDireccion();
+        if (id) {
+            const d = misDirecciones.find(x => x.id === id);
+            if (d) {
+                document.getElementById('dir-id').value = d.id;
+                document.getElementById('dir-nombre').value = d.nombre_destinatario || '';
+                document.getElementById('dir-telefono').value = d.telefono_destinatario || '';
+                document.getElementById('dir-calle').value = d.calle || '';
+                document.getElementById('dir-numero').value = d.numero || '';
+                document.getElementById('dir-colonia').value = d.colonia || '';
+                document.getElementById('dir-tipo').value = d.tipo_domicilio || '';
+                document.getElementById('dir-cp').value = d.cp || '';
+                document.getElementById('dir-estado').value = d.estado || '';
+                document.getElementById('dir-ciudad').value = d.ciudad || '';
+                document.getElementById('dir-notas').value = d.notas_entrega || '';
+                document.getElementById('titulo-form-direccion').innerText = 'Editar dirección';
+                document.getElementById('form-direccion').dataset.lat = d.lat || '';
+                document.getElementById('form-direccion').dataset.lng = d.lng || '';
+            }
+        }
+        document.getElementById('form-direccion-wrap').classList.remove('hidden');
+        document.getElementById('form-direccion-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.abrirFormularioDireccion = abrirFormularioDireccion;
+    function cerrarFormularioDireccion() {
+        document.getElementById('form-direccion-wrap').classList.add('hidden');
+        limpiarFormularioDireccion();
+    }
+    window.cerrarFormularioDireccion = cerrarFormularioDireccion;
+
+    function duplicarDireccionOtroDestinatario(id) {
+        const d = misDirecciones.find(x => x.id === id);
+        if (!d) return;
+        abrirFormularioDireccion();
+        document.getElementById('dir-calle').value = d.calle || '';
+        document.getElementById('dir-numero').value = d.numero || '';
+        document.getElementById('dir-colonia').value = d.colonia || '';
+        document.getElementById('dir-tipo').value = d.tipo_domicilio || '';
+        document.getElementById('dir-cp').value = d.cp || '';
+        document.getElementById('dir-estado').value = d.estado || '';
+        document.getElementById('dir-ciudad').value = d.ciudad || '';
+        document.getElementById('dir-notas').value = d.notas_entrega || '';
+        document.getElementById('form-direccion').dataset.lat = d.lat || '';
+        document.getElementById('form-direccion').dataset.lng = d.lng || '';
+        document.getElementById('dir-nombre').focus();
+    }
+    window.duplicarDireccionOtroDestinatario = duplicarDireccionOtroDestinatario;
+
+    async function eliminarDireccion(id) {
+        if (!confirm('¿Eliminar esta dirección guardada?')) return;
+        try {
+            await fetch(`/api/cuenta/direcciones/${id}`, { method: 'DELETE' });
+            cargarDirecciones();
+        } catch (error) {
+            alert('No se pudo eliminar la dirección.');
+        }
+    }
+    window.eliminarDireccion = eliminarDireccion;
+
+    document.getElementById('form-direccion').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorEl = document.getElementById('error-direccion');
+        errorEl.classList.add('hidden');
+        const id = document.getElementById('dir-id').value;
+        const body = {
+            nombreDestinatario: document.getElementById('dir-nombre').value,
+            telefonoDestinatario: document.getElementById('dir-telefono').value,
+            calle: document.getElementById('dir-calle').value,
+            numero: document.getElementById('dir-numero').value,
+            colonia: document.getElementById('dir-colonia').value,
+            cp: document.getElementById('dir-cp').value,
+            estado: document.getElementById('dir-estado').value,
+            ciudad: document.getElementById('dir-ciudad').value,
+            tipoDomicilio: document.getElementById('dir-tipo').value,
+            notasEntrega: document.getElementById('dir-notas').value,
+            lat: document.getElementById('form-direccion').dataset.lat || null,
+            lng: document.getElementById('form-direccion').dataset.lng || null
+        };
+        try {
+            const r = await fetch(id ? `/api/cuenta/direcciones/${id}` : '/api/cuenta/direcciones', {
+                method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+            });
+            const datos = await r.json();
+            if (!r.ok) throw new Error(datos.error || 'No se pudo guardar.');
+            cerrarFormularioDireccion();
+            cargarDirecciones();
+        } catch (error) {
+            errorEl.innerText = error.message;
+            errorEl.classList.remove('hidden');
+        }
+    });
+
+    // Buscador de direcciones (mismo enfoque que en el checkout: OpenStreetMap).
+    let debounceBusquedaDir = null;
+    document.getElementById('dir-buscar').addEventListener('input', (e) => {
+        clearTimeout(debounceBusquedaDir);
+        const q = e.target.value.trim();
+        if (q.length < 4) { document.getElementById('dir-sugerencias').classList.add('hidden'); return; }
+        debounceBusquedaDir = setTimeout(() => buscarDireccionCuenta(q), 450);
+    });
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#dir-buscar') && !e.target.closest('#dir-sugerencias')) {
+            document.getElementById('dir-sugerencias').classList.add('hidden');
+        }
+    });
+    async function buscarDireccionCuenta(q) {
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=mx&q=${encodeURIComponent(q)}`;
+            const r = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+            const resultados = await r.json();
+            const cont = document.getElementById('dir-sugerencias');
+            if (!resultados.length) { cont.classList.add('hidden'); return; }
+            window._sugerenciasDireccionCuenta = resultados;
+            cont.innerHTML = resultados.map((res, i) => `<div class="co-sugerencia" onclick="seleccionarDireccionCuenta(${i})">${escaparHtml(res.display_name)}</div>`).join('');
+            cont.classList.remove('hidden');
+        } catch (error) { console.error('Error buscando dirección', error); }
+    }
+    async function seleccionarDireccionCuenta(i) {
+        const r = window._sugerenciasDireccionCuenta[i];
+        if (!r) return;
+        const textoEscrito = document.getElementById('dir-buscar').value;
+        document.getElementById('dir-buscar').value = r.display_name;
+        document.getElementById('dir-sugerencias').classList.add('hidden');
+        document.getElementById('form-direccion').dataset.lat = r.lat;
+        document.getElementById('form-direccion').dataset.lng = r.lon;
+        let addr = r.address || {};
+        try {
+            const urlInversa = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=${r.lat}&lon=${r.lon}`;
+            const inversa = await (await fetch(urlInversa, { headers: { 'Accept-Language': 'es' } })).json();
+            if (inversa && inversa.address) addr = { ...addr, ...Object.fromEntries(Object.entries(inversa.address).filter(([, v]) => v)) };
+        } catch (error) { /* seguimos con lo que ya teníamos */ }
+        document.getElementById('dir-calle').value = addr.road || addr.pedestrian || addr.residential || '';
+        let numero = addr.house_number || '';
+        if (!numero) { const m = textoEscrito.match(/\b(\d{1,5})\b/); if (m) numero = m[1]; }
+        document.getElementById('dir-numero').value = numero;
+        document.getElementById('dir-colonia').value = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || addr.residential || '';
+        document.getElementById('dir-cp').value = addr.postcode || '';
+        document.getElementById('dir-estado').value = addr.state || '';
+        document.getElementById('dir-ciudad').value = addr.city || addr.town || addr.village || addr.municipality || '';
+    }
+    window.seleccionarDireccionCuenta = seleccionarDireccionCuenta;
+
+    // =======================================================================
+    // Recordatorios
+    // =======================================================================
+    async function cargarRecordatorios() {
+        try {
+            const r = await fetch('/api/cuenta/recordatorios');
+            misRecordatorios = await r.json();
+            renderRecordatorios();
+        } catch (error) {
+            console.error('Error cargando recordatorios', error);
+        }
+    }
+    function renderRecordatorios() {
+        const cont = document.getElementById('lista-recordatorios');
+        if (misRecordatorios.length === 0) {
+            cont.innerHTML = `
+                <div class="text-center py-10">
+                    <p class="text-5xl">🎁</p>
+                    <p class="font-semibold text-brandDark mt-3">Celebra cada ocasión especial (sin falta)</p>
+                    <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Guarda las fechas importantes y ten un recordatorio para que no se te olvide enviar un regalo.</p>
+                </div>`;
+            return;
+        }
+        cont.innerHTML = misRecordatorios.map(rec => `
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                    <p class="text-sm font-medium text-brandDark">${escaparHtml(rec.titulo)}</p>
+                    <p class="text-xs text-gray-500">${formatearFecha(rec.fecha)}${rec.repetir_anual ? ' · Se repite cada año' : ''}</p>
+                    ${rec.notas ? `<p class="text-xs text-gray-400 mt-0.5">${escaparHtml(rec.notas)}</p>` : ''}
+                </div>
+                <button type="button" onclick="eliminarRecordatorio(${rec.id})" title="Eliminar" class="text-gray-400 hover:text-red-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V5h6v2m2 0v13H7V7m3 4v6m4-6v6" /></svg></button>
+            </div>
+        `).join('');
+    }
+    function abrirFormularioRecordatorio() {
+        document.getElementById('form-recordatorio-wrap').classList.remove('hidden');
+    }
+    window.abrirFormularioRecordatorio = abrirFormularioRecordatorio;
+    document.getElementById('form-recordatorio').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const r = await fetch('/api/cuenta/recordatorios', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    titulo: document.getElementById('rec-titulo').value,
+                    fecha: document.getElementById('rec-fecha').value,
+                    repetirAnual: document.getElementById('rec-anual').checked,
+                    notas: document.getElementById('rec-notas').value
+                })
+            });
+            if (!r.ok) { const d = await r.json(); throw new Error(d.error); }
+            document.getElementById('form-recordatorio').reset();
+            document.getElementById('rec-anual').checked = true;
+            document.getElementById('form-recordatorio-wrap').classList.add('hidden');
+            cargarRecordatorios();
+        } catch (error) {
+            alert(error.message || 'No se pudo guardar el recordatorio.');
+        }
+    });
+    async function eliminarRecordatorio(id) {
+        if (!confirm('¿Eliminar este recordatorio?')) return;
+        try {
+            await fetch(`/api/cuenta/recordatorios/${id}`, { method: 'DELETE' });
+            cargarRecordatorios();
+        } catch (error) {
+            alert('No se pudo eliminar.');
+        }
+    }
+    window.eliminarRecordatorio = eliminarRecordatorio;
+
+    // =======================================================================
+    // Programa de puntos
+    // =======================================================================
+    async function cargarPuntos() {
+        try {
+            const r = await fetch('/api/cuenta/puntos');
+            const datos = await r.json();
+            document.getElementById('puntos-actual').innerText = datos.puntos;
+            document.getElementById('puntos-barra').style.width = Math.min(100, (datos.puntos / datos.meta) * 100) + '%';
+            const mensajeEl = document.getElementById('puntos-mensaje');
+            if (datos.puntosTotales === 0) {
+                mensajeEl.innerHTML = 'Envía tu primer regalo y comienza a recibir puntos. 🎁 <a href="/" class="text-brandFuchsia font-semibold hover:underline">Ir al catálogo</a>';
+            } else if (datos.cuponesDisponibles > 0) {
+                mensajeEl.innerHTML = `¡Felicidades! Ya acumulaste puntos para ${datos.cuponesDisponibles} cupón(es) -- los activaremos muy pronto.`;
+            } else {
+                mensajeEl.innerText = `Te faltan ${datos.meta - datos.puntos} puntos para tu próximo cupón.`;
+            }
+            const hist = document.getElementById('historial-puntos');
+            hist.innerHTML = datos.historial.length ? [...datos.historial].reverse().map(h => `
+                <div class="flex items-center justify-between py-2 text-sm">
+                    <span class="text-gray-600">Pedido #${h.orden_id} · ${formatearFecha(h.fecha)}</span>
+                    <span class="font-semibold text-brandDark">+${h.puntos} pts</span>
+                </div>`).join('') : '<p class="text-sm text-gray-400 py-2">Todavía no tienes puntos registrados.</p>';
+        } catch (error) {
+            console.error('Error cargando puntos', error);
+        }
     }
 
     // =======================================================================
