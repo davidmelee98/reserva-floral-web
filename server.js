@@ -572,6 +572,27 @@ app.get('/api/cuenta/pedidos', requireClienteAuth, async (req, res) => {
   }
 });
 
+// El cliente solo puede cancelar SU PROPIO pedido, y solo mientras siga "Pendiente"
+// (una vez que la florería lo confirma o empieza a prepararlo, ya no se puede
+// cancelar desde aquí -- tendría que llamar/escribir para eso).
+app.patch('/api/cuenta/pedidos/:id/cancelar', requireClienteAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const resultado = await pool.query(
+      `UPDATE ordenes SET estado='Cancelado' WHERE id=$1 AND cliente_cuenta_id=$2 AND estado='Pendiente' RETURNING *`,
+      [id, req.session.clienteId]
+    );
+    if (resultado.rowCount === 0) {
+      return res.status(409).json({ error: 'Este pedido ya no se puede cancelar (puede que ya esté en preparación o no te pertenezca).' });
+    }
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    console.error('PATCH /api/cuenta/pedidos/:id/cancelar:', error);
+    res.status(500).json({ error: 'No se pudo cancelar el pedido.' });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Direcciones de envío guardadas (libreta de direcciones del cliente)
 // ---------------------------------------------------------------------------
@@ -1238,6 +1259,8 @@ app.get('/api/admin/clientes', requireAuth, async (req, res) => {
         cliente_telefono AS telefono,
         (array_agg(cliente_nombre ORDER BY creado_en DESC))[1] AS nombre,
         (array_agg(direccion_entrega ORDER BY creado_en DESC))[1] AS ultima_direccion,
+        (array_agg(email_contacto ORDER BY creado_en DESC))[1] AS email,
+        bool_or(cliente_cuenta_id IS NOT NULL) AS tiene_cuenta,
         COUNT(*)::int AS pedidos,
         COALESCE(SUM(total) FILTER (WHERE estado != 'Cancelado'), 0) AS total_gastado,
         MAX(creado_en) AS ultimo_pedido,
@@ -1329,6 +1352,23 @@ app.delete('/api/admin/zonas/:id', requireAuth, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Panel de administración: configuración general de la tienda
 // ---------------------------------------------------------------------------
+// Config pública (solo lo que el storefront necesita mostrar -- nunca datos
+// sensibles). El botón flotante de WhatsApp y textos de horario/entrega la usan.
+app.get('/api/configuracion-publica', async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT clave, valor FROM configuracion WHERE clave = ANY($1::text[])`,
+      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer']]
+    );
+    const config = {};
+    for (const fila of resultado.rows) config[fila.clave] = fila.valor;
+    res.json(config);
+  } catch (error) {
+    console.error('GET /api/configuracion-publica:', error);
+    res.status(500).json({ error: 'No se pudo cargar la configuración.' });
+  }
+});
+
 app.get('/api/admin/configuracion', requireAuth, async (req, res) => {
   try {
     const resultado = await pool.query('SELECT clave, valor FROM configuracion');
