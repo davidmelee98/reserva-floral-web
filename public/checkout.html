@@ -28,7 +28,7 @@
         .co-label{ font-size:.72rem; color:#6b6b6b; font-weight:500; margin-bottom:.25rem; display:block; }
         .co-circulo{ width:28px; height:28px; border-radius:999px; border:2px solid #c2185b; color:#c2185b; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; flex:0 0 auto; transition:all .15s ease; }
         .co-circulo.is-lleno{ background:#c2185b; color:#fff; }
-        .co-card{ background:#fff; border:1px solid #ececec; border-radius:16px; padding:1.5rem; transition:opacity .15s ease; }
+        .co-card{ background:#fff; border:1px solid #ececec; border-radius:16px; padding:1.5rem; transition:opacity .15s ease; scroll-margin-top:90px; }
         .co-card.is-inactiva{ opacity:.55; }
         .co-slot{ border:1px solid #d1d5db; border-radius:999px; padding:.6rem 1.1rem; font-size:.82rem; font-weight:500; cursor:pointer; transition:all .12s ease; }
         .co-slot:hover{ border-color:#c2185b; }
@@ -497,6 +497,42 @@
         estado.direccion.lat = d.lat ? Number(d.lat) : null;
         estado.direccion.lng = d.lng ? Number(d.lng) : null;
         marcarError('error-p2', false);
+    }
+
+    // Al completar la compra con sesión iniciada, guardamos la dirección usada
+    // en su libreta de direcciones -- salvo que ya la tenga guardada (para no
+    // duplicarla cada vez que compra a la misma persona).
+    async function guardarDireccionSiEsNueva() {
+        const normalizar = (s) => String(s || '').trim().toLowerCase();
+        const yaExiste = direccionesGuardadas.some(d =>
+            normalizar(d.calle) === normalizar(estado.direccion.calle) &&
+            normalizar(d.numero) === normalizar(estado.direccion.numero) &&
+            normalizar(d.colonia) === normalizar(estado.direccion.colonia) &&
+            normalizar(d.nombre_destinatario) === normalizar(estado.destinatario.nombre)
+        );
+        if (yaExiste) return;
+        try {
+            await fetch('/api/cuenta/direcciones', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nombreDestinatario: estado.destinatario.nombre,
+                    telefonoDestinatario: estado.destinatario.telefono,
+                    calle: estado.direccion.calle,
+                    numero: estado.direccion.numero,
+                    colonia: estado.direccion.colonia,
+                    cp: estado.direccion.cp,
+                    estado: estado.direccion.estado,
+                    ciudad: estado.direccion.ciudad,
+                    tipoDomicilio: estado.direccion.tipo,
+                    notasEntrega: estado.direccion.referencias,
+                    lat: estado.direccion.lat,
+                    lng: estado.direccion.lng
+                })
+            });
+        } catch (error) {
+            console.error('No se pudo guardar la dirección en la libreta', error);
+        }
     }
     window.usarDireccionGuardada = usarDireccionGuardada;
 
@@ -1170,6 +1206,9 @@
             });
             const datos = await respuesta.json().catch(() => ({}));
             if (respuesta.ok) {
+                if (sesionCliente) {
+                    await guardarDireccionSiEsNueva();
+                }
                 const resumenPedido = {
                     id: datos.orden?.id || '',
                     telefono: estado.telefono,
