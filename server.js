@@ -1172,7 +1172,11 @@ app.post('/api/pagos/procesar-pago', async (req, res) => {
     const estadoPago = { approved: 'aprobado', pending: 'pendiente', in_process: 'pendiente', rejected: 'rechazado', cancelled: 'rechazado' }[pago.status] || 'pendiente';
     await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3', [estadoPago, String(pago.id), orden.id]);
 
-    res.json({ status: pago.status, statusDetail: pago.status_detail, estadoPago });
+    // Para OXXO/SPEI, Mercado Pago regresa la liga a la ficha o los datos de
+    // la transferencia -- se manda al frontend para poder mostrarla.
+    const urlComprobante = pago.transaction_details?.external_resource_url || null;
+
+    res.json({ status: pago.status, statusDetail: pago.status_detail, estadoPago, urlComprobante });
   } catch (error) {
     console.error('POST /api/pagos/procesar-pago:', error?.message, error?.cause || '');
     res.status(500).json({ error: 'No se pudo procesar el pago. Verifica los datos e intenta de nuevo.' });

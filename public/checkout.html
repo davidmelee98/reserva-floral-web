@@ -271,22 +271,84 @@
                         <h2 class="font-semibold text-brandDark">Completa el pago</h2>
                     </div>
 
-                    <div id="form-paso-5" class="hidden mt-4 ml-10 space-y-4">
+                    <div id="form-paso-5" class="hidden mt-4 ml-10 space-y-3">
                         <!-- Se muestra mientras se confirma si el cobro en línea está disponible -->
                         <div id="pago-cargando" class="text-sm text-gray-400">Cargando opciones de pago...</div>
 
-                        <!-- Mercado Pago SÍ configurado: aquí se monta el formulario real (Payment Brick) -->
-                        <div id="paymentBrick_container" class="hidden"></div>
-                        <p id="aviso-pago-error" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></p>
+                        <!-- Mercado Pago SÍ configurado: un solo menú con todos los medios de pago -->
+                        <div id="bloque-metodos-pago" class="hidden space-y-2">
+                            <h3 class="font-semibold text-brandDark text-sm mb-1">Medios de pago</h3>
 
-                        <!-- PayPal: visible junto al formulario, pendiente de configurar -->
-                        <div id="bloque-paypal" class="hidden border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between opacity-60">
-                            <label class="flex items-center gap-2 text-sm font-medium text-gray-500 cursor-not-allowed">
-                                <input type="radio" disabled class="w-4 h-4">
-                                PayPal
-                            </label>
-                            <span class="text-[11px] text-gray-400">Próximamente</span>
+                            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                <label class="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer">
+                                    <span class="flex items-center gap-2 text-sm font-medium">
+                                        <input type="radio" name="metodo-pago" value="tarjeta" checked class="w-4 h-4 accent-brandFuchsia" onchange="cambiarMetodoPago('tarjeta')">
+                                        Tarjeta de crédito o débito
+                                    </span>
+                                    <span class="text-[10px] text-gray-400">VISA · Mastercard · AMEX</span>
+                                </label>
+                                <form id="form-checkout" class="p-4 space-y-3">
+                                    <div>
+                                        <label class="co-label">Número de tarjeta</label>
+                                        <div id="form-checkout__cardNumber" class="co-input flex items-center h-[42px]"></div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="co-label">Vencimiento</label>
+                                            <div id="form-checkout__expirationDate" class="co-input flex items-center h-[42px]"></div>
+                                        </div>
+                                        <div>
+                                            <label class="co-label">Código de seguridad</label>
+                                            <div id="form-checkout__securityCode" class="co-input flex items-center h-[42px]"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="co-label">Nombre del titular como aparece en la tarjeta</label>
+                                        <input type="text" id="form-checkout__cardholderName" placeholder="Nombre y apellido" class="co-input">
+                                    </div>
+                                    <input type="hidden" id="form-checkout__cardholderEmail">
+                                    <button type="submit" id="form-checkout__submit" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition flex items-center justify-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                        Pagar
+                                    </button>
+                                    <p class="progress-bar hidden text-center text-[11px] text-gray-400">Verificando datos...</p>
+                                </form>
+                            </div>
+
+                            <div>
+                                <label class="flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 cursor-pointer hover:border-brandFuchsia transition">
+                                    <span class="flex items-center gap-2 text-sm font-medium">
+                                        <input type="radio" name="metodo-pago" value="oxxo" class="w-4 h-4 accent-brandFuchsia" onchange="cambiarMetodoPago('oxxo')">
+                                        Efectivo en OXXO
+                                    </span>
+                                </label>
+                                <div id="bloque-oxxo" class="hidden px-1 pt-2">
+                                    <button type="button" id="btn-pagar-oxxo" onclick="pagarConMetodoSimple('oxxo')" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Generar ficha para pagar en OXXO</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 cursor-pointer hover:border-brandFuchsia transition">
+                                    <span class="flex items-center gap-2 text-sm font-medium">
+                                        <input type="radio" name="metodo-pago" value="spei" class="w-4 h-4 accent-brandFuchsia" onchange="cambiarMetodoPago('spei')">
+                                        Transferencia SPEI
+                                    </span>
+                                </label>
+                                <div id="bloque-spei" class="hidden px-1 pt-2">
+                                    <button type="button" id="btn-pagar-spei" onclick="pagarConMetodoSimple('clabe')" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Generar CLABE para transferir</button>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 opacity-60">
+                                <span class="flex items-center gap-2 text-sm font-medium text-gray-500 cursor-not-allowed">
+                                    <input type="radio" disabled class="w-4 h-4">
+                                    PayPal
+                                </span>
+                                <span class="text-[11px] text-gray-400">Próximamente</span>
+                            </div>
                         </div>
+
+                        <p id="aviso-pago-error" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></p>
 
                         <!-- Mercado Pago NO configurado todavía: dejamos pasar la venta igual -->
                         <div id="pago-no-disponible-bloque" class="hidden space-y-4">
@@ -767,10 +829,18 @@
         // y correcto cuando vuelvan a llegar al paso 5.
         if (n <= 4 && ordenCreadaId) {
             ordenCreadaId = null;
-            document.getElementById('paymentBrick_container').innerHTML = '';
-            document.getElementById('paymentBrick_container').classList.add('hidden');
+            if (window._cardFormActual && typeof window._cardFormActual.unmount === 'function') {
+                try { window._cardFormActual.unmount(); } catch (error) { /* nada que hacer si ya no existe */ }
+            }
+            window._cardFormActual = null;
+            document.getElementById('bloque-metodos-pago').classList.add('hidden');
             document.getElementById('pago-no-disponible-bloque').classList.add('hidden');
-            document.getElementById('bloque-paypal').classList.add('hidden');
+            document.getElementById('aviso-pago-error').classList.add('hidden');
+            // Deja todo listo para la próxima vez que se llegue a este paso:
+            // tarjeta como opción por defecto, otros medios ocultos de nuevo.
+            const radioTarjeta = document.querySelector('input[name="metodo-pago"][value="tarjeta"]');
+            if (radioTarjeta) radioTarjeta.checked = true;
+            cambiarMetodoPago('tarjeta');
         }
         // Si reabres un paso, los pasos posteriores ya confirmados siguen
         // completados -- no se pierden, solo se vuelve a mostrar este.
@@ -1254,9 +1324,8 @@
             const datosPago = await r.json();
             document.getElementById('pago-cargando').classList.add('hidden');
             if (datosPago.disponible && datosPago.publicKey) {
-                document.getElementById('paymentBrick_container').classList.remove('hidden');
-                document.getElementById('bloque-paypal').classList.remove('hidden');
-                await renderizarPaymentBrick(datosPago.publicKey);
+                document.getElementById('bloque-metodos-pago').classList.remove('hidden');
+                inicializarCardForm(datosPago.publicKey);
             } else {
                 document.getElementById('pago-no-disponible-bloque').classList.remove('hidden');
             }
@@ -1266,88 +1335,120 @@
         }
     }
 
-    async function renderizarPaymentBrick(publicKey) {
-        const mp = new MercadoPago(publicKey, { locale: 'es-MX' });
-        const bricksBuilder = mp.bricks();
-        const total = subtotalCarrito() + ENVIO_FIJO;
+    // Alterna cuál medio de pago se ve "abierto": la tarjeta trae su propio
+    // formulario completo; OXXO y SPEI solo necesitan un botón (no piden
+    // datos de tarjeta, así que no hace falta tokenizar nada para ellos).
+    function cambiarMetodoPago(metodo) {
+        document.getElementById('form-checkout').classList.toggle('hidden', metodo !== 'tarjeta');
+        document.getElementById('bloque-oxxo').classList.toggle('hidden', metodo !== 'oxxo');
+        document.getElementById('bloque-spei').classList.toggle('hidden', metodo !== 'spei');
+        document.getElementById('aviso-pago-error').classList.add('hidden');
+    }
+    window.cambiarMetodoPago = cambiarMetodoPago;
 
-        await bricksBuilder.create('payment', 'paymentBrick_container', {
-            initialization: {
-                amount: total,
-                payer: estado.email ? { email: estado.email } : undefined
-            },
-            customization: {
-                // Ojo: Mercado Pago sigue mostrando "Tarjeta de crédito" y "Tarjeta
-                // de débito" como dos líneas -- eso lo controla su propio
-                // formulario y no hay forma de fusionarlas en una sola visualmente.
-                // Dejamos únicamente "creditCard" (que, en la práctica, procesa
-                // igual tarjetas de crédito y de débito una vez tokenizadas) para
-                // que solo aparezca una línea de tarjeta; vale la pena probarlo
-                // juntos con una tarjeta de débito real para confirmarlo del todo.
-                paymentMethods: {
-                    creditCard: 'all',
-                    ticket: 'all',
-                    bankTransfer: 'all'
-                },
-                // Abre el formulario de tarjeta de una vez, en vez de mostrar
-                // primero la lista de métodos para elegir uno. Las demás
-                // opciones (OXXO, SPEI) siguen disponibles -- el propio
-                // formulario de Mercado Pago trae un enlace para cambiar a
-                // otro método sin perder lo ya escrito.
-                visual: {
-                    defaultPaymentOption: { creditCardForm: true },
-                    // Recoloreamos el formulario con los mismos tonos y bordes
-                    // redondeados del resto del sitio, para que se sienta parte
-                    // del mismo bloque en vez de un widget aparte en azul.
-                    style: {
-                        customVariables: {
-                            baseColor: '#c2185b',
-                            buttonTextColor: '#ffffff',
-                            borderRadiusSmall: '8px',
-                            borderRadiusMedium: '10px',
-                            borderRadiusLarge: '999px',
-                            formPadding: '0px'
-                        }
-                    }
-                }
+    function mostrarErrorPago(mensaje) {
+        const avisoError = document.getElementById('aviso-pago-error');
+        avisoError.innerText = mensaje;
+        avisoError.classList.remove('hidden');
+    }
+
+    async function enviarPagoAlServidor(cuerpo) {
+        const respuesta = await fetch('/api/pagos/procesar-pago', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ordenId: ordenCreadaId, ...cuerpo })
+        });
+        const datos = await respuesta.json().catch(() => ({}));
+        if (!respuesta.ok) throw new Error(datos.error || 'No se pudo procesar el pago.');
+        if (datos.status === 'rejected') throw new Error('Tu pago fue rechazado. Verifica los datos o prueba con otro método.');
+        return datos;
+    }
+
+    function irAGraciasTrasPago(datosPago) {
+        sessionStorage.setItem('rf_ultimo_pedido', JSON.stringify({
+            ...datosResumenPedido,
+            estadoPago: datosPago.estadoPago,
+            urlComprobante: datosPago.urlComprobante || null
+        }));
+        localStorage.removeItem('carritoRF');
+        window.location.href = '/gracias.html';
+    }
+
+    // --- Tarjeta: usamos el "CardForm" de Mercado Pago, no el widget completo.
+    // Esto nos deja armar el formulario con nuestro propio HTML (mismos
+    // colores, tipografía y espaciado del resto del sitio); Mercado Pago solo
+    // toma el control -mediante iframes- de los 3 campos verdaderamente
+    // sensibles (número, vencimiento, CVV), que nunca pasan por nuestro servidor.
+    function inicializarCardForm(publicKey) {
+        const mp = new MercadoPago(publicKey, { locale: 'es-MX' });
+        document.getElementById('form-checkout__cardholderEmail').value = estado.email || '';
+
+        const cardForm = mp.cardForm({
+            amount: String(subtotalCarrito() + ENVIO_FIJO),
+            iframe: true,
+            form: {
+                id: 'form-checkout',
+                cardNumber: { id: 'form-checkout__cardNumber', placeholder: '1234 1234 1234 1234' },
+                expirationDate: { id: 'form-checkout__expirationDate', placeholder: 'MM/AA' },
+                securityCode: { id: 'form-checkout__securityCode', placeholder: 'Ej.: 123' },
+                cardholderName: { id: 'form-checkout__cardholderName', placeholder: 'Nombre y apellido' },
+                cardholderEmail: { id: 'form-checkout__cardholderEmail' }
             },
             callbacks: {
-                onReady: () => {},
-                onSubmit: ({ formData }) => {
-                    return new Promise((resolve, reject) => {
-                        const avisoError = document.getElementById('aviso-pago-error');
-                        avisoError.classList.add('hidden');
-                        fetch('/api/pagos/procesar-pago', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ ordenId: ordenCreadaId, ...formData })
-                        })
-                            .then(r => r.json().then(datos => ({ ok: r.ok, datos })))
-                            .then(({ ok, datos }) => {
-                                if (!ok || datos.status === 'rejected') {
-                                    avisoError.innerText = !ok
-                                        ? (datos.error || 'No se pudo procesar el pago.')
-                                        : 'Tu pago fue rechazado. Verifica los datos o prueba con otro método.';
-                                    avisoError.classList.remove('hidden');
-                                    reject();
-                                    return;
-                                }
-                                sessionStorage.setItem('rf_ultimo_pedido', JSON.stringify(datosResumenPedido));
-                                localStorage.removeItem('carritoRF');
-                                window.location.href = '/gracias.html';
-                                resolve();
-                            })
-                            .catch(() => {
-                                avisoError.innerText = 'No fue posible conectar con el servidor. Intenta de nuevo.';
-                                avisoError.classList.remove('hidden');
-                                reject();
-                            });
-                    });
+                onFormMounted: (error) => { if (error) console.error('No se pudo montar el formulario de tarjeta', error); },
+                onFetching: () => {
+                    const barra = document.querySelector('#form-checkout .progress-bar');
+                    if (barra) barra.classList.remove('hidden');
+                    return () => { if (barra) barra.classList.add('hidden'); };
                 },
-                onError: (error) => { console.error('Payment Brick:', error); }
+                onSubmit: (event) => {
+                    event.preventDefault();
+                    document.getElementById('aviso-pago-error').classList.add('hidden');
+                    const btn = document.getElementById('form-checkout__submit');
+                    btn.disabled = true; btn.classList.add('opacity-60');
+
+                    const { paymentMethodId: payment_method_id, issuerId: issuer_id, cardholderEmail: email, amount, token, installments } = cardForm.getCardFormData();
+                    enviarPagoAlServidor({
+                        token,
+                        payment_method_id,
+                        issuer_id,
+                        transaction_amount: Number(amount),
+                        installments: Number(installments) || 1,
+                        payer: { email: email || estado.email }
+                    })
+                        .then((datosPago) => irAGraciasTrasPago(datosPago))
+                        .catch((error) => {
+                            mostrarErrorPago(error.message);
+                            btn.disabled = false; btn.classList.remove('opacity-60');
+                        });
+                }
             }
         });
+        window._cardFormActual = cardForm;
     }
+
+    // --- OXXO y SPEI: no manejan datos de tarjeta, así que no necesitan
+    // ningún formulario de Mercado Pago -- solo un botón que pide generar la
+    // ficha/CLABE, usando el mismo endpoint de siempre.
+    async function pagarConMetodoSimple(paymentMethodId) {
+        const btnId = paymentMethodId === 'oxxo' ? 'btn-pagar-oxxo' : 'btn-pagar-spei';
+        const btn = document.getElementById(btnId);
+        const textoOriginal = btn.innerText;
+        btn.disabled = true; btn.classList.add('opacity-60'); btn.innerText = 'Procesando...';
+        document.getElementById('aviso-pago-error').classList.add('hidden');
+        try {
+            const datosPago = await enviarPagoAlServidor({
+                payment_method_id: paymentMethodId,
+                transaction_amount: subtotalCarrito() + ENVIO_FIJO,
+                payer: { email: estado.email }
+            });
+            irAGraciasTrasPago(datosPago);
+        } catch (error) {
+            mostrarErrorPago(error.message);
+            btn.disabled = false; btn.classList.remove('opacity-60'); btn.innerText = textoOriginal;
+        }
+    }
+    window.pagarConMetodoSimple = pagarConMetodoSimple;
 
     // Cuando el cobro en línea todavía no está configurado -- el pedido ya
     // quedó registrado en iniciarPasoPago(), aquí solo cerramos el flujo.
