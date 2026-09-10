@@ -279,6 +279,15 @@
                         <div id="paymentBrick_container" class="hidden"></div>
                         <p id="aviso-pago-error" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></p>
 
+                        <!-- PayPal: visible junto al formulario, pendiente de configurar -->
+                        <div id="bloque-paypal" class="hidden border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between opacity-60">
+                            <label class="flex items-center gap-2 text-sm font-medium text-gray-500 cursor-not-allowed">
+                                <input type="radio" disabled class="w-4 h-4">
+                                PayPal
+                            </label>
+                            <span class="text-[11px] text-gray-400">Próximamente</span>
+                        </div>
+
                         <!-- Mercado Pago NO configurado todavía: dejamos pasar la venta igual -->
                         <div id="pago-no-disponible-bloque" class="hidden space-y-4">
                             <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">El cobro en línea todavía no está activado. Tu pedido se registrará igual y nos pondremos en contacto contigo para confirmar el pago.</p>
@@ -761,6 +770,7 @@
             document.getElementById('paymentBrick_container').innerHTML = '';
             document.getElementById('paymentBrick_container').classList.add('hidden');
             document.getElementById('pago-no-disponible-bloque').classList.add('hidden');
+            document.getElementById('bloque-paypal').classList.add('hidden');
         }
         // Si reabres un paso, los pasos posteriores ya confirmados siguen
         // completados -- no se pierden, solo se vuelve a mostrar este.
@@ -1245,25 +1255,8 @@
             document.getElementById('pago-cargando').classList.add('hidden');
             if (datosPago.disponible && datosPago.publicKey) {
                 document.getElementById('paymentBrick_container').classList.remove('hidden');
-
-                // La opción de "pagar con tu cuenta de Mercado Pago" necesita una
-                // preferencia además de la Public Key. Si por lo que sea no se
-                // puede generar, seguimos igual solo con tarjeta/OXXO/SPEI en vez
-                // de bloquear todo el formulario de pago.
-                let preferenceId = null;
-                try {
-                    const rPref = await fetch('/api/pagos/crear-preferencia', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ordenId: ordenCreadaId })
-                    });
-                    const datosPref = await rPref.json();
-                    if (rPref.ok) preferenceId = datosPref.preferenceId;
-                } catch (errorPref) {
-                    console.error('No se pudo generar la preferencia para pagar con Mercado Pago', errorPref);
-                }
-
-                await renderizarPaymentBrick(datosPago.publicKey, preferenceId);
+                document.getElementById('bloque-paypal').classList.remove('hidden');
+                await renderizarPaymentBrick(datosPago.publicKey);
             } else {
                 document.getElementById('pago-no-disponible-bloque').classList.remove('hidden');
             }
@@ -1273,7 +1266,7 @@
         }
     }
 
-    async function renderizarPaymentBrick(publicKey, preferenceId) {
+    async function renderizarPaymentBrick(publicKey) {
         const mp = new MercadoPago(publicKey, { locale: 'es-MX' });
         const bricksBuilder = mp.bricks();
         const total = subtotalCarrito() + ENVIO_FIJO;
@@ -1281,24 +1274,26 @@
         await bricksBuilder.create('payment', 'paymentBrick_container', {
             initialization: {
                 amount: total,
-                preferenceId: preferenceId || undefined,
                 payer: estado.email ? { email: estado.email } : undefined
             },
             customization: {
+                // Ojo: Mercado Pago sigue mostrando "Tarjeta de crédito" y "Tarjeta
+                // de débito" como dos líneas -- eso lo controla su propio
+                // formulario y no hay forma de fusionarlas en una sola visualmente.
+                // Dejamos únicamente "creditCard" (que, en la práctica, procesa
+                // igual tarjetas de crédito y de débito una vez tokenizadas) para
+                // que solo aparezca una línea de tarjeta; vale la pena probarlo
+                // juntos con una tarjeta de débito real para confirmarlo del todo.
                 paymentMethods: {
                     creditCard: 'all',
-                    debitCard: 'all',
                     ticket: 'all',
-                    bankTransfer: 'all',
-                    // La opción de "pagar con tu cuenta de Mercado Pago" solo se
-                    // ofrece si sí se logró generar la preferencia (ver arriba).
-                    ...(preferenceId ? { mercadoPago: 'all' } : {})
+                    bankTransfer: 'all'
                 },
                 // Abre el formulario de tarjeta de una vez, en vez de mostrar
                 // primero la lista de métodos para elegir uno. Las demás
-                // opciones (OXXO, SPEI, Mercado Pago) siguen disponibles --
-                // el propio formulario de Mercado Pago trae un enlace para
-                // cambiar a otro método sin perder lo ya escrito.
+                // opciones (OXXO, SPEI) siguen disponibles -- el propio
+                // formulario de Mercado Pago trae un enlace para cambiar a
+                // otro método sin perder lo ya escrito.
                 visual: {
                     defaultPaymentOption: { creditCardForm: true }
                 }
