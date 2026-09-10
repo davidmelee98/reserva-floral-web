@@ -1319,20 +1319,33 @@
             return;
         }
 
+        let datosPago;
         try {
             const r = await fetch('/api/pagos/estado');
-            const datosPago = await r.json();
-            document.getElementById('pago-cargando').classList.add('hidden');
-            if (datosPago.disponible && datosPago.publicKey) {
-                document.getElementById('bloque-metodos-pago').classList.remove('hidden');
-                inicializarCardForm(datosPago.publicKey);
-            } else {
-                document.getElementById('pago-no-disponible-bloque').classList.remove('hidden');
-            }
+            datosPago = await r.json();
         } catch (error) {
-            document.getElementById('pago-cargando').classList.add('hidden');
-            document.getElementById('pago-no-disponible-bloque').classList.remove('hidden');
+            datosPago = { disponible: false };
         }
+        document.getElementById('pago-cargando').classList.add('hidden');
+
+        if (!datosPago.disponible || !datosPago.publicKey) {
+            document.getElementById('pago-no-disponible-bloque').classList.remove('hidden');
+            return;
+        }
+
+        document.getElementById('bloque-metodos-pago').classList.remove('hidden');
+        // Se monta un instante después (no en el mismo respiro en que se quita
+        // la clase "hidden"): si se intenta justo en ese momento, el navegador
+        // todavía no terminó de calcular el tamaño real de los campos y
+        // Mercado Pago puede fallar al montar el formulario ahí adentro.
+        setTimeout(() => {
+            try {
+                inicializarCardForm(datosPago.publicKey);
+            } catch (error) {
+                console.error('No se pudo montar el formulario de tarjeta', error);
+                mostrarErrorPago('No se pudo cargar el formulario de tarjeta. Recarga la página e intenta de nuevo.');
+            }
+        }, 50);
     }
 
     // Alterna cuál medio de pago se ve "abierto": la tarjeta trae su propio
