@@ -1172,9 +1172,20 @@ app.post('/api/pagos/procesar-pago', async (req, res) => {
     const estadoPago = { approved: 'aprobado', pending: 'pendiente', in_process: 'pendiente', rejected: 'rechazado', cancelled: 'rechazado' }[pago.status] || 'pendiente';
     await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3', [estadoPago, String(pago.id), orden.id]);
 
-    // Para OXXO/SPEI, Mercado Pago regresa la liga a la ficha o los datos de
-    // la transferencia -- se manda al frontend para poder mostrarla.
-    const urlComprobante = pago.transaction_details?.external_resource_url || null;
+    // Para OXXO/SPEI, Mercado Pago regresa la liga a la ficha (o los datos de
+    // la transferencia) en algún lugar de la respuesta -- el nombre exacto del
+    // campo varía según el medio de pago, así que probamos varias rutas
+    // conocidas y, si no coincide con ninguna, lo dejamos registrado en el
+    // log para poder ajustarlo.
+    const urlComprobante =
+      pago.transaction_details?.external_resource_url ||
+      pago.point_of_interaction?.transaction_data?.ticket_url ||
+      null;
+
+    if (['oxxo', 'clabe'].includes(payment_method_id) && !urlComprobante) {
+      console.warn(`No se encontró la liga del comprobante para ${payment_method_id}. Respuesta completa de Mercado Pago:`,
+        JSON.stringify({ status: pago.status, status_detail: pago.status_detail, transaction_details: pago.transaction_details, point_of_interaction: pago.point_of_interaction }));
+    }
 
     res.json({ status: pago.status, statusDetail: pago.status_detail, estadoPago, urlComprobante });
   } catch (error) {

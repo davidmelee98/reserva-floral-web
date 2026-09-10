@@ -306,8 +306,22 @@
                     </div>
                     <h1 class="text-2xl font-serif font-semibold text-brandDark">¡Gracias por tu compra!</h1>
                     <p class="text-sm text-gray-500 mt-1">Tu pedido <strong class="text-brandDark">#${escaparHtml(pedido.id)}</strong> fue registrado correctamente.</p>
-                    <p class="text-sm text-gray-500 mt-1">Nos pondremos en contacto al <strong class="text-brandDark">${escaparHtml(pedido.telefono)}</strong>${pedido.email ? ` y a <strong class="text-brandDark">${escaparHtml(pedido.email)}</strong>` : ''} para confirmar tu pedido y el pago.</p>
+                    ${pedido.estadoPago === 'aprobado'
+                        ? `<p class="text-sm text-green-600 font-medium mt-1">✓ Tu pago ya fue confirmado.</p>`
+                        : `<p class="text-sm text-gray-500 mt-1">Nos pondremos en contacto al <strong class="text-brandDark">${escaparHtml(pedido.telefono)}</strong>${pedido.email ? ` y a <strong class="text-brandDark">${escaparHtml(pedido.email)}</strong>` : ''} para confirmar tu pedido y el pago.</p>`
+                    }
                 </div>
+
+                ${pedido.estadoPago === 'pendiente' ? `
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-4">
+                    <h2 class="font-semibold text-brandDark mb-1">⏳ Falta un paso: completa tu pago</h2>
+                    <p class="text-sm text-gray-600 mb-3">Tu pedido se preparará en cuanto se confirme el pago. Esto puede tardar unos minutos después de que pagues.</p>
+                    ${pedido.urlComprobante
+                        ? `<a href="${escaparHtml(pedido.urlComprobante)}" target="_blank" class="inline-block bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-3 rounded-full text-sm transition">Ver ficha para pagar</a>`
+                        : `<p class="text-sm text-gray-600">Te enviaremos los datos para completar tu pago a <strong class="text-brandDark">${escaparHtml(pedido.email || pedido.telefono)}</strong>. Si no los recibes pronto, contáctanos.</p>`
+                    }
+                </div>
+                ` : ''}
 
                 <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-4">
                     <h2 class="font-semibold text-brandDark mb-3">Detalles de entrega</h2>
