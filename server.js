@@ -1106,23 +1106,77 @@ app.post('/api/ordenes', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Pagos con Mercado Pago (Checkout Pro) -- el pedido ya existe en "Pendiente"
-// (creado arriba en POST /api/ordenes); aquí solo se genera el link de pago y,
-// cuando Mercado Pago confirma, se actualiza el estado_pago del pedido.
+// Pagos con Mercado Pago -- el pedido ya existe en "Pendiente" (creado arriba
+// en POST /api/ordenes) antes de intentar cobrar.
+//
+// Se usa el "Payment Brick": el formulario de tarjeta/OXXO/SPEI vive DENTRO
+// de checkout.html (no se redirige a Mercado Pago). El Brick tokeniza los
+// datos sensibles en el navegador con la Public Key y nos manda solo el
+// token -- nuestro servidor nunca ve el número de tarjeta.
 //
 // Variables de entorno necesarias (Railway → Settings → Variables):
-//   MP_ACCESS_TOKEN   -- token privado, del panel de desarrolladores de Mercado Pago
-//   MP_MODO_PRUEBA    -- "true" mientras uses credenciales de prueba, quítala (o "false") cuando pases a producción
+//   MP_ACCESS_TOKEN   -- token privado (nunca se manda al navegador)
+//   MP_PUBLIC_KEY     -- llave pública (esta sí se manda al navegador, es lo normal)
+//   MP_MODO_PRUEBA    -- "true" mientras uses credenciales de prueba
 //
-// Mientras MP_ACCESS_TOKEN no esté configurado, estos endpoints no rompen la
-// compra: el checkout detecta que el pago no está disponible y deja pasar el
-// pedido igual (para que el negocio pueda cobrar manualmente mientras tanto).
+// Mientras estas no estén configuradas, el checkout detecta que el pago no
+// está disponible y deja pasar el pedido igual (nunca bloqueamos una venta
+// por esto).
 // ---------------------------------------------------------------------------
 const mpAccessToken = process.env.MP_ACCESS_TOKEN;
+const mpPublicKey = process.env.MP_PUBLIC_KEY;
 const mpClient = mpAccessToken ? new MercadoPagoConfig({ accessToken: mpAccessToken }) : null;
 
 app.get('/api/pagos/estado', (req, res) => {
-  res.json({ disponible: Boolean(mpClient) });
+  res.json({ disponible: Boolean(mpClient && mpPublicKey), publicKey: mpClient && mpPublicKey ? mpPublicKey : null });
+});
+
+// Recibe el resultado del Payment Brick (tarjeta ya tokenizada, u OXXO/SPEI)
+// y crea el pago de verdad contra la API de Mercado Pago.
+app.post('/api/pagos/procesar-pago', async (req, res) => {
+  if (!mpClient) return res.status(503).json({ error: 'El cobro con tarjeta todavía no está configurado.' });
+  const ordenId = Number(req.body?.ordenId);
+  if (!Number.isInteger(ordenId) || ordenId <= 0) return res.status(400).json({ error: 'Pedido inválido.' });
+
+  try {
+    const resultado = await pool.query('SELECT * FROM ordenes WHERE id=$1', [ordenId]);
+    const orden = resultado.rows[0];
+    if (!orden) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (orden.estado_pago === 'aprobado') return res.status(409).json({ error: 'Este pedido ya fue pagado.' });
+
+    // Estos campos vienen tal cual del "formData" que entrega el Payment Brick
+    // en su onSubmit -- son exactamente lo que pide la API de Pagos.
+    const { token, issuer_id, payment_method_id, transaction_amount, installments, payer } = req.body;
+    if (!payment_method_id || !transaction_amount) {
+      return res.status(400).json({ error: 'Faltan datos del pago.' });
+    }
+
+    const payment = new Payment(mpClient);
+    const pago = await payment.create({
+      body: {
+        transaction_amount: Number(transaction_amount),
+        token: token || undefined,
+        description: `Pedido Reserva Floral #${orden.id}`,
+        installments: installments ? Number(installments) : 1,
+        payment_method_id,
+        issuer_id: issuer_id || undefined,
+        payer: {
+          email: payer?.email || orden.email_contacto,
+          identification: payer?.identification || undefined
+        },
+        external_reference: String(orden.id)
+      },
+      requestOptions: { idempotencyKey: `orden-${orden.id}-${Date.now()}` }
+    });
+
+    const estadoPago = { approved: 'aprobado', pending: 'pendiente', in_process: 'pendiente', rejected: 'rechazado', cancelled: 'rechazado' }[pago.status] || 'pendiente';
+    await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3', [estadoPago, String(pago.id), orden.id]);
+
+    res.json({ status: pago.status, statusDetail: pago.status_detail, estadoPago });
+  } catch (error) {
+    console.error('POST /api/pagos/procesar-pago:', error?.message, error?.cause || '');
+    res.status(500).json({ error: 'No se pudo procesar el pago. Verifica los datos e intenta de nuevo.' });
+  }
 });
 
 app.post('/api/pagos/crear-preferencia', async (req, res) => {
@@ -1166,7 +1220,10 @@ app.post('/api/pagos/crear-preferencia', async (req, res) => {
     await pool.query('UPDATE ordenes SET mp_preference_id=$1 WHERE id=$2', [respuestaMp.id, orden.id]);
 
     const enModoPrueba = String(process.env.MP_MODO_PRUEBA).toLowerCase() === 'true';
-    res.json({ initPoint: enModoPrueba ? respuestaMp.sandbox_init_point : respuestaMp.init_point });
+    res.json({
+      preferenceId: respuestaMp.id,
+      initPoint: enModoPrueba ? respuestaMp.sandbox_init_point : respuestaMp.init_point
+    });
   } catch (error) {
     console.error('POST /api/pagos/crear-preferencia:', error);
     res.status(500).json({ error: 'No se pudo iniciar el pago.' });

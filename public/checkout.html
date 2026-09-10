@@ -81,18 +81,7 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 class="text-2xl md:text-3xl font-serif font-semibold text-brandDark mb-6">Proceso de compra</h1>
 
-        <!-- Pantalla de reintento: solo aparece si Mercado Pago mandó de vuelta con un pago fallido -->
-        <div id="pantalla-reintento-pago" class="hidden max-w-md mx-auto text-center py-12 bg-white rounded-2xl border border-gray-100 px-6">
-            <div class="w-14 h-14 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
-                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </div>
-            <h2 class="text-lg font-semibold text-brandDark">Tu pago no se completó</h2>
-            <p class="text-sm text-gray-500 mt-1">Tu pedido sigue guardado. Puedes intentar el pago de nuevo cuando quieras.</p>
-            <button type="button" id="btn-reintentar-pago" onclick="reintentarPago()" class="w-full mt-6 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition shadow-md">Reintentar pago</button>
-            <a href="/" class="block mt-3 text-sm text-gray-500 hover:underline">Volver al inicio</a>
-        </div>
-
-        <div id="asistente-checkout" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
             <!-- ================= PASOS ================= -->
             <div class="lg:col-span-7 space-y-4">
@@ -283,12 +272,18 @@
                     </div>
 
                     <div id="form-paso-5" class="hidden mt-4 ml-10 space-y-4">
-                        <div class="flex items-start gap-3 border border-gray-200 rounded-lg px-4 py-3 bg-gray-50">
-                            <svg class="w-5 h-5 text-gray-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                            <p class="text-sm text-gray-600">Al confirmar, te llevaremos a <strong class="text-brandDark">Mercado Pago</strong> para completar tu pago de forma segura. Ahí podrás elegir tarjeta de crédito o débito, OXXO, transferencia SPEI, y más.</p>
+                        <!-- Se muestra mientras se confirma si el cobro en línea está disponible -->
+                        <div id="pago-cargando" class="text-sm text-gray-400">Cargando opciones de pago...</div>
+
+                        <!-- Mercado Pago SÍ configurado: aquí se monta el formulario real (Payment Brick) -->
+                        <div id="paymentBrick_container" class="hidden"></div>
+                        <p id="aviso-pago-error" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></p>
+
+                        <!-- Mercado Pago NO configurado todavía: dejamos pasar la venta igual -->
+                        <div id="pago-no-disponible-bloque" class="hidden space-y-4">
+                            <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">El cobro en línea todavía no está activado. Tu pedido se registrará igual y nos pondremos en contacto contigo para confirmar el pago.</p>
+                            <button type="button" id="btn-completar-compra" onclick="completarCompraSinCobroEnLinea()" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3.5 rounded-full text-sm transition shadow-md">Completar compra</button>
                         </div>
-                        <p id="aviso-pago-no-disponible" class="hidden text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">El cobro en línea todavía no está activado. Tu pedido se registrará igual y nos pondremos en contacto contigo para confirmar el pago.</p>
-                        <button type="button" id="btn-completar-compra" onclick="completarCompra()" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3.5 rounded-full text-sm transition shadow-md">Completar compra</button>
                     </div>
                 </div>
             </div>
@@ -652,25 +647,17 @@
     window.cerrarSesionCliente = cerrarSesionCliente;
 
     cargarSesionCliente();
-
-    // Avisar si el cobro en línea todavía no está configurado (no bloquea nada,
-    // solo deja claro qué va a pasar al confirmar).
-    fetch('/api/pagos/estado').then(r => r.json()).then(datos => {
-        if (!datos.disponible) document.getElementById('aviso-pago-no-disponible').classList.remove('hidden');
-    }).catch(() => {});
 </script>
 
 
+<script src="https://sdk.mercadopago.com/js/v2"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // =======================================================================
     // Estado
     // =======================================================================
-    const parametrosUrlCheckout = new URLSearchParams(window.location.search);
-    const pedidoAReintentar = parametrosUrlCheckout.get('pago') === 'fallido' ? parametrosUrlCheckout.get('pedido') : null;
-
     let carrito = JSON.parse(localStorage.getItem('carritoRF') || '[]');
-    if (!pedidoAReintentar && (!Array.isArray(carrito) || carrito.length === 0)) {
+    if (!Array.isArray(carrito) || carrito.length === 0) {
         window.location.href = '/carrito.html';
     }
 
@@ -765,6 +752,16 @@
     }
     function reabrirPaso(n) {
         pasosCompletados.delete(n);
+        // Si reabres cualquier paso de 1 a 4 después de haber llegado al pago,
+        // el pedido que ya se había creado quedaría desactualizado (dirección,
+        // dedicatoria, etc. viejas) -- se descarta para que se cree uno nuevo
+        // y correcto cuando vuelvan a llegar al paso 5.
+        if (n <= 4 && ordenCreadaId) {
+            ordenCreadaId = null;
+            document.getElementById('paymentBrick_container').innerHTML = '';
+            document.getElementById('paymentBrick_container').classList.add('hidden');
+            document.getElementById('pago-no-disponible-bloque').classList.add('hidden');
+        }
         // Si reabres un paso, los pasos posteriores ya confirmados siguen
         // completados -- no se pierden, solo se vuelve a mostrar este.
         irAPaso(n);
@@ -1069,6 +1066,7 @@
         document.getElementById('resumen-paso-4').innerHTML = resumenTxt;
         pasosCompletados.add(4);
         irAPaso(5);
+        iniciarPasoPago();
     }
     window.confirmarPaso4 = confirmarPaso4;
 
@@ -1175,15 +1173,13 @@
     window.confirmarMensajeElegido = confirmarMensajeElegido;
 
     // =======================================================================
-    // PASO 5: enviar pedido
+    // PASO 5: crear el pedido y cobrar (Payment Brick embebido en la página)
     // =======================================================================
-    async function completarCompra() {
-        const btn = document.getElementById('btn-completar-compra');
-        btn.disabled = true;
-        btn.classList.add('opacity-60');
-        btn.innerText = 'Procesando...';
+    let ordenCreadaId = null;
+    let datosResumenPedido = null;
 
-        const orden = {
+    function construirPayloadOrden() {
+        return {
             cliente: estado.destinatario.nombre,
             telefono: estado.telefono,
             emailContacto: estado.email,
@@ -1201,104 +1197,159 @@
             esAnonimo: estado.dedicatoria.anonimo,
             conEnvio: true
         };
+    }
+
+    // Se llama en cuanto se llega al paso 5: registra el pedido (queda
+    // "Pendiente" de pago) y, según si Mercado Pago está configurado, monta
+    // el formulario de pago embebido o el aviso de "cobro manual".
+    async function iniciarPasoPago() {
+        if (ordenCreadaId) return; // ya se creó antes, no duplicar
 
         try {
             const respuesta = await fetch('/api/ordenes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(orden)
+                body: JSON.stringify(construirPayloadOrden())
             });
             const datos = await respuesta.json().catch(() => ({}));
-            if (respuesta.ok) {
-                if (sesionCliente) {
-                    await guardarDireccionSiEsNueva();
-                }
-                const resumenPedido = {
-                    id: datos.orden?.id || '',
-                    telefono: estado.telefono,
-                    email: estado.email,
-                    destinatario: estado.destinatario.nombre,
-                    direccion: estado.direccion.textoCompleto,
-                    fecha: estado.entrega.fecha,
-                    horario: estado.entrega.horario,
-                    dedicatoria: estado.dedicatoria.sinMensaje ? '' : estado.dedicatoria.mensaje,
-                    firma: estado.dedicatoria.anonimo ? '' : estado.dedicatoria.firma,
-                    items: carrito,
-                    subtotal: subtotalCarrito(),
-                    envio: ENVIO_FIJO,
-                    total: subtotalCarrito() + ENVIO_FIJO
-                };
-                sessionStorage.setItem('rf_ultimo_pedido', JSON.stringify(resumenPedido));
-                localStorage.removeItem('carritoRF');
+            if (!respuesta.ok) {
+                mostrarToast(datos.error || 'Hubo un error al procesar la orden.', 'error');
+                return;
+            }
+            if (sesionCliente) await guardarDireccionSiEsNueva();
 
-                // Si el cobro en línea ya está configurado, mandamos a pagar a
-                // Mercado Pago. Si no (todavía no se dan de alta las llaves),
-                // seguimos igual que antes: el pedido queda registrado y el
-                // negocio confirma el pago por su cuenta -- nunca bloqueamos
-                // la venta por esto.
+            ordenCreadaId = datos.orden.id;
+            datosResumenPedido = {
+                id: ordenCreadaId,
+                telefono: estado.telefono,
+                email: estado.email,
+                destinatario: estado.destinatario.nombre,
+                direccion: estado.direccion.textoCompleto,
+                fecha: estado.entrega.fecha,
+                horario: estado.entrega.horario,
+                dedicatoria: estado.dedicatoria.sinMensaje ? '' : estado.dedicatoria.mensaje,
+                firma: estado.dedicatoria.anonimo ? '' : estado.dedicatoria.firma,
+                items: carrito,
+                subtotal: subtotalCarrito(),
+                envio: ENVIO_FIJO,
+                total: subtotalCarrito() + ENVIO_FIJO
+            };
+        } catch (error) {
+            mostrarToast('No fue posible conectar con el servidor. Intenta nuevamente.', 'error');
+            return;
+        }
+
+        try {
+            const r = await fetch('/api/pagos/estado');
+            const datosPago = await r.json();
+            document.getElementById('pago-cargando').classList.add('hidden');
+            if (datosPago.disponible && datosPago.publicKey) {
+                document.getElementById('paymentBrick_container').classList.remove('hidden');
+
+                // La opción de "pagar con tu cuenta de Mercado Pago" necesita una
+                // preferencia además de la Public Key. Si por lo que sea no se
+                // puede generar, seguimos igual solo con tarjeta/OXXO/SPEI en vez
+                // de bloquear todo el formulario de pago.
+                let preferenceId = null;
                 try {
-                    btn.innerText = 'Conectando con Mercado Pago...';
-                    const respuestaPago = await fetch('/api/pagos/crear-preferencia', {
+                    const rPref = await fetch('/api/pagos/crear-preferencia', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ordenId: datos.orden.id })
+                        body: JSON.stringify({ ordenId: ordenCreadaId })
                     });
-                    const datosPago = await respuestaPago.json();
-                    if (respuestaPago.ok && datosPago.initPoint) {
-                        window.location.href = datosPago.initPoint;
-                        return;
-                    }
-                } catch (errorPago) {
-                    console.error('No se pudo iniciar el cobro con Mercado Pago', errorPago);
+                    const datosPref = await rPref.json();
+                    if (rPref.ok) preferenceId = datosPref.preferenceId;
+                } catch (errorPref) {
+                    console.error('No se pudo generar la preferencia para pagar con Mercado Pago', errorPref);
                 }
-                window.location.href = '/gracias.html';
-            } else {
-                mostrarToast(datos.error || 'Hubo un error al procesar la orden.', 'error');
-                btn.disabled = false; btn.classList.remove('opacity-60'); btn.innerText = 'Completar compra';
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            mostrarToast('No fue posible conectar con el servidor. Intenta nuevamente.', 'error');
-            btn.disabled = false; btn.classList.remove('opacity-60'); btn.innerText = 'Completar compra';
-        }
-    }
-    window.completarCompra = completarCompra;
 
-    async function reintentarPago() {
-        const btn = document.getElementById('btn-reintentar-pago');
-        btn.disabled = true;
-        btn.classList.add('opacity-60');
-        btn.innerText = 'Conectando con Mercado Pago...';
-        try {
-            const respuesta = await fetch('/api/pagos/crear-preferencia', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ordenId: pedidoAReintentar })
-            });
-            const datos = await respuesta.json();
-            if (respuesta.ok && datos.initPoint) {
-                window.location.href = datos.initPoint;
+                await renderizarPaymentBrick(datosPago.publicKey, preferenceId);
             } else {
-                mostrarToast(datos.error || 'No se pudo reintentar el pago.', 'error');
-                btn.disabled = false; btn.classList.remove('opacity-60'); btn.innerText = 'Reintentar pago';
+                document.getElementById('pago-no-disponible-bloque').classList.remove('hidden');
             }
         } catch (error) {
-            mostrarToast('No fue posible conectar con el servidor.', 'error');
-            btn.disabled = false; btn.classList.remove('opacity-60'); btn.innerText = 'Reintentar pago';
+            document.getElementById('pago-cargando').classList.add('hidden');
+            document.getElementById('pago-no-disponible-bloque').classList.remove('hidden');
         }
     }
-    window.reintentarPago = reintentarPago;
+
+    async function renderizarPaymentBrick(publicKey, preferenceId) {
+        const mp = new MercadoPago(publicKey, { locale: 'es-MX' });
+        const bricksBuilder = mp.bricks();
+        const total = subtotalCarrito() + ENVIO_FIJO;
+
+        await bricksBuilder.create('payment', 'paymentBrick_container', {
+            initialization: {
+                amount: total,
+                preferenceId: preferenceId || undefined,
+                payer: estado.email ? { email: estado.email } : undefined
+            },
+            customization: {
+                paymentMethods: {
+                    creditCard: 'all',
+                    debitCard: 'all',
+                    ticket: 'all',
+                    bankTransfer: 'all',
+                    // La opción de "pagar con tu cuenta de Mercado Pago" solo se
+                    // ofrece si sí se logró generar la preferencia (ver arriba).
+                    ...(preferenceId ? { mercadoPago: 'all' } : {})
+                }
+            },
+            callbacks: {
+                onReady: () => {},
+                onSubmit: ({ formData }) => {
+                    return new Promise((resolve, reject) => {
+                        const avisoError = document.getElementById('aviso-pago-error');
+                        avisoError.classList.add('hidden');
+                        fetch('/api/pagos/procesar-pago', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ordenId: ordenCreadaId, ...formData })
+                        })
+                            .then(r => r.json().then(datos => ({ ok: r.ok, datos })))
+                            .then(({ ok, datos }) => {
+                                if (!ok || datos.status === 'rejected') {
+                                    avisoError.innerText = !ok
+                                        ? (datos.error || 'No se pudo procesar el pago.')
+                                        : 'Tu pago fue rechazado. Verifica los datos o prueba con otro método.';
+                                    avisoError.classList.remove('hidden');
+                                    reject();
+                                    return;
+                                }
+                                sessionStorage.setItem('rf_ultimo_pedido', JSON.stringify(datosResumenPedido));
+                                localStorage.removeItem('carritoRF');
+                                window.location.href = '/gracias.html';
+                                resolve();
+                            })
+                            .catch(() => {
+                                avisoError.innerText = 'No fue posible conectar con el servidor. Intenta de nuevo.';
+                                avisoError.classList.remove('hidden');
+                                reject();
+                            });
+                    });
+                },
+                onError: (error) => { console.error('Payment Brick:', error); }
+            }
+        });
+    }
+
+    // Cuando el cobro en línea todavía no está configurado -- el pedido ya
+    // quedó registrado en iniciarPasoPago(), aquí solo cerramos el flujo.
+    function completarCompraSinCobroEnLinea() {
+        if (!ordenCreadaId || !datosResumenPedido) return;
+        const btn = document.getElementById('btn-completar-compra');
+        btn.disabled = true; btn.classList.add('opacity-60'); btn.innerText = 'Procesando...';
+        sessionStorage.setItem('rf_ultimo_pedido', JSON.stringify(datosResumenPedido));
+        localStorage.removeItem('carritoRF');
+        window.location.href = '/gracias.html';
+    }
+    window.completarCompraSinCobroEnLinea = completarCompraSinCobroEnLinea;
 
     // =======================================================================
     // Inicio
     // =======================================================================
-    if (pedidoAReintentar) {
-        document.getElementById('pantalla-reintento-pago').classList.remove('hidden');
-        document.getElementById('asistente-checkout').classList.add('hidden');
-    } else {
-        renderResumen();
-        renderPasos();
-    }
+    renderResumen();
+    renderPasos();
 </script>
 
 <!-- Botón Flotante WhatsApp -->
