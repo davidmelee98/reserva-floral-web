@@ -1293,6 +1293,14 @@
                     // La opción de "pagar con tu cuenta de Mercado Pago" solo se
                     // ofrece si sí se logró generar la preferencia (ver arriba).
                     ...(preferenceId ? { mercadoPago: 'all' } : {})
+                },
+                // Abre el formulario de tarjeta de una vez, en vez de mostrar
+                // primero la lista de métodos para elegir uno. Las demás
+                // opciones (OXXO, SPEI, Mercado Pago) siguen disponibles --
+                // el propio formulario de Mercado Pago trae un enlace para
+                // cambiar a otro método sin perder lo ya escrito.
+                visual: {
+                    defaultPaymentOption: { creditCardForm: true }
                 }
             },
             callbacks: {
