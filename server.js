@@ -8,6 +8,7 @@ const { Pool } = require('pg');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
+const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
@@ -41,17 +42,27 @@ app.use(session({
   cookie: {
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
     httpOnly: true,
-    sameSite: 'lax'
-    // 'secure' se deja apagado por compatibilidad -- actívalo (true) en cuanto
-    // confirmes que el sitio corre siempre bajo HTTPS.
+    sameSite: 'lax',
+    // Con NODE_ENV=production (Railway ya sirve todo por HTTPS y "trust proxy"
+    // está activo arriba), las cookies solo viajan por conexiones seguras.
+    // En local (sin HTTPS) se deja apagado para que el login no se rompa.
+    secure: process.env.NODE_ENV === 'production'
   }
 }));
 
 // ---------------------------------------------------------------------------
-// Subida de imágenes (se guardan en /public/uploads y se sirven como estáticas)
+// Subida de imágenes (se guardan en disco y se sirven como estáticas en /uploads)
+// En Railway, el disco del contenedor NO es permanente entre despliegues --
+// para que las fotos no se borren, hay que:
+//   1) Crear un Volume en Railway (pestaña "Volumes" del servicio).
+//   2) Montarlo en, por ejemplo, /data/uploads.
+//   3) Poner esa misma ruta en la variable de entorno UPLOADS_DIR.
+// Si no se configura UPLOADS_DIR, se usa la carpeta local de siempre (útil
+// para desarrollo, pero NO persiste en Railway sin un Volume).
 // ---------------------------------------------------------------------------
-const CARPETA_SUBIDAS = path.join(__dirname, 'public', 'uploads');
+const CARPETA_SUBIDAS = process.env.UPLOADS_DIR || path.join(__dirname, 'public', 'uploads');
 fs.mkdirSync(CARPETA_SUBIDAS, { recursive: true });
+app.use('/uploads', express.static(CARPETA_SUBIDAS));
 
 const storageSubidas = multer.diskStorage({
   destination: (req, file, cb) => cb(null, CARPETA_SUBIDAS),
@@ -211,7 +222,10 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS es_anonimo BOOLEAN DEFAULT false',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS envio DECIMAL(10,2) DEFAULT 0',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS cliente_cuenta_id INTEGER REFERENCES clientes_cuenta(id) ON DELETE SET NULL',
-    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS email_contacto VARCHAR(150)'
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS email_contacto VARCHAR(150)',
+    "ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS estado_pago VARCHAR(30) DEFAULT 'pendiente'",
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS mp_preference_id VARCHAR(100)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS mp_payment_id VARCHAR(100)'
   ];
 
   for (const query of alterQueries) {
@@ -1088,6 +1102,97 @@ app.post('/api/ordenes', async (req, res) => {
     res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Error al crear el pedido.' });
   } finally {
     client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Pagos con Mercado Pago (Checkout Pro) -- el pedido ya existe en "Pendiente"
+// (creado arriba en POST /api/ordenes); aquí solo se genera el link de pago y,
+// cuando Mercado Pago confirma, se actualiza el estado_pago del pedido.
+//
+// Variables de entorno necesarias (Railway → Settings → Variables):
+//   MP_ACCESS_TOKEN   -- token privado, del panel de desarrolladores de Mercado Pago
+//   MP_MODO_PRUEBA    -- "true" mientras uses credenciales de prueba, quítala (o "false") cuando pases a producción
+//
+// Mientras MP_ACCESS_TOKEN no esté configurado, estos endpoints no rompen la
+// compra: el checkout detecta que el pago no está disponible y deja pasar el
+// pedido igual (para que el negocio pueda cobrar manualmente mientras tanto).
+// ---------------------------------------------------------------------------
+const mpAccessToken = process.env.MP_ACCESS_TOKEN;
+const mpClient = mpAccessToken ? new MercadoPagoConfig({ accessToken: mpAccessToken }) : null;
+
+app.get('/api/pagos/estado', (req, res) => {
+  res.json({ disponible: Boolean(mpClient) });
+});
+
+app.post('/api/pagos/crear-preferencia', async (req, res) => {
+  if (!mpClient) return res.status(503).json({ error: 'El cobro con tarjeta todavía no está configurado.' });
+  const ordenId = Number(req.body?.ordenId);
+  if (!Number.isInteger(ordenId) || ordenId <= 0) return res.status(400).json({ error: 'Pedido inválido.' });
+
+  try {
+    const resultado = await pool.query('SELECT * FROM ordenes WHERE id=$1', [ordenId]);
+    const orden = resultado.rows[0];
+    if (!orden) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (orden.estado_pago === 'aprobado') return res.status(409).json({ error: 'Este pedido ya fue pagado.' });
+
+    const items = Array.isArray(orden.carrito) ? orden.carrito : JSON.parse(orden.carrito || '[]');
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+    const preference = new Preference(mpClient);
+    const respuestaMp = await preference.create({
+      body: {
+        items: [
+          ...items.map(it => ({
+            title: String(it.nombre || 'Producto').slice(0, 250),
+            quantity: Math.max(1, Number(it.cantidad) || 1),
+            currency_id: 'MXN',
+            unit_price: Number(it.precio) || 0
+          })),
+          ...(Number(orden.envio) > 0 ? [{ title: 'Envío', quantity: 1, currency_id: 'MXN', unit_price: Number(orden.envio) }] : [])
+        ],
+        payer: orden.email_contacto ? { email: orden.email_contacto } : undefined,
+        external_reference: String(orden.id),
+        notification_url: `${baseUrl}/api/pagos/webhook`,
+        back_urls: {
+          success: `${baseUrl}/gracias.html?pedido=${orden.id}`,
+          pending: `${baseUrl}/gracias.html?pedido=${orden.id}`,
+          failure: `${baseUrl}/checkout.html?pago=fallido&pedido=${orden.id}`
+        },
+        auto_return: 'approved'
+      }
+    });
+
+    await pool.query('UPDATE ordenes SET mp_preference_id=$1 WHERE id=$2', [respuestaMp.id, orden.id]);
+
+    const enModoPrueba = String(process.env.MP_MODO_PRUEBA).toLowerCase() === 'true';
+    res.json({ initPoint: enModoPrueba ? respuestaMp.sandbox_init_point : respuestaMp.init_point });
+  } catch (error) {
+    console.error('POST /api/pagos/crear-preferencia:', error);
+    res.status(500).json({ error: 'No se pudo iniciar el pago.' });
+  }
+});
+
+app.post('/api/pagos/webhook', async (req, res) => {
+  // Mercado Pago espera un 200 rápido -- respondemos siempre OK y procesamos
+  // el aviso; si algo falla adentro, se queda registrado en el log pero no
+  // hacemos que Mercado Pago reintente indefinidamente por un error nuestro.
+  res.sendStatus(200);
+  if (!mpClient) return;
+  try {
+    const tipo = req.query.type || req.body?.type;
+    const pagoId = req.query['data.id'] || req.body?.data?.id;
+    if (tipo !== 'payment' || !pagoId) return;
+
+    const payment = new Payment(mpClient);
+    const pago = await payment.get({ id: pagoId });
+    const ordenId = Number(pago.external_reference);
+    if (!Number.isInteger(ordenId)) return;
+
+    const estadoPago = { approved: 'aprobado', pending: 'pendiente', in_process: 'pendiente', rejected: 'rechazado', cancelled: 'rechazado', refunded: 'reembolsado' }[pago.status] || pago.status;
+    await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3', [estadoPago, String(pago.id), ordenId]);
+  } catch (error) {
+    console.error('POST /api/pagos/webhook:', error);
   }
 });
 

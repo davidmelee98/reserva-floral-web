@@ -1430,6 +1430,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 </a>`;
             }).join('');
             const colorEstado = ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500';
+            const colorEstadoPago = { aprobado: 'bg-green-50 text-green-600', pendiente: 'bg-amber-50 text-amber-600', rechazado: 'bg-red-50 text-red-600', reembolsado: 'bg-gray-100 text-gray-500' }[o.estado_pago] || 'bg-gray-100 text-gray-500';
+            const etiquetaEstadoPago = { aprobado: '✓ Pago confirmado', pendiente: 'Pago pendiente', rechazado: 'Pago rechazado', reembolsado: 'Pago reembolsado' }[o.estado_pago] || 'Pago pendiente';
             const iconoTipo = { Casa: '🏠', Hotel: '🛏️', Restaurante: '🍴', 'Capilla Funeral': '✝️', Oficinas: '🏢', Hospital: '🏥' }[o.tipo_domicilio] || '📍';
             const tieneMapa = o.lat && o.lng;
             const envio = Number(o.envio || 0);
@@ -1441,6 +1443,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             <div class="flex items-center gap-2 flex-wrap">
                                 <p class="font-semibold text-brandDark text-sm">${escaparHtmlAdmin(o.cliente_nombre)}</p>
                                 <span class="adm-badge ${colorEstado}">${escaparHtmlAdmin(o.estado || 'Pendiente')}</span>
+                                <span class="adm-badge ${colorEstadoPago}">${etiquetaEstadoPago}</span>
                             </div>
                             <p class="text-xs text-gray-500 mt-0.5">☎️ Contacto: ${escaparHtmlAdmin(o.cliente_telefono)}${o.email_contacto ? ` · ${escaparHtmlAdmin(o.email_contacto)}` : ''}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''} · Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</p>
                             <p class="text-xs text-gray-500 mt-0.5">${iconoTipo} ${escaparHtmlAdmin(o.direccion_entrega)}

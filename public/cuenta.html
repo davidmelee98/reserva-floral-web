@@ -523,7 +523,7 @@
                 <div class="bg-white rounded-2xl border border-gray-100 p-5">
                     <div class="flex items-center justify-between flex-wrap gap-2">
                         <div>
-                            <p class="text-sm font-semibold text-brandDark">Pedido #${o.id} <span class="adm-badge ${ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500'}">${escaparHtml(o.estado || 'Pendiente')}</span></p>
+                            <p class="text-sm font-semibold text-brandDark">Pedido #${o.id} <span class="adm-badge ${ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500'}">${escaparHtml(o.estado || 'Pendiente')}</span> ${o.estado_pago === 'aprobado' ? '<span class="adm-badge bg-green-50 text-green-600">✓ Pagado</span>' : o.estado_pago === 'rechazado' ? '<span class="adm-badge bg-red-50 text-red-600">Pago rechazado</span>' : '<span class="adm-badge bg-amber-50 text-amber-600">Pago pendiente</span>'}</p>
                             <p class="text-xs text-gray-500 mt-0.5">Hecho el ${formatearFecha(o.creado_en)}</p>
                         </div>
                         <p class="text-base font-bold text-brandDark">$${formatearPrecio(o.total)}</p>

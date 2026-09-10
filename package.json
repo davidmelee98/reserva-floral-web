@@ -16,6 +16,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "mercadopago": "^3.6.1",
     "multer": "^2.3.0",
     "pg": "^8.23.0"
   }
