@@ -1295,7 +1295,20 @@
                 // formulario de Mercado Pago trae un enlace para cambiar a
                 // otro método sin perder lo ya escrito.
                 visual: {
-                    defaultPaymentOption: { creditCardForm: true }
+                    defaultPaymentOption: { creditCardForm: true },
+                    // Recoloreamos el formulario con los mismos tonos y bordes
+                    // redondeados del resto del sitio, para que se sienta parte
+                    // del mismo bloque en vez de un widget aparte en azul.
+                    style: {
+                        customVariables: {
+                            baseColor: '#c2185b',
+                            buttonTextColor: '#ffffff',
+                            borderRadiusSmall: '8px',
+                            borderRadiusMedium: '10px',
+                            borderRadiusLarge: '999px',
+                            formPadding: '0px'
+                        }
+                    }
                 }
             },
             callbacks: {
