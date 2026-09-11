@@ -10,6 +10,8 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+const { Resend } = require('resend');
+const { OAuth2Client } = require('google-auth-library');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
@@ -210,7 +212,7 @@ async function inicializarDB() {
       genero VARCHAR(20),
       email VARCHAR(150) UNIQUE NOT NULL,
       telefono VARCHAR(20),
-      password_hash TEXT NOT NULL,
+      password_hash TEXT,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -287,7 +289,9 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS mp_payment_id VARCHAR(100)',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS cupon_codigo VARCHAR(50)',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descuento DECIMAL(10,2) DEFAULT 0',
-    'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS puntos_canjeados INTEGER DEFAULT 0'
+    'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS puntos_canjeados INTEGER DEFAULT 0',
+    'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS google_id VARCHAR(100)',
+    'ALTER TABLE clientes_cuenta ALTER COLUMN password_hash DROP NOT NULL'
   ];
 
   for (const query of alterQueries) {
@@ -557,6 +561,7 @@ app.post('/api/cuenta/login', limitadorLogin, async (req, res) => {
     const resultado = await pool.query('SELECT * FROM clientes_cuenta WHERE lower(email) = lower($1)', [email.trim()]);
     const cliente = resultado.rows[0];
     if (!cliente) { registrarIntentoFallidoCliente(email); return res.status(401).json({ error: 'Correo o contraseña incorrectos.' }); }
+    if (!cliente.password_hash) { registrarIntentoFallidoCliente(email); return res.status(401).json({ error: 'Esta cuenta se creó con Google. Usa el botón "Continuar con Google" para entrar.' }); }
     const coincide = await bcrypt.compare(password, cliente.password_hash);
     if (!coincide) { registrarIntentoFallidoCliente(email); return res.status(401).json({ error: 'Correo o contraseña incorrectos.' }); }
     intentosLoginCliente.delete(email.toLowerCase());
@@ -579,6 +584,82 @@ app.post('/api/cuenta/logout', (req, res) => {
   delete req.session.clienteNombre;
   delete req.session.clienteApellido;
   res.json({ exito: true });
+});
+
+// ---------------------------------------------------------------------------
+// Inicio de sesión con Google
+// Variables de entorno necesarias:
+//   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET  -- de Google Cloud Console
+//   URL_SITIO  -- ej. https://www.reservafloral.com (para armar el redirect)
+// Mientras no estén configuradas, el botón de "Continuar con Google" se queda
+// deshabilitado en el sitio -- nunca se rompe el login normal por esto.
+// ---------------------------------------------------------------------------
+const URL_SITIO = process.env.URL_SITIO || 'http://localhost:3000';
+const googleClient = (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+  ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, `${URL_SITIO}/api/auth/google/callback`)
+  : null;
+
+app.get('/api/auth/estado', (req, res) => {
+  res.json({ google: Boolean(googleClient) });
+});
+
+app.get('/api/auth/google', (req, res) => {
+  if (!googleClient) return res.status(503).send('El inicio de sesión con Google todavía no está configurado.');
+  const url = googleClient.generateAuthUrl({
+    access_type: 'online',
+    scope: ['openid', 'email', 'profile'],
+    // Para poder regresar a la misma página después de iniciar sesión
+    // (ej. si venía del checkout), guardamos a dónde volver en "state".
+    state: encodeURIComponent(req.query.volverA || '/')
+  });
+  res.redirect(url);
+});
+
+app.get('/api/auth/google/callback', async (req, res) => {
+  const volverA = (() => { try { return decodeURIComponent(req.query.state || '/'); } catch (_) { return '/'; } })();
+  if (!googleClient) return res.redirect('/');
+  const { code } = req.query;
+  if (!code) return res.redirect(`${volverA}?login=error`);
+  try {
+    const { tokens } = await googleClient.getToken(code);
+    const ticket = await googleClient.verifyIdToken({ idToken: tokens.id_token, audience: process.env.GOOGLE_CLIENT_ID });
+    const perfil = ticket.getPayload();
+    if (!perfil?.email || !perfil.email_verified) return res.redirect(`${volverA}?login=error`);
+
+    const email = perfil.email.toLowerCase();
+    let resultado = await pool.query('SELECT * FROM clientes_cuenta WHERE lower(email) = lower($1)', [email]);
+    let cliente = resultado.rows[0];
+
+    if (!cliente) {
+      // Cuenta nueva -- se crea sin contraseña, se entra solo con Google.
+      const nombre = perfil.given_name || perfil.name || 'Cliente';
+      const apellido = perfil.family_name || '';
+      const inserted = await pool.query(
+        `INSERT INTO clientes_cuenta (nombre, apellido, email, google_id, password_hash) VALUES ($1,$2,$3,$4,NULL) RETURNING *`,
+        [nombre, apellido, email, perfil.sub]
+      );
+      cliente = inserted.rows[0];
+      // Igual que en el registro normal: si ya había pedidos de invitado con
+      // este correo, se ligan a la cuenta nueva.
+      await pool.query(`UPDATE ordenes SET cliente_cuenta_id=$1 WHERE cliente_cuenta_id IS NULL AND email_contacto=$2`, [cliente.id, email]);
+    } else if (!cliente.google_id) {
+      // Ya tenía cuenta con contraseña y ahora también quiere entrar con
+      // Google -- se vincula, sin tocar su contraseña actual.
+      await pool.query('UPDATE clientes_cuenta SET google_id=$1 WHERE id=$2', [perfil.sub, cliente.id]);
+    }
+
+    req.session.regenerate((err) => {
+      if (err) return res.redirect(`${volverA}?login=error`);
+      req.session.clienteId = cliente.id;
+      req.session.clienteNombre = cliente.nombre;
+      req.session.clienteApellido = cliente.apellido;
+      req.session.clienteEmail = cliente.email;
+      res.redirect(volverA);
+    });
+  } catch (error) {
+    console.error('GET /api/auth/google/callback:', error);
+    res.redirect(`${volverA}?login=error`);
+  }
 });
 
 app.get('/api/cuenta/perfil', requireClienteAuth, async (req, res) => {
@@ -1156,6 +1237,87 @@ app.post('/api/admin/subir-imagen', requireAuth, (req, res) => {
 // El total se calcula en el servidor usando los precios de PostgreSQL.
 const ENVIO_FIJO = 80;
 
+// ---------------------------------------------------------------------------
+// Correos transaccionales (Resend) -- confirmación de pedido y de pago.
+// Variables de entorno necesarias:
+//   RESEND_API_KEY  -- del panel de Resend (API Keys)
+//   RESEND_FROM     -- remitente, ej. "Reserva Floral <hey@reservafloral.com>"
+//                      (el dominio debe estar verificado en Resend)
+// Mientras no estén configuradas, el sitio sigue funcionando igual -- nunca
+// se bloquea una venta por no poder mandar un correo.
+// ---------------------------------------------------------------------------
+const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const CORREO_REMITENTE = process.env.RESEND_FROM || 'Reserva Floral <hey@reservafloral.com>';
+
+function formatearFechaCorreo(fecha) {
+  if (!fecha) return '';
+  const d = new Date(fecha + (String(fecha).length === 10 ? 'T00:00:00' : ''));
+  return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function plantillaBaseCorreo(tituloInterno, cuerpoHtml) {
+  return `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#353535;">
+      <div style="background:#c2185b;padding:20px;text-align:center;border-radius:12px 12px 0 0;">
+        <h1 style="color:#fff;font-size:20px;margin:0;font-weight:600;">Reserva Floral</h1>
+      </div>
+      <div style="background:#fff;border:1px solid #ececec;border-top:none;border-radius:0 0 12px 12px;padding:24px;">
+        ${cuerpoHtml}
+      </div>
+      <p style="text-align:center;color:#999;font-size:11px;margin-top:16px;">© ${new Date().getFullYear()} Reserva Floral</p>
+    </div>
+  `;
+}
+
+async function enviarCorreoConfirmacionPedido(orden) {
+  if (!resendClient || !orden.email_contacto) return;
+  try {
+    const items = Array.isArray(orden.carrito) ? orden.carrito : JSON.parse(orden.carrito || '[]');
+    const filas = items.map(it => `
+      <tr>
+        <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">${it.nombre}${it.variante ? ` (${it.variante})` : ''} × ${it.cantidad}</td>
+        <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;">$${(it.precio * it.cantidad).toFixed(2)}</td>
+      </tr>`).join('');
+    const cuerpo = `
+      <h2 style="font-size:16px;margin:0 0 8px;">¡Gracias por tu pedido, ${orden.cliente_nombre}!</h2>
+      <p style="font-size:13px;color:#666;margin:0 0 16px;">Tu pedido <strong>#${orden.id}</strong> fue registrado correctamente.</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">${filas}</table>
+      <p style="font-size:13px;margin:4px 0;"><strong>Total:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
+      <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
+      <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${orden.direccion_entrega}</p>
+    `;
+    await resendClient.emails.send({
+      from: CORREO_REMITENTE,
+      to: orden.email_contacto,
+      subject: `Recibimos tu pedido #${orden.id} — Reserva Floral`,
+      html: plantillaBaseCorreo('Confirmación de pedido', cuerpo)
+    });
+  } catch (error) {
+    // Un correo que falla nunca debe tumbar la venta -- solo se registra.
+    console.error('No se pudo enviar el correo de confirmación de pedido:', error?.message || error);
+  }
+}
+
+async function enviarCorreoPagoConfirmado(orden) {
+  if (!resendClient || !orden.email_contacto) return;
+  try {
+    const cuerpo = `
+      <h2 style="font-size:16px;margin:0 0 8px;">✓ Tu pago fue confirmado</h2>
+      <p style="font-size:13px;color:#666;margin:0 0 16px;">El pago de tu pedido <strong>#${orden.id}</strong> ya se acreditó. Empezaremos a prepararlo para la entrega.</p>
+      <p style="font-size:13px;margin:4px 0;"><strong>Total pagado:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
+      <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
+    `;
+    await resendClient.emails.send({
+      from: CORREO_REMITENTE,
+      to: orden.email_contacto,
+      subject: `Tu pago fue confirmado — Pedido #${orden.id}`,
+      html: plantillaBaseCorreo('Pago confirmado', cuerpo)
+    });
+  } catch (error) {
+    console.error('No se pudo enviar el correo de pago confirmado:', error?.message || error);
+  }
+}
+
 // Valida un código de cupón contra el subtotal actual del carrito, sin
 // necesidad de crear el pedido todavía -- para mostrar el descuento en el
 // checkout antes de completar la compra. La validación de verdad (la que
@@ -1298,6 +1460,9 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
 
     await client.query('COMMIT');
     res.status(201).json({ exito: true, orden: result.rows[0] });
+    // El correo se manda después de responder -- si Resend tarda o falla, no
+    // hace que el cliente espere ni que la compra truene.
+    enviarCorreoConfirmacionPedido(result.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('POST /api/ordenes:', error);
@@ -1378,6 +1543,7 @@ app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {
 
     const estadoPago = { approved: 'aprobado', pending: 'pendiente', in_process: 'pendiente', rejected: 'rechazado', cancelled: 'rechazado' }[pago.status] || 'pendiente';
     await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3', [estadoPago, String(pago.id), orden.id]);
+    if (estadoPago === 'aprobado') enviarCorreoPagoConfirmado({ ...orden, estado_pago: estadoPago });
 
     // Para OXXO/SPEI, Mercado Pago regresa la liga a la ficha (o los datos de
     // la transferencia) en algún lugar de la respuesta -- el nombre exacto del
@@ -1469,7 +1635,14 @@ app.post('/api/pagos/webhook', async (req, res) => {
     if (!Number.isInteger(ordenId)) return;
 
     const estadoPago = { approved: 'aprobado', pending: 'pendiente', in_process: 'pendiente', rejected: 'rechazado', cancelled: 'rechazado', refunded: 'reembolsado' }[pago.status] || pago.status;
-    await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3', [estadoPago, String(pago.id), ordenId]);
+
+    // Se compara contra el estado anterior para no mandar el correo de "pago
+    // confirmado" más de una vez si Mercado Pago reenvía el mismo aviso.
+    const anterior = await pool.query('SELECT estado_pago FROM ordenes WHERE id=$1', [ordenId]);
+    const yaEstabaAprobado = anterior.rows[0]?.estado_pago === 'aprobado';
+
+    const actualizada = await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3 RETURNING *', [estadoPago, String(pago.id), ordenId]);
+    if (estadoPago === 'aprobado' && !yaEstabaAprobado) enviarCorreoPagoConfirmado(actualizada.rows[0]);
   } catch (error) {
     console.error('POST /api/pagos/webhook:', error);
   }
