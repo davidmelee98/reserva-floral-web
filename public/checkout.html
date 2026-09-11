@@ -1342,7 +1342,18 @@
             try {
                 inicializarCardForm(datosPago.publicKey);
             } catch (error) {
-                console.error('No se pudo montar el formulario de tarjeta', error);
+                // Aquí es donde en verdad estaba saliendo el error (no en
+                // onFormMounted): mp.cardForm(...) está tronando de inmediato,
+                // antes de siquiera intentar montar los campos. Igual que abajo,
+                // se extraen a mano los datos del error para poder leerlos.
+                const detalle = {
+                    message: error?.message ?? null,
+                    name: error?.name ?? null,
+                    cause: (() => { try { return error?.cause ?? null; } catch (_) { return '(no se pudo leer)'; } })(),
+                    propiedades: (() => { try { return Object.keys(error || {}); } catch (_) { return []; } })(),
+                    texto: (() => { try { return String(error); } catch (_) { return '(no se pudo convertir a texto)'; } })()
+                };
+                console.error('No se pudo montar el formulario de tarjeta. Detalle:', JSON.stringify(detalle, null, 2));
                 mostrarErrorPago('No se pudo cargar el formulario de tarjeta. Recarga la página e intenta de nuevo.');
             }
         }, 50);
