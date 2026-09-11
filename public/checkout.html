@@ -29,6 +29,9 @@
         .co-circulo{ width:28px; height:28px; border-radius:999px; border:2px solid #c2185b; color:#c2185b; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; flex:0 0 auto; transition:all .15s ease; }
         .co-circulo.is-lleno{ background:#c2185b; color:#fff; }
         .co-card{ background:#fff; border:1px solid #ececec; border-radius:16px; padding:1.5rem; transition:opacity .15s ease; scroll-margin-top:90px; }
+        .rf-badge-pago{ display:inline-flex; align-items:center; justify-content:center; height:20px; padding:0 7px; border-radius:4px; color:#fff; font-size:9.5px; font-weight:800; letter-spacing:.02em; font-style:normal; line-height:1; }
+        .rf-badge-mastercard{ background:#fff !important; border:1px solid #e5e5e5; width:34px; position:relative; padding:0; }
+        .rf-mc-circ{ position:absolute; top:3px; width:14px; height:14px; border-radius:999px; }
         .co-card.is-inactiva{ opacity:.55; }
         .co-slot{ border:1px solid #d1d5db; border-radius:999px; padding:.6rem 1.1rem; font-size:.82rem; font-weight:500; cursor:pointer; transition:all .12s ease; }
         .co-slot:hover{ border-color:#c2185b; }
@@ -285,7 +288,11 @@
                                         <input type="radio" name="metodo-pago" value="tarjeta" checked class="w-4 h-4 accent-brandFuchsia" onchange="cambiarMetodoPago('tarjeta')">
                                         Tarjeta de crédito o débito
                                     </span>
-                                    <span class="text-[10px] text-gray-400">VISA · Mastercard · AMEX</span>
+                                    <span class="flex items-center gap-1">
+                                        <span class="rf-badge-pago" style="background:#1434CB;">VISA</span>
+                                        <span class="rf-badge-pago rf-badge-mastercard" aria-label="Mastercard"><span class="rf-mc-circ" style="background:#EB001B;left:5px;"></span><span class="rf-mc-circ" style="background:#F79E1B;left:13px;mix-blend-mode:multiply;"></span></span>
+                                        <span class="rf-badge-pago" style="background:#2E77BC;">AMEX</span>
+                                    </span>
                                 </label>
                                 <form id="form-checkout" class="p-4 space-y-3">
                                     <div>
@@ -306,6 +313,17 @@
                                         <label class="co-label">Nombre del titular como aparece en la tarjeta</label>
                                         <input type="text" id="form-checkout__cardholderName" placeholder="Nombre y apellido" class="co-input">
                                     </div>
+                                    <div id="bloque-meses-sin-intereses">
+                                        <label class="co-label">Meses sin intereses</label>
+                                        <select id="form-checkout__installments" class="co-input"></select>
+                                    </div>
+                                    <!-- Mercado Pago exige que estos 3 campos existan en el formulario (banco
+                                         emisor y tipo/número de identificación) aunque no se le pidan al
+                                         cliente -- los resuelve y los llena solo por dentro. Se dejan ocultos
+                                         para no ensuciar el diseño. -->
+                                    <select id="form-checkout__issuer" class="hidden"></select>
+                                    <select id="form-checkout__identificationType" class="hidden"></select>
+                                    <input type="text" id="form-checkout__identificationNumber" class="hidden">
                                     <input type="hidden" id="form-checkout__cardholderEmail">
                                     <button type="submit" id="form-checkout__submit" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition flex items-center justify-center gap-2">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
@@ -321,6 +339,7 @@
                                         <input type="radio" name="metodo-pago" value="oxxo" class="w-4 h-4 accent-brandFuchsia" onchange="cambiarMetodoPago('oxxo')">
                                         Efectivo en OXXO
                                     </span>
+                                    <span class="rf-badge-pago" style="background:#DD1D21;">OXXO</span>
                                 </label>
                                 <div id="bloque-oxxo" class="hidden px-1 pt-2">
                                     <button type="button" id="btn-pagar-oxxo" onclick="pagarConMetodoSimple('oxxo')" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Generar ficha para pagar en OXXO</button>
@@ -333,6 +352,7 @@
                                         <input type="radio" name="metodo-pago" value="spei" class="w-4 h-4 accent-brandFuchsia" onchange="cambiarMetodoPago('spei')">
                                         Transferencia SPEI
                                     </span>
+                                    <span class="rf-badge-pago" style="background:#5B3B90;">SPEI</span>
                                 </label>
                                 <div id="bloque-spei" class="hidden px-1 pt-2">
                                     <button type="button" id="btn-pagar-spei" onclick="pagarConMetodoSimple('clabe')" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Generar CLABE para transferir</button>
@@ -344,7 +364,10 @@
                                     <input type="radio" disabled class="w-4 h-4">
                                     PayPal
                                 </span>
-                                <span class="text-[11px] text-gray-400">Próximamente</span>
+                                <span class="flex items-center gap-2">
+                                    <span class="rf-badge-pago" style="background:#003087;">Pay<span style="color:#009cde;">Pal</span></span>
+                                    <span class="text-[11px] text-gray-400">Próximamente</span>
+                                </span>
                             </div>
                         </div>
 
@@ -1344,16 +1367,8 @@
             } catch (error) {
                 // Aquí es donde en verdad estaba saliendo el error (no en
                 // onFormMounted): mp.cardForm(...) está tronando de inmediato,
-                // antes de siquiera intentar montar los campos. Igual que abajo,
-                // se extraen a mano los datos del error para poder leerlos.
-                const detalle = {
-                    message: error?.message ?? null,
-                    name: error?.name ?? null,
-                    cause: (() => { try { return error?.cause ?? null; } catch (_) { return '(no se pudo leer)'; } })(),
-                    propiedades: (() => { try { return Object.keys(error || {}); } catch (_) { return []; } })(),
-                    texto: (() => { try { return String(error); } catch (_) { return '(no se pudo convertir a texto)'; } })()
-                };
-                console.error('No se pudo montar el formulario de tarjeta. Detalle:', JSON.stringify(detalle, null, 2));
+                // antes de siquiera intentar montar los campos.
+                console.error('No se pudo montar el formulario de tarjeta. Detalle:', JSON.stringify(extraerDetalleError(error), null, 2));
                 mostrarErrorPago('No se pudo cargar el formulario de tarjeta. Recarga la página e intenta de nuevo.');
             }
         }, 50);
@@ -1369,6 +1384,33 @@
         document.getElementById('aviso-pago-error').classList.add('hidden');
     }
     window.cambiarMetodoPago = cambiarMetodoPago;
+
+    // No intentamos convertir el objeto de error completo con JSON.stringify
+    // directo (los errores del SDK de Mercado Pago suelen traer referencias
+    // circulares que lo hacen fallar en silencio, y a veces el "error" es en
+    // realidad un arreglo con varios errores adentro). Esto saca a mano, de
+    // cada uno, solo los campos que sirven para diagnosticar.
+    function extraerDetalleError(error) {
+        const lista = Array.isArray(error) ? error : [error];
+        return lista.map((e, i) => ({
+            indice: i,
+            message: e?.message ?? null,
+            name: e?.name ?? null,
+            cause: (() => { try { return e?.cause ?? null; } catch (_) { return '(no se pudo leer)'; } })(),
+            propiedades: (() => { try { return Object.keys(e || {}); } catch (_) { return []; } })(),
+            texto: (() => { try { return String(e); } catch (_) { return '(no se pudo convertir a texto)'; } })(),
+            // Copia superficial de todas las propiedades propias -- por si el
+            // dato útil viene en un campo que no imaginamos (ej. "type",
+            // "status", "code", etc.), sin arriesgarnos a un objeto circular.
+            copiaSuperficial: (() => {
+                try {
+                    const copia = {};
+                    Object.keys(e || {}).forEach(k => { try { copia[k] = typeof e[k] === 'object' ? '(objeto anidado)' : e[k]; } catch (_) { copia[k] = '(no se pudo leer)'; } });
+                    return copia;
+                } catch (_) { return {}; }
+            })()
+        }));
+    }
 
     function mostrarErrorPago(mensaje) {
         const avisoError = document.getElementById('aviso-pago-error');
@@ -1406,6 +1448,10 @@
     function inicializarCardForm(publicKey) {
         const mp = new MercadoPago(publicKey, { locale: 'es-MX' });
         document.getElementById('form-checkout__cardholderEmail').value = estado.email || '';
+        // El campo de identificación queda oculto (ver comentario en el HTML),
+        // así que nadie va a escribir nada ahí -- le ponemos el RFC genérico
+        // que usa el SAT para consumidores sin RFC, para que nunca viaje vacío.
+        document.getElementById('form-checkout__identificationNumber').value = 'XAXX010101000';
 
         const cardForm = mp.cardForm({
             amount: String(subtotalCarrito() + ENVIO_FIJO),
@@ -1416,24 +1462,19 @@
                 expirationDate: { id: 'form-checkout__expirationDate', placeholder: 'MM/AA' },
                 securityCode: { id: 'form-checkout__securityCode', placeholder: 'Ej.: 123' },
                 cardholderName: { id: 'form-checkout__cardholderName', placeholder: 'Nombre y apellido' },
-                cardholderEmail: { id: 'form-checkout__cardholderEmail' }
+                cardholderEmail: { id: 'form-checkout__cardholderEmail' },
+                // Estos 4 son obligatorios para que Mercado Pago monte el
+                // formulario (según su propia documentación), aunque no se le
+                // pidan directamente al cliente -- ver los comentarios en el HTML.
+                issuer: { id: 'form-checkout__issuer', placeholder: 'Banco emisor' },
+                installments: { id: 'form-checkout__installments', placeholder: 'Meses sin intereses' },
+                identificationType: { id: 'form-checkout__identificationType', placeholder: 'Tipo de identificación' },
+                identificationNumber: { id: 'form-checkout__identificationNumber', placeholder: 'Número de identificación' }
             },
             callbacks: {
                 onFormMounted: (error) => {
                     if (!error) return;
-                    // No intentamos convertir el objeto de error completo (suele
-                    // traer referencias circulares que hacen fallar JSON.stringify
-                    // en silencio). En vez de eso, sacamos a mano solo los campos
-                    // que de verdad sirven para diagnosticar.
-                    const lista = Array.isArray(error) ? error : [error];
-                    const resumen = lista.map((e, i) => ({
-                        indice: i,
-                        message: e?.message ?? null,
-                        name: e?.name ?? null,
-                        cause: (() => { try { return e?.cause ?? null; } catch (_) { return '(no se pudo leer)'; } })(),
-                        propiedades: (() => { try { return Object.keys(e || {}); } catch (_) { return []; } })()
-                    }));
-                    console.error('No se pudo montar el formulario de tarjeta. Detalle:', JSON.stringify(resumen, null, 2));
+                    console.error('No se pudo montar el formulario de tarjeta. Detalle:', JSON.stringify(extraerDetalleError(error), null, 2));
                 },
                 onFetching: () => {
                     const barra = document.querySelector('#form-checkout .progress-bar');
@@ -1446,14 +1487,22 @@
                     const btn = document.getElementById('form-checkout__submit');
                     btn.disabled = true; btn.classList.add('opacity-60');
 
-                    const { paymentMethodId: payment_method_id, issuerId: issuer_id, cardholderEmail: email, amount, token, installments } = cardForm.getCardFormData();
+                    const {
+                        paymentMethodId: payment_method_id, issuerId: issuer_id, cardholderEmail: email,
+                        amount, token, installments, identificationType, identificationNumber
+                    } = cardForm.getCardFormData();
                     enviarPagoAlServidor({
                         token,
                         payment_method_id,
                         issuer_id,
                         transaction_amount: Number(amount),
                         installments: Number(installments) || 1,
-                        payer: { email: email || estado.email }
+                        payer: {
+                            email: email || estado.email,
+                            identification: (identificationType && identificationNumber)
+                                ? { type: identificationType, number: identificationNumber }
+                                : undefined
+                        }
                     })
                         .then((datosPago) => irAGraciasTrasPago(datosPago))
                         .catch((error) => {
