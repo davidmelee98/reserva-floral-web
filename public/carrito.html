@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <title>Carrito | Reserva Floral</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
@@ -558,17 +559,19 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 
                 <!-- Buscador global -->
                 <div class="flex-1 max-w-2xl mx-8 hidden lg:block">
-                    <div class="relative">
-                        <input type="text" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
-                        <svg class="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
+                    <form onsubmit="event.preventDefault(); location.href='/?buscar=' + encodeURIComponent(document.getElementById('input-busqueda-desktop').value);" class="relative">
+                        <input type="text" id="input-busqueda-desktop" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                        <button type="submit" aria-label="Buscar" class="absolute right-3 top-2.5">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                    </form>
                 </div>
 
 
                 <!-- Iconos derecha -->
                 <div class="flex items-center gap-3 sm:gap-4 md:gap-6 text-sm font-medium">
-                    <!-- Búsqueda (móvil, funcionalidad pendiente) -->
-                    <button type="button" class="md:hidden flex items-center justify-center hover:text-gray-200" aria-label="Buscar" title="Buscar">
+                    <!-- Búsqueda (móvil): esta página no tiene catálogo propio, así que manda al inicio con la búsqueda ya aplicada -->
+                    <button type="button" onclick="alternarBusquedaMovil()" class="md:hidden flex items-center justify-center hover:text-gray-200" aria-label="Buscar" title="Buscar">
                         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="6.8"></circle><path stroke-linecap="round" d="m16.2 16.2 4.1 4.1"></path></svg>
                     </button>
                     <div class="hidden md:flex items-center gap-1 cursor-pointer hover:text-gray-200">
@@ -590,6 +593,16 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </div>
         </div>
     </header>
+
+    <!-- Barra de búsqueda móvil: manda al inicio con la búsqueda ya aplicada -->
+    <div id="barra-busqueda-movil" class="hidden md:hidden bg-brandFuchsia px-4 pb-3 sticky top-16 z-40">
+        <form onsubmit="event.preventDefault(); location.href='/?buscar=' + encodeURIComponent(document.getElementById('input-busqueda-movil').value);" class="relative">
+            <input type="text" id="input-busqueda-movil" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+            <button type="submit" aria-label="Buscar" class="absolute right-3 top-2.5">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </button>
+        </form>
+    </div>
 
 
 <!-- Navegación móvil jerárquica -->
@@ -1093,6 +1106,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     <script>
         let carrito = JSON.parse(localStorage.getItem('carritoRF')) || [];
         let todosLosArreglos = []; // Memoria global para el catálogo
+
+        function alternarBusquedaMovil() {
+            const barra = document.getElementById('barra-busqueda-movil');
+            barra.classList.toggle('hidden');
+            if (!barra.classList.contains('hidden')) document.getElementById('input-busqueda-movil').focus();
+        }
+        window.alternarBusquedaMovil = alternarBusquedaMovil;
 
         function escaparHtml(valor) {
             return String(valor ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));

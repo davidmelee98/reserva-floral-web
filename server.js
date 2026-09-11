@@ -8,6 +8,7 @@ const { Pool } = require('pg');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 
 const app = express();
@@ -15,6 +16,50 @@ const port = Number(process.env.PORT) || 3000;
 
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
+
+// ---------------------------------------------------------------------------
+// Límites de peticiones -- protegen contra ataques de fuerza bruta (adivinar
+// contraseñas a punta de intentos) y contra que alguien sature el sitio de
+// pedidos o pagos falsos. Los límites de login son estrictos a propósito.
+// ---------------------------------------------------------------------------
+const limitadorLogin = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' }
+});
+const limitadorRegistro = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.' }
+});
+const limitadorPedidos = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos seguidos. Espera unos minutos e inténtalo de nuevo.' }
+});
+const limitadorPagos = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos de pago seguidos. Espera unos minutos e inténtalo de nuevo.' }
+});
+// Límite general de respaldo para toda la API, generoso para no estorbar el
+// uso normal del sitio (catálogo, carrito, etc. hacen varias peticiones).
+const limitadorGeneral = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 400,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes desde este dispositivo. Espera un momento.' }
+});
+app.use('/api/', limitadorGeneral);
 
 if (!process.env.DATABASE_URL) {
   console.error('Falta DATABASE_URL en las variables de entorno.');
@@ -196,6 +241,20 @@ async function inicializarDB() {
       notas TEXT,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS cupones (
+      id SERIAL PRIMARY KEY,
+      codigo VARCHAR(50) UNIQUE NOT NULL,
+      tipo VARCHAR(20) NOT NULL DEFAULT 'monto_fijo',
+      valor DECIMAL(10,2) NOT NULL,
+      activo BOOLEAN DEFAULT true,
+      monto_minimo DECIMAL(10,2) DEFAULT 0,
+      usos_maximos INTEGER,
+      usos_actuales INTEGER DEFAULT 0,
+      cliente_cuenta_id INTEGER REFERENCES clientes_cuenta(id) ON DELETE CASCADE,
+      fecha_expiracion DATE,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Compatibilidad con instalaciones anteriores de la base de datos.
@@ -225,7 +284,10 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS email_contacto VARCHAR(150)',
     "ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS estado_pago VARCHAR(30) DEFAULT 'pendiente'",
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS mp_preference_id VARCHAR(100)',
-    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS mp_payment_id VARCHAR(100)'
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS mp_payment_id VARCHAR(100)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS cupon_codigo VARCHAR(50)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descuento DECIMAL(10,2) DEFAULT 0',
+    'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS puntos_canjeados INTEGER DEFAULT 0'
   ];
 
   for (const query of alterQueries) {
@@ -323,7 +385,7 @@ app.get('/api/admin/auth/estado', async (req, res) => {
 });
 
 // --- Crear la primera cuenta de administrador (solo si no existe ninguna) ---
-app.post('/api/admin/auth/configurar-inicial', async (req, res) => {
+app.post('/api/admin/auth/configurar-inicial', limitadorLogin, async (req, res) => {
   const { nombre, email, password } = req.body || {};
   if (!nombre?.trim() || !email?.trim() || !password || password.length < 8) {
     return res.status(400).json({ error: 'Nombre, correo y una contraseña de al menos 8 caracteres son obligatorios.' });
@@ -352,7 +414,7 @@ app.post('/api/admin/auth/configurar-inicial', async (req, res) => {
 });
 
 // --- Login / logout ---
-app.post('/api/admin/auth/login', async (req, res) => {
+app.post('/api/admin/auth/login', limitadorLogin, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email?.trim() || !password) {
     return res.status(400).json({ error: 'Ingresa tu correo y contraseña.' });
@@ -453,7 +515,7 @@ app.get('/api/cuenta/sesion', (req, res) => {
   res.json({ autenticado: false });
 });
 
-app.post('/api/cuenta/registro', async (req, res) => {
+app.post('/api/cuenta/registro', limitadorRegistro, async (req, res) => {
   const { nombre, apellido, genero, email, telefono, password } = req.body || {};
   if (!nombre?.trim() || !apellido?.trim() || !email?.trim() || !password || password.length < 8) {
     return res.status(400).json({ error: 'Nombre, apellido, correo y una contraseña de al menos 8 caracteres son obligatorios.' });
@@ -465,6 +527,13 @@ app.post('/api/cuenta/registro', async (req, res) => {
       [nombre.trim(), apellido.trim(), genero || null, email.trim().toLowerCase(), telefono?.trim() || null, hash]
     );
     const cliente = resultado.rows[0];
+    // Si ya había hecho pedidos como invitado con este mismo correo, se los
+    // ligamos a la cuenta nueva -- así puede verlos en "Mis pedidos" y sus
+    // puntos ya cuentan desde antes de haberse registrado.
+    await pool.query(
+      `UPDATE ordenes SET cliente_cuenta_id=$1 WHERE cliente_cuenta_id IS NULL AND email_contacto=$2`,
+      [cliente.id, cliente.email]
+    );
     req.session.regenerate((err) => {
       if (err) return res.status(500).json({ error: 'No se pudo crear la cuenta.' });
       req.session.clienteId = cliente.id;
@@ -480,7 +549,7 @@ app.post('/api/cuenta/registro', async (req, res) => {
   }
 });
 
-app.post('/api/cuenta/login', async (req, res) => {
+app.post('/api/cuenta/login', limitadorLogin, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email?.trim() || !password) return res.status(400).json({ error: 'Ingresa tu correo y contraseña.' });
   if (clienteEstaBloqueado(email)) return res.status(429).json({ error: 'Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo.' });
@@ -736,6 +805,9 @@ app.delete('/api/cuenta/recordatorios/:id', requireClienteAuth, async (req, res)
 // una tabla de puntos que se pueda desincronizar: siempre refleja tus pedidos reales.
 // ---------------------------------------------------------------------------
 const META_PUNTOS = 3000;
+// Cuántos pesos de descuento vale cada punto al canjearlo por un cupón.
+const VALOR_PUNTO_EN_PESOS = 0.1; // 3000 puntos = $300 MXN de descuento
+
 app.get('/api/cuenta/puntos', requireClienteAuth, async (req, res) => {
   try {
     const resultado = await pool.query(
@@ -747,11 +819,80 @@ app.get('/api/cuenta/puntos', requireClienteAuth, async (req, res) => {
       fecha: o.creado_en,
       puntos: Math.max(0, Math.round(Number(o.total) - Number(o.envio || 0)))
     }));
-    const totalPuntos = historial.reduce((s, h) => s + h.puntos, 0);
-    res.json({ puntos: totalPuntos % META_PUNTOS, puntosTotales: totalPuntos, meta: META_PUNTOS, cuponesDisponibles: Math.floor(totalPuntos / META_PUNTOS), historial });
+    const totalGanado = historial.reduce((s, h) => s + h.puntos, 0);
+    const clienteRes = await pool.query('SELECT puntos_canjeados FROM clientes_cuenta WHERE id=$1', [req.session.clienteId]);
+    const puntosCanjeados = clienteRes.rows[0]?.puntos_canjeados || 0;
+    const totalPuntos = Math.max(0, totalGanado - puntosCanjeados);
+    res.json({
+      puntos: totalPuntos % META_PUNTOS,
+      puntosTotales: totalPuntos,
+      meta: META_PUNTOS,
+      cuponesDisponibles: Math.floor(totalPuntos / META_PUNTOS),
+      valorPuntoEnPesos: VALOR_PUNTO_EN_PESOS,
+      historial
+    });
   } catch (error) {
     console.error('GET /api/cuenta/puntos:', error);
     res.status(500).json({ error: 'No se pudo cargar tu programa de puntos.' });
+  }
+});
+
+// Canjea META_PUNTOS puntos por un cupón de descuento de un solo uso, propio
+// de esta cuenta. No se guarda un "saldo" de puntos aparte -- se recalculan
+// siempre desde el historial de pedidos Entregados, restando lo ya canjeado.
+app.post('/api/cuenta/puntos/canjear', requireClienteAuth, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const ordenesRes = await client.query(
+      `SELECT total, envio FROM ordenes WHERE cliente_cuenta_id=$1 AND estado='Entregado'`,
+      [req.session.clienteId]
+    );
+    const totalGanado = ordenesRes.rows.reduce((s, o) => s + Math.max(0, Math.round(Number(o.total) - Number(o.envio || 0))), 0);
+
+    const clienteRes = await client.query('SELECT puntos_canjeados FROM clientes_cuenta WHERE id=$1 FOR UPDATE', [req.session.clienteId]);
+    const puntosCanjeados = clienteRes.rows[0]?.puntos_canjeados || 0;
+    const disponibles = Math.max(0, totalGanado - puntosCanjeados);
+
+    if (disponibles < META_PUNTOS) {
+      throw Object.assign(new Error(`Todavía te faltan puntos para canjear (necesitas ${META_PUNTOS}, tienes ${disponibles}).`), { statusCode: 400 });
+    }
+
+    const valorCupon = Math.round(META_PUNTOS * VALOR_PUNTO_EN_PESOS);
+    const codigo = `PUNTOS-${req.session.clienteId}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    await client.query(
+      `INSERT INTO cupones (codigo, tipo, valor, activo, usos_maximos, cliente_cuenta_id)
+       VALUES ($1, 'monto_fijo', $2, true, 1, $3)`,
+      [codigo, valorCupon, req.session.clienteId]
+    );
+    await client.query('UPDATE clientes_cuenta SET puntos_canjeados = puntos_canjeados + $1 WHERE id=$2', [META_PUNTOS, req.session.clienteId]);
+
+    await client.query('COMMIT');
+    res.status(201).json({ exito: true, codigo, valor: valorCupon });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/cuenta/puntos/canjear:', error);
+    res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'No se pudo canjear tus puntos.' });
+  } finally {
+    client.release();
+  }
+});
+
+// Cupones propios de la cuenta que todavía se pueden usar (los que salieron
+// de canjear puntos, o cualquier otro que se le haya asignado a esa cuenta).
+app.get('/api/cuenta/cupones', requireClienteAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT codigo, tipo, valor, fecha_expiracion FROM cupones
+       WHERE cliente_cuenta_id=$1 AND activo=true AND (usos_maximos IS NULL OR usos_actuales < usos_maximos)
+       ORDER BY creado_en DESC`,
+      [req.session.clienteId]
+    );
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/cuenta/cupones:', error);
+    res.status(500).json({ error: 'No se pudieron cargar tus cupones.' });
   }
 });
 
@@ -1015,11 +1156,42 @@ app.post('/api/admin/subir-imagen', requireAuth, (req, res) => {
 // El total se calcula en el servidor usando los precios de PostgreSQL.
 const ENVIO_FIJO = 80;
 
-app.post('/api/ordenes', async (req, res) => {
+// Valida un código de cupón contra el subtotal actual del carrito, sin
+// necesidad de crear el pedido todavía -- para mostrar el descuento en el
+// checkout antes de completar la compra. La validación de verdad (la que
+// realmente cuenta) se repite dentro de POST /api/ordenes.
+app.post('/api/cupones/validar', limitadorPedidos, async (req, res) => {
+  const { codigo, subtotal } = req.body;
+  const subtotalNum = Number(subtotal);
+  if (!codigo?.trim() || !Number.isFinite(subtotalNum) || subtotalNum <= 0) {
+    return res.status(400).json({ error: 'Faltan datos para validar el cupón.' });
+  }
+  try {
+    const clienteIdSesion = req.session && req.session.clienteId ? req.session.clienteId : null;
+    const resultado = await pool.query('SELECT * FROM cupones WHERE UPPER(codigo)=UPPER($1)', [codigo.trim()]);
+    const cupon = resultado.rows[0];
+    if (!cupon) return res.status(404).json({ error: 'El cupón no existe.' });
+    if (!cupon.activo) return res.status(400).json({ error: 'Este cupón ya no está activo.' });
+    if (cupon.fecha_expiracion && new Date(cupon.fecha_expiracion) < new Date()) return res.status(400).json({ error: 'Este cupón ya venció.' });
+    if (cupon.usos_maximos !== null && cupon.usos_actuales >= cupon.usos_maximos) return res.status(400).json({ error: 'Este cupón ya alcanzó su límite de usos.' });
+    if (Number(cupon.monto_minimo) > subtotalNum) return res.status(400).json({ error: `Este cupón requiere una compra mínima de $${Number(cupon.monto_minimo).toFixed(2)}.` });
+    if (cupon.cliente_cuenta_id && cupon.cliente_cuenta_id !== clienteIdSesion) return res.status(400).json({ error: 'Este cupón no está disponible para tu cuenta.' });
+
+    let descuento = cupon.tipo === 'porcentaje' ? subtotalNum * (Number(cupon.valor) / 100) : Number(cupon.valor);
+    descuento = Math.min(descuento, subtotalNum);
+
+    res.json({ valido: true, codigo: cupon.codigo, tipo: cupon.tipo, valor: Number(cupon.valor), descuento });
+  } catch (error) {
+    console.error('POST /api/cupones/validar:', error);
+    res.status(500).json({ error: 'No se pudo validar el cupón.' });
+  }
+});
+
+app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
   const {
     cliente, telefono, direccion, fecha, dedicatoria, carrito,
     destinatarioTelefono, tipoDomicilio, notasEntrega, horarioEntrega,
-    lat, lng, firma, esAnonimo, conEnvio, emailContacto
+    lat, lng, firma, esAnonimo, conEnvio, emailContacto, codigoCupon
   } = req.body;
 
   if (!cliente?.trim() || !telefono?.trim() || !direccion?.trim() || !fecha || !Array.isArray(carrito) || carrito.length === 0) {
@@ -1065,7 +1237,34 @@ app.post('/api/ordenes', async (req, res) => {
 
     const subtotal = carritoConfirmado.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
     const envio = conEnvio ? ENVIO_FIJO : 0;
-    const total = subtotal + envio;
+
+    // Cupón (opcional) -- se vuelve a validar aquí adentro, con los datos
+    // reales de la base, nunca confiando en un descuento que mande el propio
+    // navegador.
+    let descuento = 0;
+    let cuponAplicado = null;
+    if (codigoCupon && codigoCupon.trim()) {
+      const clienteIdSesion = req.session && req.session.clienteId ? req.session.clienteId : null;
+      const resultadoCupon = await client.query(
+        'SELECT * FROM cupones WHERE UPPER(codigo)=UPPER($1) FOR UPDATE',
+        [codigoCupon.trim()]
+      );
+      const cupon = resultadoCupon.rows[0];
+      if (!cupon) throw Object.assign(new Error('El cupón no existe.'), { statusCode: 400 });
+      if (!cupon.activo) throw Object.assign(new Error('Este cupón ya no está activo.'), { statusCode: 400 });
+      if (cupon.fecha_expiracion && new Date(cupon.fecha_expiracion) < new Date()) throw Object.assign(new Error('Este cupón ya venció.'), { statusCode: 400 });
+      if (cupon.usos_maximos !== null && cupon.usos_actuales >= cupon.usos_maximos) throw Object.assign(new Error('Este cupón ya alcanzó su límite de usos.'), { statusCode: 400 });
+      if (Number(cupon.monto_minimo) > subtotal) throw Object.assign(new Error(`Este cupón requiere una compra mínima de $${Number(cupon.monto_minimo).toFixed(2)}.`), { statusCode: 400 });
+      if (cupon.cliente_cuenta_id && cupon.cliente_cuenta_id !== clienteIdSesion) throw Object.assign(new Error('Este cupón no está disponible para tu cuenta.'), { statusCode: 400 });
+
+      descuento = cupon.tipo === 'porcentaje' ? subtotal * (Number(cupon.valor) / 100) : Number(cupon.valor);
+      descuento = Math.min(descuento, subtotal);
+      cuponAplicado = cupon;
+
+      await client.query('UPDATE cupones SET usos_actuales = usos_actuales + 1 WHERE id=$1', [cupon.id]);
+    }
+
+    const total = subtotal + envio - descuento;
 
     const latNum = Number(lat);
     const lngNum = Number(lng);
@@ -1073,8 +1272,9 @@ app.post('/api/ordenes', async (req, res) => {
     const result = await client.query(`
       INSERT INTO ordenes
         (cliente_nombre, cliente_telefono, direccion_entrega, fecha_entrega, dedicatoria, carrito, total,
-         destinatario_telefono, tipo_domicilio, notas_entrega, horario_entrega, lat, lng, firma, es_anonimo, envio, cliente_cuenta_id, email_contacto)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+         destinatario_telefono, tipo_domicilio, notas_entrega, horario_entrega, lat, lng, firma, es_anonimo, envio, cliente_cuenta_id, email_contacto,
+         cupon_codigo, descuento)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
       RETURNING *
     `, [
       cliente.trim(), telefono.trim(), direccion.trim(), fecha,
@@ -1091,7 +1291,9 @@ app.post('/api/ordenes', async (req, res) => {
       // El ID de cuenta se toma de la sesión del servidor, nunca de lo que
       // mande el cliente -- así nadie puede adjudicarse pedidos ajenos.
       req.session && req.session.clienteId ? req.session.clienteId : null,
-      emailContacto.trim().toLowerCase()
+      emailContacto.trim().toLowerCase(),
+      cuponAplicado ? cuponAplicado.codigo : null,
+      descuento
     ]);
 
     await client.query('COMMIT');
@@ -1133,7 +1335,7 @@ app.get('/api/pagos/estado', (req, res) => {
 
 // Recibe el resultado del Payment Brick (tarjeta ya tokenizada, u OXXO/SPEI)
 // y crea el pago de verdad contra la API de Mercado Pago.
-app.post('/api/pagos/procesar-pago', async (req, res) => {
+app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {
   if (!mpClient) return res.status(503).json({ error: 'El cobro con tarjeta todavía no está configurado.' });
   const ordenId = Number(req.body?.ordenId);
   if (!Number.isInteger(ordenId) || ordenId <= 0) return res.status(400).json({ error: 'Pedido inválido.' });
@@ -1146,15 +1348,20 @@ app.post('/api/pagos/procesar-pago', async (req, res) => {
 
     // Estos campos vienen tal cual del "formData" que entrega el Payment Brick
     // en su onSubmit -- son exactamente lo que pide la API de Pagos.
-    const { token, issuer_id, payment_method_id, transaction_amount, installments, payer } = req.body;
-    if (!payment_method_id || !transaction_amount) {
+    const { token, issuer_id, payment_method_id, installments, payer } = req.body;
+    if (!payment_method_id) {
       return res.status(400).json({ error: 'Faltan datos del pago.' });
     }
+
+    // El monto a cobrar SIEMPRE se toma del pedido ya guardado en la base de
+    // datos, nunca de lo que mande el navegador -- así nadie puede alterar la
+    // petición para pagar menos de lo que realmente cuesta el pedido.
+    const montoReal = Number(orden.total);
 
     const payment = new Payment(mpClient);
     const pago = await payment.create({
       body: {
-        transaction_amount: Number(transaction_amount),
+        transaction_amount: montoReal,
         token: token || undefined,
         description: `Pedido Reserva Floral #${orden.id}`,
         installments: installments ? Number(installments) : 1,
@@ -1194,7 +1401,7 @@ app.post('/api/pagos/procesar-pago', async (req, res) => {
   }
 });
 
-app.post('/api/pagos/crear-preferencia', async (req, res) => {
+app.post('/api/pagos/crear-preferencia', limitadorPagos, async (req, res) => {
   if (!mpClient) return res.status(503).json({ error: 'El cobro con tarjeta todavía no está configurado.' });
   const ordenId = Number(req.body?.ordenId);
   if (!Number.isInteger(ordenId) || ordenId <= 0) return res.status(400).json({ error: 'Pedido inválido.' });
@@ -1527,6 +1734,82 @@ app.delete('/api/admin/zonas/:id', requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Panel de administración: cupones de descuento
+// ---------------------------------------------------------------------------
+app.get('/api/admin/cupones', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT c.*, cl.nombre AS cliente_nombre, cl.apellido AS cliente_apellido
+      FROM cupones c
+      LEFT JOIN clientes_cuenta cl ON cl.id = c.cliente_cuenta_id
+      ORDER BY c.creado_en DESC
+    `);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/admin/cupones:', error);
+    res.status(500).json({ error: 'No se pudieron cargar los cupones.' });
+  }
+});
+
+app.post('/api/admin/cupones', requireAuth, async (req, res) => {
+  const { codigo, tipo, valor, montoMinimo, usosMaximos, fechaExpiracion } = req.body || {};
+  if (!codigo?.trim()) return res.status(400).json({ error: 'El código es obligatorio.' });
+  if (!['monto_fijo', 'porcentaje'].includes(tipo)) return res.status(400).json({ error: 'Tipo de cupón inválido.' });
+  const valorNum = Number(valor);
+  if (!Number.isFinite(valorNum) || valorNum <= 0) return res.status(400).json({ error: 'El valor debe ser un número mayor a 0.' });
+  if (tipo === 'porcentaje' && valorNum > 100) return res.status(400).json({ error: 'Un descuento por porcentaje no puede ser mayor a 100.' });
+  try {
+    const resultado = await pool.query(
+      `INSERT INTO cupones (codigo, tipo, valor, monto_minimo, usos_maximos, fecha_expiracion)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [
+        codigo.trim().toUpperCase(), tipo, valorNum,
+        Number.isFinite(Number(montoMinimo)) ? Number(montoMinimo) : 0,
+        Number.isFinite(Number(usosMaximos)) && Number(usosMaximos) > 0 ? Number(usosMaximos) : null,
+        fechaExpiracion || null
+      ]
+    );
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'Ya existe un cupón con ese código.' });
+    console.error('POST /api/admin/cupones:', error);
+    res.status(500).json({ error: 'No se pudo crear el cupón.' });
+  }
+});
+
+app.patch('/api/admin/cupones/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  const campos = []; const valores = []; let i = 1;
+  if (typeof req.body.activo === 'boolean') { campos.push(`activo=$${i++}`); valores.push(req.body.activo); }
+  if (Number.isFinite(Number(req.body.valor)) && Number(req.body.valor) > 0) { campos.push(`valor=$${i++}`); valores.push(Number(req.body.valor)); }
+  if (req.body.fechaExpiracion !== undefined) { campos.push(`fecha_expiracion=$${i++}`); valores.push(req.body.fechaExpiracion || null); }
+  if (campos.length === 0) return res.status(400).json({ error: 'No hay cambios para guardar.' });
+  valores.push(id);
+  try {
+    const resultado = await pool.query(`UPDATE cupones SET ${campos.join(', ')} WHERE id=$${i} RETURNING *`, valores);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Cupón no encontrado.' });
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    console.error('PATCH /api/admin/cupones/:id:', error);
+    res.status(500).json({ error: 'No se pudo actualizar el cupón.' });
+  }
+});
+
+app.delete('/api/admin/cupones/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const resultado = await pool.query('DELETE FROM cupones WHERE id=$1', [id]);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Cupón no encontrado.' });
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/cupones/:id:', error);
+    res.status(500).json({ error: 'No se pudo eliminar el cupón.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Panel de administración: configuración general de la tienda
 // ---------------------------------------------------------------------------
 // Config pública (solo lo que el storefront necesita mostrar -- nunca datos
@@ -1579,8 +1862,14 @@ app.put('/api/admin/configuracion', requireAuth, requireAdmin, async (req, res) 
   }
 });
 
+// Enlaces tipo /producto/123 abren index.html, que los detecta y muestra el
+// producto correspondiente. Cualquier otra ruta que no exista de verdad
+// (archivo estático o esta excepción) recibe un 404 real, no la portada.
 app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  if (/^\/producto\/\d+\/?$/.test(req.path)) {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
 async function iniciar() {

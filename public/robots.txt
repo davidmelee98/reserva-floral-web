@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /checkout.html
+Disallow: /carrito.html
+Disallow: /cuenta.html
+Disallow: /admin.html
+Disallow: /gracias.html
+Disallow: /api/
+
+Sitemap: https://www.reservafloral.com/sitemap.xml

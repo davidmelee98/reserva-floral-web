@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reserva Floral | Envío de Flores a Domicilio</title>
+    <meta name="description" content="Arreglos florales y regalos con entrega a domicilio el mismo día en Tampico, Ciudad Madero, Altamira, Monterrey y CDMX. Ramos, rosas y detalles para toda ocasión.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Reserva Floral">
+    <meta property="og:title" content="Reserva Floral | Envío de Flores a Domicilio">
+    <meta property="og:description" content="Arreglos florales y regalos con entrega a domicilio el mismo día. Ramos, rosas y detalles para toda ocasión.">
+    <meta property="og:image" content="/logo-reserva-floral.png">
+    <meta property="og:locale" content="es_MX">
+    <link rel="canonical" href="https://www.reservafloral.com/">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
@@ -559,17 +567,19 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 
                 <!-- Buscador global -->
                 <div class="flex-1 max-w-2xl mx-8 hidden lg:block">
-                    <div class="relative">
-                        <input type="text" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
-                        <svg class="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
+                    <form onsubmit="event.preventDefault(); buscarEnCatalogo(document.getElementById('input-busqueda-desktop').value);" class="relative">
+                        <input type="text" id="input-busqueda-desktop" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                        <button type="submit" aria-label="Buscar" class="absolute right-3 top-2.5">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                    </form>
                 </div>
 
 
                 <!-- Iconos derecha -->
                 <div class="flex items-center gap-3 sm:gap-4 md:gap-6 text-sm font-medium">
-                    <!-- Búsqueda (móvil, funcionalidad pendiente) -->
-                    <button type="button" class="md:hidden flex items-center justify-center hover:text-gray-200" aria-label="Buscar" title="Buscar">
+                    <!-- Búsqueda (móvil): abre la barra de búsqueda de abajo -->
+                    <button type="button" onclick="alternarBusquedaMovil()" class="md:hidden flex items-center justify-center hover:text-gray-200" aria-label="Buscar" title="Buscar">
                         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="6.8"></circle><path stroke-linecap="round" d="m16.2 16.2 4.1 4.1"></path></svg>
                     </button>
                     <div class="hidden md:flex items-center gap-1 cursor-pointer hover:text-gray-200">
@@ -591,6 +601,16 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </div>
         </div>
     </header>
+
+    <!-- Barra de búsqueda móvil: oculta hasta que se toque la lupa del header -->
+    <div id="barra-busqueda-movil" class="hidden md:hidden bg-brandFuchsia px-4 pb-3 sticky top-16 z-40">
+        <form onsubmit="event.preventDefault(); buscarEnCatalogo(document.getElementById('input-busqueda-movil').value);" class="relative">
+            <input type="text" id="input-busqueda-movil" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+            <button type="submit" aria-label="Buscar" class="absolute right-3 top-2.5">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </button>
+        </form>
+    </div>
 
 
 <!-- Navegación móvil jerárquica -->
@@ -1376,6 +1396,70 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     return arreglos;
             }
         }
+
+        function alternarBusquedaMovil() {
+            const barra = document.getElementById('barra-busqueda-movil');
+            barra.classList.toggle('hidden');
+            if (!barra.classList.contains('hidden')) document.getElementById('input-busqueda-movil').focus();
+        }
+        window.alternarBusquedaMovil = alternarBusquedaMovil;
+
+        function quitarAcentosRF(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+
+        // Busca por nombre (y categoría) dentro del catálogo ya cargado -- si
+        // todavía no se ha cargado nada, lo trae primero.
+        async function buscarEnCatalogo(textoBusqueda) {
+            const texto = quitarAcentosRF(textoBusqueda || '').trim().toLowerCase();
+            if (!texto) return;
+
+            if (!todosLosArreglos || todosLosArreglos.length === 0) {
+                try {
+                    const respuesta = await fetch('/api/catalogo');
+                    todosLosArreglos = await respuesta.json();
+                } catch (error) {
+                    console.error('Error cargando el catálogo para buscar', error);
+                    return;
+                }
+            }
+
+            const resultados = todosLosArreglos.filter(a => {
+                const nombre = quitarAcentosRF(a.nombre || '').toLowerCase();
+                const categoria = quitarAcentosRF(a.categoria || '').toLowerCase();
+                const subcategoria = quitarAcentosRF(a.subcategoria || '').toLowerCase();
+                return nombre.includes(texto) || categoria.includes(texto) || subcategoria.includes(texto);
+            });
+
+            document.getElementById('titulo-catalogo').innerText = `Resultados para "${textoBusqueda.trim()}"`;
+            const contenedor = document.getElementById('contenedor-arreglos');
+            contenedor.innerHTML = '';
+            if (resultados.length === 0) {
+                contenedor.innerHTML = '<p class="text-gray-500 py-10">No encontramos nada con ese nombre. Intenta con otra palabra.</p>';
+            } else {
+                resultados.forEach(arreglo => {
+                    const urlImagen = (obtenerImagenes(arreglo)[0]) || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
+                    const arregloData = encodeURIComponent(JSON.stringify(arreglo));
+                    contenedor.innerHTML += `
+                        <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
+                            <div class="rf-favorite-card-image">
+                                <img src="${urlImagen}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                            </div>
+                            <div class="rf-favorite-card-body">
+                                <h3 class="font-medium text-sm text-gray-800 leading-tight">${arreglo.nombre}</h3>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-bold text-gray-900 text-sm">$${formatearPrecio(arreglo.precio)}</span>
+                                    <span class="text-brandLightPink font-medium text-xs">Agregar</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            actualizarUI();
+            actualizarFlechasFavoritosRF();
+            document.getElementById('barra-busqueda-movil').classList.add('hidden');
+            document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
+        }
+        window.buscarEnCatalogo = buscarEnCatalogo;
 
         async function cargarInventario(filtroCategoria = null) {
             try {
@@ -2661,6 +2745,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         cargarInventario();
         abrirProductoDesdeRuta();
+
+        // Si se llegó desde otra página con una búsqueda pendiente (ej. desde
+        // el carrito), la aplicamos de una vez.
+        (function aplicarBusquedaDesdeUrl() {
+            const parametros = new URLSearchParams(window.location.search);
+            const busqueda = parametros.get('buscar');
+            if (busqueda) buscarEnCatalogo(busqueda);
+        })();
     </script>
 
     <!-- Panel lateral de descripción del producto -->

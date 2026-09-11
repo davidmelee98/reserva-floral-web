@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <title>Panel de Administración | Reserva Floral</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
@@ -157,6 +158,10 @@
             <div class="adm-nav-item" data-vista="envios">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 Envíos
+            </div>
+            <div class="adm-nav-item" data-vista="cupones">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v3a2 2 0 010 4v3a2 2 0 002 2h2m6-14h2a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2h-2M9 9h6m-6 3h6m-6 3h6" /></svg>
+                Cupones
             </div>
             <p class="text-[10px] font-bold text-gray-300 uppercase tracking-wider px-3 pt-4 pb-1">Administración</p>
             <div class="adm-nav-item" data-vista="equipo" data-solo-admin="1">
@@ -440,7 +445,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 <div class="adm-card overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
                         <h2 class="text-lg font-semibold text-brandDark">Pedidos Recibidos</h2>
-                        <p id="conteo-pedidos" class="text-xs text-gray-400"></p>
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="exportarPedidosCSV()" class="text-xs font-medium text-brandFuchsia hover:underline flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" /></svg>
+                                Exportar CSV
+                            </button>
+                            <p id="conteo-pedidos" class="text-xs text-gray-400"></p>
+                        </div>
                     </div>
                     <div class="px-6 py-3 border-b border-gray-100 flex flex-wrap gap-2 bg-gray-50/60">
                         <div class="relative flex-1 min-w-[180px]">
@@ -559,6 +570,53 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             <p class="text-xs text-gray-400 mt-0.5">Estas zonas hoy se usan en el catálogo. Aún no están conectadas al selector de ubicación de la tienda -- si quieres que también controlen eso, lo revisamos aparte.</p>
                         </div>
                         <div id="lista-zonas" class="divide-y divide-gray-100"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ CUPONES ============ -->
+            <section id="vista-cupones" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    <div class="adm-card p-6">
+                        <h2 class="text-lg font-semibold text-brandDark mb-1">Crear cupón</h2>
+                        <p class="text-xs text-gray-400 mb-4">Los cupones se aplican en el checkout con un código. Los que salen de canjear puntos se crean solos y no aparecen aquí para editar.</p>
+                        <form id="form-cupon" class="space-y-4">
+                            <div>
+                                <label class="adm-label">Código</label>
+                                <input type="text" id="cupon_codigo" required class="adm-input uppercase" placeholder="Ej. VERANO10" style="text-transform:uppercase;">
+                            </div>
+                            <div>
+                                <label class="adm-label">Tipo de descuento</label>
+                                <select id="cupon_tipo" class="adm-input">
+                                    <option value="monto_fijo">Monto fijo ($)</option>
+                                    <option value="porcentaje">Porcentaje (%)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="adm-label">Valor</label>
+                                <input type="number" id="cupon_valor" required min="0.01" step="0.01" class="adm-input" placeholder="Ej. 100">
+                            </div>
+                            <div>
+                                <label class="adm-label">Compra mínima (opcional)</label>
+                                <input type="number" id="cupon_monto_minimo" min="0" step="0.01" class="adm-input" placeholder="0">
+                            </div>
+                            <div>
+                                <label class="adm-label">Usos máximos (opcional, en blanco = ilimitado)</label>
+                                <input type="number" id="cupon_usos_maximos" min="1" step="1" class="adm-input" placeholder="Ilimitado">
+                            </div>
+                            <div>
+                                <label class="adm-label">Fecha de expiración (opcional)</label>
+                                <input type="date" id="cupon_fecha_expiracion" class="adm-input">
+                            </div>
+                            <button type="submit" class="w-full bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">Crear cupón</button>
+                        </form>
+                    </div>
+                    <div class="adm-card overflow-hidden lg:col-span-2">
+                        <div class="px-6 py-4 border-b border-gray-100">
+                            <h2 class="text-lg font-semibold text-brandDark">Cupones</h2>
+                            <p class="text-xs text-gray-400 mt-0.5">Los marcados con una cuenta son de un cliente específico (normalmente, canjeados con puntos).</p>
+                        </div>
+                        <div id="lista-cupones" class="divide-y divide-gray-100"></div>
                     </div>
                 </div>
             </section>
@@ -702,6 +760,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     let ordenes = [];
     let clientes = [];
     let zonas = [];
+    let cupones = [];
     let usuarios = [];
     let usuarioActual = null;
     let confirmacionResolver = null;
@@ -939,7 +998,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // =======================================================================
     const TITULOS_VISTA = {
         dashboard: 'Dashboard', catalogo: 'Catálogo', pedidos: 'Pedidos', clientes: 'Clientes',
-        finanzas: 'Finanzas', envios: 'Envíos', equipo: 'Equipo', configuracion: 'Configuración'
+        finanzas: 'Finanzas', envios: 'Envíos', cupones: 'Cupones', equipo: 'Equipo', configuracion: 'Configuración'
     };
     function cambiarVista(vista) {
         vistaActiva = vista;
@@ -965,7 +1024,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     });
 
     async function cargarTodoElPanel() {
-        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas()]);
+        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones()]);
         if (usuarioActual && usuarioActual.rol === 'admin') {
             await Promise.all([cargarUsuarios(), cargarConfiguracion()]);
         }
@@ -1459,6 +1518,10 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             <select class="adm-input !w-auto text-xs mt-1" onchange="cambiarEstadoPedido(${o.id}, this.value)">
                                 ${ESTADOS_PEDIDO.map(e => `<option value="${e}" ${e === o.estado ? 'selected' : ''}>${e}</option>`).join('')}
                             </select>
+                            <button type="button" onclick="imprimirNotaEntrega(${o.id})" class="mt-1 text-[11px] text-brandFuchsia font-medium hover:underline flex items-center gap-1 justify-end w-full">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z" /></svg>
+                                Imprimir nota
+                            </button>
                         </div>
                     </div>
                     <details class="mt-2">
@@ -1484,6 +1547,89 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         }
     }
     window.cambiarEstadoPedido = cambiarEstadoPedido;
+
+    // Abre una ventana con una nota de entrega lista para imprimir (para
+    // dársela al repartidor): datos del destinatario, dirección, horario,
+    // dedicatoria y los artículos del pedido -- sin datos de pago de por medio.
+    function imprimirNotaEntrega(id) {
+        const o = ordenes.find(x => x.id === id);
+        if (!o) return;
+        const items = Array.isArray(o.carrito) ? o.carrito : (typeof o.carrito === 'string' ? JSON.parse(o.carrito || '[]') : []);
+        const filasArticulos = items.map(it => {
+            const cantidad = Math.max(1, Number(it.cantidad) || 1);
+            return `<tr><td style="padding:4px 8px;border-bottom:1px solid #eee;">${escaparHtmlAdmin(it.nombre)}${it.variante ? ` (${escaparHtmlAdmin(it.variante)})` : ''}</td><td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:center;">${cantidad}</td></tr>`;
+        }).join('');
+        const ventana = window.open('', '_blank', 'width=480,height=700');
+        if (!ventana) { mostrarToast('Permite las ventanas emergentes para poder imprimir.', 'error'); return; }
+        ventana.document.write(`
+            <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Nota de entrega - Pedido #${o.id}</title>
+            <style>
+                body{ font-family: Arial, Helvetica, sans-serif; color:#222; padding:24px; max-width:420px; margin:0 auto; }
+                h1{ font-size:18px; margin:0 0 4px; }
+                .sub{ color:#777; font-size:12px; margin-bottom:16px; }
+                .bloque{ border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:12px; }
+                .bloque h2{ font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:#999; margin:0 0 6px; }
+                .bloque p{ margin:2px 0; font-size:14px; }
+                table{ width:100%; border-collapse:collapse; font-size:13px; }
+                .dedicatoria{ font-style:italic; }
+                @media print { button{ display:none; } }
+            </style></head><body>
+                <h1>Reserva Floral</h1>
+                <p class="sub">Nota de entrega -- Pedido #${o.id} -- ${formatearFechaAdmin(o.creado_en)}</p>
+                <div class="bloque">
+                    <h2>Entregar a</h2>
+                    <p><strong>${escaparHtmlAdmin(o.cliente_nombre)}</strong></p>
+                    <p>${escaparHtmlAdmin(o.direccion_entrega)}</p>
+                    ${o.destinatario_telefono ? `<p>Tel. destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}</p>` : ''}
+                    ${o.notas_entrega ? `<p>Notas: ${escaparHtmlAdmin(o.notas_entrega)}</p>` : ''}
+                </div>
+                <div class="bloque">
+                    <h2>Horario</h2>
+                    <p>${formatearFechaAdmin(o.fecha_entrega)}${o.horario_entrega ? ` -- ${escaparHtmlAdmin(o.horario_entrega)}` : ''}</p>
+                </div>
+                ${o.dedicatoria ? `<div class="bloque"><h2>Dedicatoria</h2><p class="dedicatoria">"${escaparHtmlAdmin(o.dedicatoria)}"</p>${!o.es_anonimo && o.firma ? `<p>-- ${escaparHtmlAdmin(o.firma)}</p>` : (o.es_anonimo ? '<p>(Anónimo)</p>' : '')}</div>` : ''}
+                <div class="bloque">
+                    <h2>Artículos</h2>
+                    <table>${filasArticulos}</table>
+                </div>
+                <button onclick="window.print()" style="margin-top:12px;padding:8px 16px;background:#c2185b;color:#fff;border:none;border-radius:999px;font-size:13px;cursor:pointer;">Imprimir</button>
+            </body></html>
+        `);
+        ventana.document.close();
+    }
+    window.imprimirNotaEntrega = imprimirNotaEntrega;
+
+    // Descarga un CSV con los pedidos que están visibles según el filtro
+    // actual (para llevar la contabilidad en Excel/Sheets).
+    function exportarPedidosCSV() {
+        const lista = ordenesFiltradas();
+        if (lista.length === 0) { mostrarToast('No hay pedidos que exportar con el filtro actual.', 'error'); return; }
+        const encabezados = ['ID', 'Cliente', 'Teléfono', 'Correo', 'Dirección', 'Fecha de entrega', 'Horario', 'Estado', 'Estado de pago', 'Subtotal', 'Envío', 'Total', 'Creado'];
+        const escaparCelda = (valor) => {
+            const texto = String(valor ?? '').replace(/"/g, '""');
+            return `"${texto}"`;
+        };
+        const filas = lista.map(o => {
+            const envio = Number(o.envio || 0);
+            const subtotal = Number(o.total || 0) - envio;
+            return [
+                o.id, o.cliente_nombre, o.cliente_telefono, o.email_contacto || '', o.direccion_entrega,
+                o.fecha_entrega ? new Date(o.fecha_entrega).toLocaleDateString('es-MX') : '', o.horario_entrega || '',
+                o.estado || 'Pendiente', o.estado_pago || 'pendiente', subtotal.toFixed(2), envio.toFixed(2), Number(o.total || 0).toFixed(2),
+                o.creado_en ? new Date(o.creado_en).toLocaleString('es-MX') : ''
+            ].map(escaparCelda).join(',');
+        });
+        const csv = '\uFEFF' + [encabezados.map(escaparCelda).join(','), ...filas].join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const enlace = document.createElement('a');
+        enlace.href = URL.createObjectURL(blob);
+        enlace.download = `pedidos-reserva-floral-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+        URL.revokeObjectURL(enlace.href);
+    }
+    window.exportarPedidosCSV = exportarPedidosCSV;
 
     // =======================================================================
     // CLIENTES
@@ -1663,6 +1809,93 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             mostrarToast(error.message, 'error');
         }
     }
+
+    // =======================================================================
+    // CUPONES
+    // =======================================================================
+    async function cargarCupones() {
+        try {
+            cupones = await jsonOError(await fetch('/api/admin/cupones'));
+            renderListaCupones();
+        } catch (error) {
+            console.error('Error cargando cupones', error);
+        }
+    }
+    function renderListaCupones() {
+        const cont = document.getElementById('lista-cupones');
+        cont.innerHTML = cupones.length ? cupones.map(c => {
+            const agotado = c.usos_maximos !== null && c.usos_actuales >= c.usos_maximos;
+            const vencido = c.fecha_expiracion && new Date(c.fecha_expiracion) < new Date();
+            const etiquetaValor = c.tipo === 'porcentaje' ? `${Number(c.valor)}%` : `$${Number(c.valor).toFixed(2)}`;
+            return `
+            <div class="px-6 py-3 flex items-center justify-between gap-3">
+                <div>
+                    <p class="text-sm font-medium text-brandDark">
+                        ${escaparHtmlAdmin(c.codigo)}
+                        <span class="adm-badge bg-gray-100 text-gray-600">${etiquetaValor}</span>
+                        ${agotado ? '<span class="adm-badge bg-gray-100 text-gray-500">Agotado</span>' : ''}
+                        ${vencido ? '<span class="adm-badge bg-red-50 text-red-600">Vencido</span>' : ''}
+                        ${c.cliente_cuenta_id ? `<span class="adm-badge bg-blue-50 text-blue-600">${escaparHtmlAdmin(c.cliente_nombre || '')} ${escaparHtmlAdmin(c.cliente_apellido || '')}</span>` : ''}
+                    </p>
+                    <p class="text-[11px] text-gray-400">
+                        ${c.usos_actuales} usado${c.usos_actuales === 1 ? '' : 's'}${c.usos_maximos !== null ? ` de ${c.usos_maximos}` : ' (ilimitado)'}
+                        ${Number(c.monto_minimo) > 0 ? ` · compra mínima $${Number(c.monto_minimo).toFixed(2)}` : ''}
+                        ${c.fecha_expiracion ? ` · vence ${new Date(c.fecha_expiracion).toLocaleDateString('es-MX')}` : ''}
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="adm-switch" title="${c.activo ? 'Desactivar' : 'Activar'}">
+                        <input type="checkbox" ${c.activo ? 'checked' : ''} onchange="toggleCuponActivo(${c.id}, this.checked)">
+                        <span class="adm-switch-track"></span>
+                    </label>
+                    <button onclick="eliminarCupon(${c.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase">Eliminar</button>
+                </div>
+            </div>`;
+        }).join('') : '<p class="text-center py-10 text-gray-500 text-sm">Aún no hay cupones creados.</p>';
+    }
+    document.getElementById('form-cupon').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = {
+            codigo: document.getElementById('cupon_codigo').value,
+            tipo: document.getElementById('cupon_tipo').value,
+            valor: document.getElementById('cupon_valor').value,
+            montoMinimo: document.getElementById('cupon_monto_minimo').value || 0,
+            usosMaximos: document.getElementById('cupon_usos_maximos').value || null,
+            fechaExpiracion: document.getElementById('cupon_fecha_expiracion').value || null
+        };
+        try {
+            await jsonOError(await fetch('/api/admin/cupones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
+            mostrarToast('Cupón creado.');
+            document.getElementById('form-cupon').reset();
+            cargarCupones();
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+        }
+    });
+    async function toggleCuponActivo(id, activo) {
+        try {
+            await jsonOError(await fetch(`/api/admin/cupones/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activo }) }));
+            const c = cupones.find(x => x.id === id); if (c) c.activo = activo;
+            mostrarToast('Cupón actualizado.');
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+            cargarCupones();
+        }
+    }
+    window.toggleCuponActivo = toggleCuponActivo;
+    async function eliminarCupon(id) {
+        const c = cupones.find(x => x.id === id);
+        const ok = await pedirConfirmacionAdmin('¿Eliminar cupón?', c ? `Se eliminará el cupón "${c.codigo}" para siempre.` : '');
+        if (!ok) return;
+        try {
+            await jsonOError(await fetch(`/api/admin/cupones/${id}`, { method: 'DELETE' }));
+            mostrarToast('Cupón eliminado.');
+            cargarCupones();
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+        }
+    }
+    window.eliminarCupon = eliminarCupon;
     window.eliminarZona = eliminarZona;
 
     // =======================================================================
