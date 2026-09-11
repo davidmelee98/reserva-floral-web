@@ -940,19 +940,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         <div class="relative z-10 px-4 sm:px-6 -mt-12 sm:-mt-16 md:-mt-20 md:flex md:justify-center">
             <div class="w-full md:w-11/12 max-w-5xl mx-auto bg-white rounded-xl shadow-xl p-4 sm:p-6 border border-gray-100">
                 <h3 class="text-lg font-semibold mb-4">¿A dónde quieres enviar?</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                    <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="estado">
-                        <label class="block text-[10px] text-gray-500 uppercase">Estado</label>
-                        <button type="button" class="rf-home-trigger" id="home-estado-trigger" aria-expanded="false">Estado<span class="rf-home-chevron"></span></button>
-                        <div id="home-estado-menu" class="rf-home-menu hidden">
-                            <button type="button" class="rf-home-option" data-value="Ciudad de México">Ciudad de México</button>
-                            <button type="button" class="rf-home-option" data-value="Tamaulipas">Tamaulipas</button>
-                            <button type="button" class="rf-home-option" data-value="Nuevo León">Nuevo León</button>
-                        </div>
-                    </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                     <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="ciudad">
-                        <label class="block text-[10px] text-gray-500 uppercase">Ciudad / Municipio</label>
-                        <button type="button" class="rf-home-trigger" id="home-ciudad-trigger" aria-expanded="false" disabled>Ciudad<span class="rf-home-chevron"></span></button>
+                        <label class="block text-[10px] text-gray-500 uppercase">Ciudad</label>
+                        <button type="button" class="rf-home-trigger" id="home-ciudad-trigger" aria-expanded="false">Ciudad<span class="rf-home-chevron"></span></button>
                         <div id="home-ciudad-menu" class="rf-home-menu hidden"></div>
                     </div>
                     <div class="col-span-1 rf-home-select rf-location-field p-2" data-home-select="fecha">
@@ -1112,20 +1103,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </div>
 
             <div class="space-y-3">
-                <div class="rf-location-field p-2 rf-custom-select" data-rf-select="estado">
-                    <label class="block text-[10px] text-gray-500 uppercase">Estado <span class="text-brandLightPink">*</span></label>
-                    <input id="rf-ubicacion-estado" type="hidden" value="">
-                    <button type="button" class="rf-select-trigger" data-target="rf-estado-menu" aria-expanded="false">Estado <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
-                    <div id="rf-estado-menu" class="rf-custom-menu hidden">
-                        <button type="button" class="rf-option" data-value="Ciudad de México" onclick="event.preventDefault(); event.stopPropagation(); seleccionarEstadoRF(this.dataset.value)">Ciudad de México</button>
-                        <button type="button" class="rf-option" data-value="Tamaulipas" onclick="event.preventDefault(); event.stopPropagation(); seleccionarEstadoRF(this.dataset.value)">Tamaulipas</button>
-                        <button type="button" class="rf-option" data-value="Nuevo León" onclick="event.preventDefault(); event.stopPropagation(); seleccionarEstadoRF(this.dataset.value)">Nuevo León</button>
-                    </div>
-                </div>
                 <div class="rf-location-field p-2 rf-custom-select" data-rf-select="ciudad">
                     <label class="block text-[10px] text-gray-500 uppercase">Ciudad <span class="text-brandLightPink">*</span></label>
                     <input id="rf-ubicacion-ciudad" type="hidden" value="">
-                    <button type="button" id="rf-ciudad-trigger" class="rf-select-trigger is-disabled" data-target="rf-ciudad-menu" aria-expanded="false" disabled>Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
+                    <button type="button" id="rf-ciudad-trigger" class="rf-select-trigger" data-target="rf-ciudad-menu" aria-expanded="false">Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
                     <div id="rf-ciudad-menu" class="rf-custom-menu hidden"></div>
                 </div>
                 <div class="rf-location-field p-2 rf-custom-select" data-rf-select="fecha">
@@ -1519,7 +1500,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         function obtenerUbicacionGuardadaRF() {
             try {
                 const datos = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null');
-                return (datos && datos.estado && datos.ciudad && datos.fecha) ? datos : null;
+                return (datos && datos.ciudad && datos.fecha) ? datos : null;
             } catch (_) {
                 return null;
             }
@@ -2125,12 +2106,20 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
 
         // Selector principal de ubicación de la página de inicio
-        let rfHome = { estado: '', ciudad: '', tipoFecha: '', fecha: '' };
-        const RF_HOME_CIUDADES = {
-            'Ciudad de México': ['Benito Juárez', 'Cuauhtémoc', 'Miguel Hidalgo', 'Coyoacán'],
-            'Tamaulipas': ['Ciudad Madero', 'Tampico', 'Altamira', 'Ciudad Victoria', 'Matamoros', 'Reynosa', 'Nuevo Laredo'],
-            'Nuevo León': ['Monterrey', 'San Pedro Garza García', 'Guadalupe', 'San Nicolás de los Garza', 'Apodaca']
-        };
+        let rfHome = { ciudad: '', tipoFecha: '', fecha: '' };
+        // Las ciudades disponibles ahora vienen de la tabla de zonas de
+        // cobertura (la misma que se administra en el panel, sección
+        // Envíos) -- ya no es una lista fija en el código.
+        let zonasDisponiblesRF = [];
+        async function cargarZonasDisponiblesRF() {
+            try {
+                const r = await fetch('/api/zonas');
+                zonasDisponiblesRF = await r.json();
+            } catch (error) {
+                console.error('No se pudieron cargar las zonas de cobertura', error);
+                zonasDisponiblesRF = [];
+            }
+        }
         function rfHomeIsoDate(d = new Date()) {
             const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0,10);
         }
@@ -2153,23 +2142,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 field?.classList.add('is-open');
             }
         }
-        function seleccionarEstadoHomeRF(valor) {
-            rfHome.estado = valor; rfHome.ciudad = '';
-            document.getElementById('home-estado-trigger').innerHTML = `${valor}<span class="rf-home-chevron"></span>`;
+        function llenarMenuCiudadesHomeRF() {
             const menu = document.getElementById('home-ciudad-menu');
-            menu.innerHTML = (RF_HOME_CIUDADES[valor] || []).map(c => `<button type="button" class="rf-home-option" data-value="${c.replace(/"/g,'&quot;')}">${c}</button>`).join('');
+            menu.innerHTML = zonasDisponiblesRF.map(z => `<button type="button" class="rf-home-option" data-value="${String(z.etiqueta).replace(/"/g,'&quot;')}">${z.etiqueta}</button>`).join('');
             menu.querySelectorAll('.rf-home-option').forEach(o => o.addEventListener('click', () => seleccionarCiudadHomeRF(o.dataset.value)));
-            const cityTrigger = document.getElementById('home-ciudad-trigger');
-            cityTrigger.disabled = false;
-            cityTrigger.innerHTML = 'Ciudad<span class="rf-home-chevron"></span>';
-            const fechaTrigger = document.getElementById('home-fecha-trigger');
-            fechaTrigger.disabled = true;
-            fechaTrigger.innerHTML = 'Fecha de entrega<span class="rf-home-chevron"></span>';
-            rfHome.tipoFecha = '';
-            rfHome.fecha = '';
-            document.getElementById('home-otra-fecha-wrap').classList.add('hidden');
-            document.getElementById('home-otra-fecha').value = '';
-            cerrarMenusHomeRF();
         }
         function seleccionarCiudadHomeRF(valor) {
             rfHome.ciudad = valor;
@@ -2193,29 +2169,21 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
         function sincronizarSelectorHomeDesdeStorage() {
             const saved = (() => { try{return JSON.parse(localStorage.getItem('rf_ubicacion_entrega')||'null')}catch(_){return null} })();
-            rfHome.estado = saved?.estado || '';
             rfHome.ciudad = saved?.ciudad || '';
             rfHome.fecha = saved?.fecha || '';
             rfHome.tipoFecha = saved?.tipoFecha || '';
-            const estadoTrigger = document.getElementById('home-estado-trigger');
             const ciudadTrigger = document.getElementById('home-ciudad-trigger');
-            if (rfHome.estado) {
-                estadoTrigger.innerHTML = `${rfHome.estado}<span class="rf-home-chevron"></span>`;
-                const cities=RF_HOME_CIUDADES[rfHome.estado]||[];
-                document.getElementById('home-ciudad-menu').innerHTML=cities.map(c=>`<button type="button" class="rf-home-option" data-value="${c.replace(/"/g,'&quot;')}">${c}</button>`).join('');
-                document.getElementById('home-ciudad-menu').querySelectorAll('.rf-home-option').forEach(o=>o.addEventListener('click',()=>seleccionarCiudadHomeRF(o.dataset.value)));
-                ciudadTrigger.disabled = false;
-                ciudadTrigger.innerHTML=`${rfHome.ciudad||'Ciudad'}<span class="rf-home-chevron"></span>`;
-                document.getElementById('home-fecha-trigger').disabled = !rfHome.ciudad;
+            llenarMenuCiudadesHomeRF();
+            if (rfHome.ciudad) {
+                ciudadTrigger.innerHTML=`${rfHome.ciudad}<span class="rf-home-chevron"></span>`;
+                document.getElementById('home-fecha-trigger').disabled = false;
             } else {
-                estadoTrigger.innerHTML='Estado<span class="rf-home-chevron"></span>';
-                ciudadTrigger.disabled = true;
                 ciudadTrigger.innerHTML='Ciudad<span class="rf-home-chevron"></span>';
                 document.getElementById('home-fecha-trigger').disabled = true;
                 document.getElementById('home-fecha-trigger').innerHTML='Fecha de entrega<span class="rf-home-chevron"></span>';
                 rfHome.tipoFecha = ''; rfHome.fecha = '';
             }
-            if(saved?.fecha && rfHome.estado){
+            if(saved?.fecha && rfHome.ciudad){
                 const today=rfHomeIsoDate(), tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
                 if(saved.fecha===today) document.getElementById('home-fecha-trigger').innerHTML='Hoy<span class="rf-home-chevron"></span>';
                 else if(saved.fecha===rfHomeIsoDate(tomorrow)) document.getElementById('home-fecha-trigger').innerHTML='Mañana<span class="rf-home-chevron"></span>';
@@ -2226,31 +2194,29 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const target=document.getElementById('seccion-catalogo');
             if (target) target.scrollIntoView({ behavior: 'smooth' });
         }
-        function inicializarSelectorHomeRF() {
+        async function inicializarSelectorHomeRF() {
             // Limpia datos de versiones anteriores para que la primera carga de esta versión
             // realmente comience vacía. Después, la selección se conserva durante la sesión.
             try {
-                const version = 'rf-location-v3';
+                const version = 'rf-location-v4';
                 if (sessionStorage.getItem('rf_location_ui_version') !== version) {
-                    localStorage.removeItem('rf_ubicacion_entrega');
                     localStorage.removeItem('rf_ubicacion_entrega');
                     sessionStorage.setItem('rf_location_ui_version', version);
                 }
             } catch (_) {}
+            await cargarZonasDisponiblesRF();
             // El selector inicia vacío en una instalación nueva. Una vez completada, la ubicación
             // se conserva en el navegador para navegar entre categorías sin volver a pedirla.
             sincronizarSelectorHomeDesdeStorage();
             document.getElementById('home-otra-fecha').min=rfHomeIsoDate();
-            document.getElementById('home-estado-trigger').onclick=()=>abrirMenuHomeRF('home-estado-menu');
             document.getElementById('home-ciudad-trigger').onclick=()=>abrirMenuHomeRF('home-ciudad-menu');
             document.getElementById('home-fecha-trigger').onclick=()=>abrirMenuHomeRF('home-fecha-menu');
-            document.querySelectorAll('#home-estado-menu .rf-home-option').forEach(o=>o.addEventListener('click',()=>seleccionarEstadoHomeRF(o.dataset.value)));
             document.querySelectorAll('#home-fecha-menu > .rf-home-option').forEach(o=>o.addEventListener('click',()=>seleccionarFechaHomeRF(o.dataset.value)));
             document.getElementById('home-otra-fecha').addEventListener('change',e=>{rfHome.fecha=e.target.value; if(e.target.value) document.getElementById('home-fecha-trigger').innerHTML=`${new Date(e.target.value+'T00:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short'})}<span class="rf-home-chevron"></span>`;});
         }
         function confirmarSelectorHomeRF() {
             if(rfHome.tipoFecha==='otro') rfHome.fecha=document.getElementById('home-otra-fecha').value;
-            if(!rfHome.estado || !rfHome.ciudad || !rfHome.fecha) {
+            if(!rfHome.ciudad || !rfHome.fecha) {
                 // Si aún falta algo aquí, se completa en el modal grande. Al confirmar ahí,
                 // sincronizamos de vuelta esta tarjeta (antes se quedaba vacía para siempre)
                 // y avanzamos al catálogo, igual que si se hubiera llenado aquí mismo.
@@ -2271,42 +2237,41 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         // ---------------------------------------------------------------------
         let rfAccionPendiente = null;
         const RF_UBICACION_KEY = 'rf_ubicacion_entrega';
-        const RF_CIUDADES = {
-            'Ciudad de México': ['Benito Juárez', 'Cuauhtémoc', 'Miguel Hidalgo', 'Coyoacán'],
-            'Tamaulipas': ['Ciudad Madero', 'Tampico', 'Altamira', 'Ciudad Victoria', 'Matamoros', 'Reynosa', 'Nuevo Laredo'],
-            'Nuevo León': ['Monterrey', 'San Pedro Garza García', 'Guadalupe', 'San Nicolás de los Garza', 'Apodaca']
-        };
 
         function ubicacionRFCompleta() {
             try {
                 const data = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null');
-                return !!(data && data.estado && data.ciudad && data.fecha);
+                return !!(data && data.ciudad && data.fecha);
             } catch (_) { return false; }
+        }
+
+        function llenarMenuCiudadesRF() {
+            const menu = document.getElementById('rf-ciudad-menu');
+            menu.innerHTML = zonasDisponiblesRF.map(z => {
+                const safe = escaparHtmlRF(z.etiqueta);
+                const attr = String(z.etiqueta).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                return `<button type="button" class="rf-option" data-value="${attr}" onclick="event.preventDefault(); event.stopPropagation(); seleccionarCiudadRF(this.dataset.value)">${safe}</button>`;
+            }).join('');
         }
 
         function cargarUbicacionGuardadaEnModal() {
             let guardada = null;
             try { guardada = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
-            const estadoInput = document.getElementById('rf-ubicacion-estado');
             const ciudadInput = document.getElementById('rf-ubicacion-ciudad');
             const fechaInput = document.getElementById('rf-ubicacion-fecha');
-            const estadoTrigger = document.querySelector('[data-target="rf-estado-menu"]');
             const ciudadTrigger = document.getElementById('rf-ciudad-trigger');
             const fechaTrigger = document.querySelector('[data-target="rf-fecha-menu"]');
-            if (!estadoInput || !ciudadInput || !fechaInput || !estadoTrigger || !ciudadTrigger || !fechaTrigger) return;
+            if (!ciudadInput || !fechaInput || !ciudadTrigger || !fechaTrigger) return;
 
-            estadoInput.value = ''; ciudadInput.value = ''; fechaInput.value = '';
-            estadoTrigger.innerHTML = 'Estado <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
+            ciudadInput.value = ''; fechaInput.value = '';
             ciudadTrigger.innerHTML = 'Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
             fechaTrigger.innerHTML = 'Fecha de entrega <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
-            ciudadTrigger.disabled = true; ciudadTrigger.classList.add('is-disabled');
             fechaTrigger.disabled = true; fechaTrigger.classList.add('is-disabled');
             document.getElementById('rf-otra-fecha-wrap').classList.add('hidden');
             document.getElementById('rf-otra-fecha').value = '';
+            llenarMenuCiudadesRF();
 
-            if (!guardada?.estado) return;
-            seleccionarEstadoRF(guardada.estado);
-            if (!guardada.ciudad) return;
+            if (!guardada?.ciudad) return;
             seleccionarCiudadRF(guardada.ciudad);
             if (!guardada.fecha) return;
             let tipo = guardada.tipoFecha;
@@ -2332,7 +2297,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         function abrirModalUbicacion(accion) {
             rfAccionPendiente = typeof accion === 'function' ? accion : null;
-            cargarUbicacionGuardadaEnModal();
+            // Por si acaso el modal se abre antes de que terminen de llegar las
+            // zonas (ej. red lenta) -- las volvemos a pedir si hace falta.
+            const listo = zonasDisponiblesRF.length > 0 ? Promise.resolve() : cargarZonasDisponiblesRF();
+            listo.then(() => cargarUbicacionGuardadaEnModal());
             const modal = document.getElementById('modal-ubicacion');
             const error = document.getElementById('rf-ubicacion-error');
             if (!modal) return;
@@ -2388,42 +2356,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 trigger.setAttribute('aria-expanded', 'true');
                 field?.classList.add('is-open');
             }
-        }
-
-        function seleccionarEstadoRF(valor) {
-            const input = document.getElementById('rf-ubicacion-estado');
-            const trigger = document.querySelector('[data-target="rf-estado-menu"]');
-            input.value = valor;
-            trigger.innerHTML = `${valor}<span class="rf-custom-chevron"></span>`;
-            document.querySelectorAll('#rf-estado-menu .rf-option').forEach(o => o.classList.toggle('is-selected', o.dataset.value === valor));
-            actualizarCiudadesRF();
-            const fechaTrigger = document.querySelector('[data-target="rf-fecha-menu"]');
-            if (fechaTrigger) {
-                fechaTrigger.disabled = true;
-                fechaTrigger.classList.add('is-disabled');
-            }
-            document.getElementById('rf-ubicacion-fecha').value = '';
-            document.getElementById('rf-otra-fecha').value = '';
-            document.getElementById('rf-otra-fecha-wrap').classList.add('hidden');
-            if (fechaTrigger) fechaTrigger.innerHTML = 'Fecha de entrega <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
-            cerrarDropdownsRF();
-        }
-
-        function actualizarCiudadesRF() {
-            const estado = document.getElementById('rf-ubicacion-estado').value;
-            const ciudad = document.getElementById('rf-ubicacion-ciudad');
-            const trigger = document.getElementById('rf-ciudad-trigger');
-            const menu = document.getElementById('rf-ciudad-menu');
-            ciudad.value = '';
-            trigger.innerHTML = 'Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
-            const ciudades = RF_CIUDADES[estado] || [];
-            menu.innerHTML = ciudades.map(nombre => {
-                const safe = escaparHtmlRF(nombre);
-                const attr = String(nombre).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-                return `<button type="button" class="rf-option" data-value="${attr}" onclick="event.preventDefault(); event.stopPropagation(); seleccionarCiudadRF(this.dataset.value)">${safe}</button>`;
-            }).join('');
-            trigger.disabled = !ciudades.length;
-            trigger.classList.toggle('is-disabled', !ciudades.length);
         }
 
         function seleccionarCiudadRF(valor) {
@@ -2485,16 +2417,15 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
 
         function confirmarUbicacion() {
-            const estado = document.getElementById('rf-ubicacion-estado').value;
             const ciudad = document.getElementById('rf-ubicacion-ciudad').value;
             const tipoFecha = document.getElementById('rf-ubicacion-fecha').value;
             const fecha = fechaEntregaRF();
             const error = document.getElementById('rf-ubicacion-error');
 
-            if (!estado || !ciudad || !tipoFecha || !fecha) {
+            if (!ciudad || !tipoFecha || !fecha) {
                 error.innerText = tipoFecha === 'otro' && !fecha
                     ? 'Selecciona la fecha de entrega.'
-                    : 'Completa estado, ciudad y fecha de entrega para continuar.';
+                    : 'Completa la ciudad y la fecha de entrega para continuar.';
                 error.classList.remove('hidden');
                 return;
             }
@@ -2507,7 +2438,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 return;
             }
 
-            const datos = { estado, ciudad, fecha, tipoFecha, actualizadoEn: new Date().toISOString() };
+            const datos = { ciudad, fecha, tipoFecha, actualizadoEn: new Date().toISOString() };
             localStorage.setItem(RF_UBICACION_KEY, JSON.stringify(datos));
             actualizarUbicacionProductoRF();
 
