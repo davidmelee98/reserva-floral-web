@@ -1408,7 +1408,14 @@
                 cardholderEmail: { id: 'form-checkout__cardholderEmail' }
             },
             callbacks: {
-                onFormMounted: (error) => { if (error) console.error('No se pudo montar el formulario de tarjeta', error); },
+                onFormMounted: (error) => {
+                    if (error) {
+                        // Se imprime como texto plano (no como objeto "vivo") para
+                        // poder copiar el contenido completo desde la consola.
+                        try { console.error('No se pudo montar el formulario de tarjeta:', JSON.stringify(error, null, 2)); }
+                        catch (e) { console.error('No se pudo montar el formulario de tarjeta (sin poder convertir a texto):', error); }
+                    }
+                },
                 onFetching: () => {
                     const barra = document.querySelector('#form-checkout .progress-bar');
                     if (barra) barra.classList.remove('hidden');
