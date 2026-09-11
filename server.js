@@ -1498,6 +1498,20 @@ app.get('/api/pagos/estado', (req, res) => {
   res.json({ disponible: Boolean(mpClient && mpPublicKey), publicKey: mpClient && mpPublicKey ? mpPublicKey : null });
 });
 
+// ---------------------------------------------------------------------------
+// Google Maps (buscador de direcciones + mapa para ajustar el pin).
+// Variable de entorno necesaria: GOOGLE_MAPS_API_KEY
+// Esta clave SÍ está pensada para exponerse al navegador (así funciona la API
+// de Maps) -- la seguridad real va en las restricciones que se configuran en
+// Google Cloud Console (por dominio y por API permitida), no en ocultarla.
+// Mientras no esté configurada, el checkout sigue funcionando: solo se piden
+// los datos de la dirección a mano, sin buscador ni mapa.
+// ---------------------------------------------------------------------------
+app.get('/api/mapas/estado', (req, res) => {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || null;
+  res.json({ disponible: Boolean(apiKey), apiKey });
+});
+
 // Recibe el resultado del Payment Brick (tarjeta ya tokenizada, u OXXO/SPEI)
 // y crea el pago de verdad contra la API de Mercado Pago.
 app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {

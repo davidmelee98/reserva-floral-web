@@ -10,7 +10,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <!-- El SDK de Google Maps se carga después, dinámicamente, en cuanto sabemos
+         que la clave está configurada (ver inicializarGoogleMaps más abajo). -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -43,7 +44,7 @@
         .co-radio{ width:16px; height:16px; border-radius:999px; border:2px solid #c9c9c9; flex:0 0 auto; margin-top:2px; display:flex; align-items:center; justify-content:center; }
         .co-radio.is-activo{ border-color:#c2185b; }
         .co-radio.is-activo::after{ content:''; width:8px; height:8px; border-radius:999px; background:#c2185b; }
-        #mapa-leaflet{ z-index:0; }
+        #mapa-direccion{ z-index:0; }
         .rf-map-pin{ filter:drop-shadow(0 3px 6px rgba(0,0,0,.35)); }
         #tabs-mensajes{ scrollbar-width:none; -ms-overflow-style:none; }
         #tabs-mensajes::-webkit-scrollbar{ display:none; }
@@ -434,7 +435,7 @@
                 </button>
             </div>
             <p class="text-sm text-gray-500 mb-4">Mueve el marcador hacia la ubicación más precisa del lugar de entrega.</p>
-            <div id="mapa-leaflet" class="w-full h-[280px] rounded-xl overflow-hidden border border-gray-200 bg-gray-100"></div>
+            <div id="mapa-direccion" class="w-full h-[280px] rounded-xl overflow-hidden border border-gray-200 bg-gray-100"></div>
             <button type="button" onclick="confirmarPin()" class="w-full mt-4 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Confirmar dirección</button>
         </div>
     </div>
@@ -781,7 +782,6 @@
 
 
 <script src="https://sdk.mercadopago.com/js/v2"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // =======================================================================
     // Estado
@@ -1001,9 +1001,46 @@
     window.confirmarPaso1 = confirmarPaso1;
 
     // =======================================================================
-    // PASO 2: búsqueda de dirección (OpenStreetMap Nominatim, sin costo)
+    // Google Maps: se carga una sola vez, en cuanto hace falta (buscador o
+    // mapa) -- si la clave no está configurada, todo el checkout sigue
+    // funcionando igual, solo sin buscador ni mapa (se llena todo a mano).
+    // =======================================================================
+    let googleMapsDisponible = false;
+    let promesaGoogleMaps = null;
+
+    // Cargador oficial de Google ("inline bootstrap loader") -- define
+    // google.maps.importLibrary sin bajar nada todavía; la carga real ocurre
+    // hasta el primer importLibrary(...) de verdad, más abajo.
+    function definirCargadorGoogleMaps(apiKey) {
+        (g => { var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window; b = b[c] || (b[c] = {}); var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams, u = () => h || (h = new Promise(async (f, n) => { await (a = m.createElement("script")); e.set("libraries", [...r] + ""); for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]); e.set("callback", c + ".maps." + q); a.src = `https://maps.${c}apis.com/maps/api/js?` + e; d[q] = f; a.onerror = () => h = n(Error(p + " could not load.")); a.nonce = m.querySelector("script[nonce]")?.nonce || ""; m.head.append(a); })); d[l] ? console.warn(p + " only loads once. Ignoring:", g) : d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)) })({ key: apiKey, v: "weekly" });
+    }
+
+    async function inicializarGoogleMaps() {
+        if (promesaGoogleMaps) return promesaGoogleMaps;
+        promesaGoogleMaps = (async () => {
+            try {
+                const r = await fetch('/api/mapas/estado');
+                const datos = await r.json();
+                if (!datos.disponible || !datos.apiKey) { googleMapsDisponible = false; return; }
+                definirCargadorGoogleMaps(datos.apiKey);
+                await Promise.all([google.maps.importLibrary('places'), google.maps.importLibrary('maps')]);
+                googleMapsDisponible = true;
+            } catch (error) {
+                console.error('No se pudo cargar Google Maps', error);
+                googleMapsDisponible = false;
+            }
+        })();
+        return promesaGoogleMaps;
+    }
+    // Se pide de una vez al llegar a la página -- así, para cuando la persona
+    // llegue al Paso 2, casi siempre ya está lista.
+    inicializarGoogleMaps();
+
+    // =======================================================================
+    // PASO 2: búsqueda de dirección (Google Places -- Autocomplete + Geocoding)
     // =======================================================================
     let debounceBusqueda = null;
+    let sessionTokenDireccion = null;
     document.getElementById('p2-buscar').addEventListener('input', (e) => {
         clearTimeout(debounceBusqueda);
         const q = e.target.value.trim();
@@ -1017,96 +1054,125 @@
     });
 
     async function buscarDireccion(q) {
+        await inicializarGoogleMaps();
+        if (!googleMapsDisponible) return;
         try {
-            const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=mx&q=${encodeURIComponent(q)}`;
-            const respuesta = await fetch(url, { headers: { 'Accept-Language': 'es' } });
-            const resultados = await respuesta.json();
-            mostrarSugerenciasDireccion(resultados);
+            const { AutocompleteSuggestion, AutocompleteSessionToken } = await google.maps.importLibrary('places');
+            // Un solo "token de sesión" agrupa todas las teclas escritas más el
+            // detalle final que se pida -- así Google lo cobra como una sola
+            // búsqueda, no como muchas sueltas.
+            if (!sessionTokenDireccion) sessionTokenDireccion = new AutocompleteSessionToken();
+            const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+                input: q,
+                sessionToken: sessionTokenDireccion,
+                includedRegionCodes: ['mx'],
+                language: 'es'
+            });
+            mostrarSugerenciasDireccion(suggestions);
         } catch (error) {
             console.error('Error buscando dirección', error);
         }
     }
 
-    function mostrarSugerenciasDireccion(resultados) {
+    function mostrarSugerenciasDireccion(suggestions) {
         const cont = document.getElementById('p2-sugerencias');
-        if (!resultados.length) { cont.classList.add('hidden'); return; }
-        cont.innerHTML = resultados.map((r, i) => `<div class="co-sugerencia" onclick="seleccionarDireccion(${i})">${escaparHtml(r.display_name)}</div>`).join('');
-        window._sugerenciasDireccion = resultados;
+        if (!suggestions.length) { cont.classList.add('hidden'); return; }
+        cont.innerHTML = suggestions.map((s, i) => `<div class="co-sugerencia" onclick="seleccionarDireccion(${i})">${escaparHtml(s.placePrediction.text.text)}</div>`).join('');
+        window._sugerenciasDireccion = suggestions;
         cont.classList.remove('hidden');
     }
     window.mostrarSugerenciasDireccion = mostrarSugerenciasDireccion;
 
+    // Junta los "addressComponents" que regresa Google (parecido a como antes
+    // se armaba con los campos de OpenStreetMap, pero con los nombres de tipo
+    // que usa Google) en los mismos 5 campos de siempre.
+    function mapearComponentesGoogle(componentes) {
+        const buscar = (tipos) => {
+            for (const tipo of tipos) {
+                const encontrado = componentes.find(c => c.types.includes(tipo));
+                if (encontrado) return encontrado.longText;
+            }
+            return '';
+        };
+        return {
+            calle: buscar(['route']),
+            numero: buscar(['street_number']),
+            colonia: buscar(['sublocality_level_1', 'sublocality', 'neighborhood']),
+            cp: buscar(['postal_code']),
+            estado: buscar(['administrative_area_level_1']),
+            ciudad: buscar(['locality', 'administrative_area_level_2'])
+        };
+    }
+
     async function seleccionarDireccion(i) {
-        const r = window._sugerenciasDireccion[i];
-        if (!r) return;
+        const s = window._sugerenciasDireccion?.[i];
+        if (!s) return;
         const textoEscritoPorElUsuario = document.getElementById('p2-buscar').value;
-        document.getElementById('p2-buscar').value = r.display_name;
+        document.getElementById('p2-buscar').value = s.placePrediction.text.text;
         document.getElementById('p2-sugerencias').classList.add('hidden');
-        estado.direccion.lat = Number(r.lat);
-        estado.direccion.lng = Number(r.lon);
 
-        let addr = r.address || {};
-        // La búsqueda normal a veces regresa solo el tramo de la calle, sin el
-        // número exacto ni la colonia. Un geocoding inverso en ese mismo punto
-        // (con más zoom) suele traer más detalle, así que lo intentamos también
-        // y combinamos lo más completo de los dos resultados.
         try {
-            const urlInversa = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=${r.lat}&lon=${r.lon}`;
-            const respuesta = await fetch(urlInversa, { headers: { 'Accept-Language': 'es' } });
-            const inversa = await respuesta.json();
-            if (inversa && inversa.address) {
-                addr = { ...addr, ...Object.fromEntries(Object.entries(inversa.address).filter(([, v]) => v)) };
+            const place = s.placePrediction.toPlace();
+            await place.fetchFields({ fields: ['addressComponents', 'location'] });
+            // El token de sesión ya se usó (fetchFields lo consume solo) --
+            // se prepara uno nuevo para la próxima búsqueda.
+            sessionTokenDireccion = null;
+
+            estado.direccion.lat = place.location.lat();
+            estado.direccion.lng = place.location.lng();
+
+            const addr = mapearComponentesGoogle(place.addressComponents || []);
+
+            document.getElementById('p2-calle').value = addr.calle;
+
+            let numero = addr.numero;
+            if (!numero) {
+                // Si Google no trajo número, lo tomamos de lo que la persona ya
+                // había escrito (ej. "López Rayón 304").
+                const coincidencia = textoEscritoPorElUsuario.match(/\b(\d{1,5})\b/);
+                if (coincidencia) numero = coincidencia[1];
             }
-        } catch (error) { /* si falla el geocoding inverso, seguimos con lo que ya teníamos */ }
+            document.getElementById('p2-numero').value = numero;
+            document.getElementById('p2-colonia').value = addr.colonia;
+            document.getElementById('p2-cp').value = addr.cp;
+            document.getElementById('p2-estado').value = addr.estado;
+            document.getElementById('p2-ciudad').value = addr.ciudad;
 
-        document.getElementById('p2-calle').value = addr.road || addr.pedestrian || addr.residential || '';
-
-        let numero = addr.house_number || '';
-        if (!numero) {
-            // Si ni la búsqueda ni el geocoding inverso trajeron número, lo
-            // tomamos de lo que la persona ya había escrito (ej. "López Rayón 304").
-            const coincidencia = textoEscritoPorElUsuario.match(/\b(\d{1,5})\b/);
-            if (coincidencia) numero = coincidencia[1];
-        }
-        document.getElementById('p2-numero').value = numero;
-        document.getElementById('p2-colonia').value = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || addr.residential || addr.hamlet || addr.borough || '';
-        document.getElementById('p2-cp').value = addr.postcode || '';
-        document.getElementById('p2-estado').value = addr.state || '';
-        document.getElementById('p2-ciudad').value = addr.city || addr.town || addr.village || addr.municipality || '';
-
-        if (!document.getElementById('p2-colonia').value) {
-            // OpenStreetMap a veces no trae la colonia en ninguna de las dos
-            // consultas (es una limitación conocida de sus datos en México).
-            // Último recurso: la persona normalmente ya la escribió en el
-            // buscador (ej. "López Rayón 304 Ampliación Unidad Nacional"), así
-            // que quitamos del texto lo que ya identificamos (calle, número,
-            // ciudad, estado) y usamos lo que sobra como colonia.
-            const palabrasConocidas = new Set(['calle', 'avenida', 'av', 'colonia', 'col', 'fraccionamiento', 'fracc']);
-            [document.getElementById('p2-calle').value, document.getElementById('p2-ciudad').value, document.getElementById('p2-estado').value]
-                .join(' ').split(/\s+/).forEach(palabra => {
+            if (!document.getElementById('p2-colonia').value) {
+                // Último recurso, igual que antes: la persona normalmente ya
+                // escribió la colonia en el buscador (ej. "López Rayón 304
+                // Ampliación Unidad Nacional"), así que quitamos del texto lo
+                // que ya identificamos (calle, número, ciudad, estado) y
+                // usamos lo que sobra como colonia.
+                const palabrasConocidas = new Set(['calle', 'avenida', 'av', 'colonia', 'col', 'fraccionamiento', 'fracc']);
+                [document.getElementById('p2-calle').value, document.getElementById('p2-ciudad').value, document.getElementById('p2-estado').value]
+                    .join(' ').split(/\s+/).forEach(palabra => {
+                        const norm = quitarAcentos(palabra).toLowerCase().replace(/[,.]/g, '');
+                        if (norm) palabrasConocidas.add(norm);
+                    });
+                const restantes = textoEscritoPorElUsuario.split(/\s+/).filter(palabra => {
                     const norm = quitarAcentos(palabra).toLowerCase().replace(/[,.]/g, '');
-                    if (norm) palabrasConocidas.add(norm);
+                    if (!norm || /^\d+$/.test(norm)) return false;
+                    return !palabrasConocidas.has(norm);
                 });
-            const restantes = textoEscritoPorElUsuario.split(/\s+/).filter(palabra => {
-                const norm = quitarAcentos(palabra).toLowerCase().replace(/[,.]/g, '');
-                if (!norm || /^\d+$/.test(norm)) return false;
-                return !palabrasConocidas.has(norm);
-            });
-            const resto = restantes.join(' ').trim();
-            if (resto.length > 3) {
-                document.getElementById('p2-colonia').value = resto.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+                const resto = restantes.join(' ').trim();
+                if (resto.length > 3) {
+                    document.getElementById('p2-colonia').value = resto.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+                }
             }
-        }
 
-        const faltantes = [];
-        if (!document.getElementById('p2-numero').value) faltantes.push('número');
-        if (!document.getElementById('p2-colonia').value) faltantes.push('colonia');
-        const avisoEl = document.getElementById('p2-aviso-incompleto');
-        if (faltantes.length) {
-            avisoEl.innerText = `No pudimos completar ${faltantes.join(' y ')} automáticamente -- complétalo${faltantes.length > 1 ? 's' : ''} a mano abajo.`;
-            avisoEl.classList.remove('hidden');
-        } else {
-            avisoEl.classList.add('hidden');
+            const faltantes = [];
+            if (!document.getElementById('p2-numero').value) faltantes.push('número');
+            if (!document.getElementById('p2-colonia').value) faltantes.push('colonia');
+            const avisoEl = document.getElementById('p2-aviso-incompleto');
+            if (faltantes.length) {
+                avisoEl.innerText = `No pudimos completar ${faltantes.join(' y ')} automáticamente -- complétalo${faltantes.length > 1 ? 's' : ''} a mano abajo.`;
+                avisoEl.classList.remove('hidden');
+            } else {
+                avisoEl.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error obteniendo el detalle de la dirección', error);
         }
     }
     window.seleccionarDireccion = seleccionarDireccion;
@@ -1123,34 +1189,53 @@
     }
     window.validarYAbrirMapa = validarYAbrirMapa;
 
-    // --- Mapa (Leaflet + OpenStreetMap; el pin usa el logo de Reserva Floral) ---
-    // iconoPinRF se crea DENTRO de abrirModalMapa (no aquí arriba) a propósito:
-    // si el CDN de Leaflet llegara a fallar o tardar, un error aquí arriba
-    // detendría la ejecución de TODO el script que sigue (pasos 3, 4 y 5,
-    // mensajes de ejemplo, etc.), no solo el mapa.
-    let mapaLeaflet = null;
-    let marcadorLeaflet = null;
+    // --- Mapa (Google Maps; el pin usa el logo de Reserva Floral, igual que antes) ---
+    let mapaGoogle = null;
+    let marcadorGoogle = null;
 
-    function abrirModalMapa() {
+    async function abrirModalMapa() {
         const modal = document.getElementById('modal-mapa');
         modal.classList.remove('hidden'); modal.classList.add('flex');
         const lat = estado.direccion.lat || 19.4326;
         const lng = estado.direccion.lng || -99.1332;
-        setTimeout(() => {
+
+        await inicializarGoogleMaps();
+        if (!googleMapsDisponible) {
+            document.getElementById('mapa-direccion').innerHTML = '<p class="text-sm text-gray-500 p-4 text-center">No se pudo cargar el mapa. Puedes continuar sin ajustar el pin.</p>';
+            return;
+        }
+        setTimeout(async () => {
             try {
-                if (!mapaLeaflet) {
-                    const iconoPinRF = L.icon({ iconUrl: '/apple-touch-icon.png', iconSize: [44, 44], iconAnchor: [22, 44], popupAnchor: [0, -40], className: 'rf-map-pin' });
-                    mapaLeaflet = L.map('mapa-leaflet').setView([lat, lng], 16);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(mapaLeaflet);
-                    marcadorLeaflet = L.marker([lat, lng], { icon: iconoPinRF, draggable: true }).addTo(mapaLeaflet);
+                const { Map } = await google.maps.importLibrary('maps');
+                if (!mapaGoogle) {
+                    mapaGoogle = new Map(document.getElementById('mapa-direccion'), {
+                        center: { lat, lng },
+                        zoom: 16,
+                        streetViewControl: false,
+                        mapTypeControl: false,
+                        fullscreenControl: false,
+                        clickableIcons: false
+                    });
+                    marcadorGoogle = new google.maps.Marker({
+                        position: { lat, lng },
+                        map: mapaGoogle,
+                        draggable: true,
+                        icon: {
+                            url: '/apple-touch-icon.png',
+                            scaledSize: new google.maps.Size(44, 44),
+                            anchor: new google.maps.Point(22, 44)
+                        }
+                    });
                 } else {
-                    mapaLeaflet.setView([lat, lng], 16);
-                    marcadorLeaflet.setLatLng([lat, lng]);
+                    mapaGoogle.setCenter({ lat, lng });
+                    mapaGoogle.setZoom(16);
+                    marcadorGoogle.setPosition({ lat, lng });
                 }
-                mapaLeaflet.invalidateSize();
+                google.maps.event.trigger(mapaGoogle, 'resize');
+                mapaGoogle.setCenter({ lat, lng });
             } catch (error) {
                 console.error('No se pudo cargar el mapa', error);
-                document.getElementById('mapa-leaflet').innerHTML = '<p class="text-sm text-gray-500 p-4 text-center">No se pudo cargar el mapa. Puedes continuar sin ajustar el pin.</p>';
+                document.getElementById('mapa-direccion').innerHTML = '<p class="text-sm text-gray-500 p-4 text-center">No se pudo cargar el mapa. Puedes continuar sin ajustar el pin.</p>';
             }
         }, 60);
     }
@@ -1163,10 +1248,10 @@
     window.cerrarModalMapa = cerrarModalMapa;
 
     function confirmarPin() {
-        if (marcadorLeaflet) {
-            const pos = marcadorLeaflet.getLatLng();
-            estado.direccion.lat = pos.lat;
-            estado.direccion.lng = pos.lng;
+        if (marcadorGoogle) {
+            const pos = marcadorGoogle.getPosition();
+            estado.direccion.lat = pos.lat();
+            estado.direccion.lng = pos.lng();
         }
         cerrarModalMapa();
         confirmarPaso2();
