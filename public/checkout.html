@@ -1409,12 +1409,20 @@
             },
             callbacks: {
                 onFormMounted: (error) => {
-                    if (error) {
-                        // Se imprime como texto plano (no como objeto "vivo") para
-                        // poder copiar el contenido completo desde la consola.
-                        try { console.error('No se pudo montar el formulario de tarjeta:', JSON.stringify(error, null, 2)); }
-                        catch (e) { console.error('No se pudo montar el formulario de tarjeta (sin poder convertir a texto):', error); }
-                    }
+                    if (!error) return;
+                    // No intentamos convertir el objeto de error completo (suele
+                    // traer referencias circulares que hacen fallar JSON.stringify
+                    // en silencio). En vez de eso, sacamos a mano solo los campos
+                    // que de verdad sirven para diagnosticar.
+                    const lista = Array.isArray(error) ? error : [error];
+                    const resumen = lista.map((e, i) => ({
+                        indice: i,
+                        message: e?.message ?? null,
+                        name: e?.name ?? null,
+                        cause: (() => { try { return e?.cause ?? null; } catch (_) { return '(no se pudo leer)'; } })(),
+                        propiedades: (() => { try { return Object.keys(e || {}); } catch (_) { return []; } })()
+                    }));
+                    console.error('No se pudo montar el formulario de tarjeta. Detalle:', JSON.stringify(resumen, null, 2));
                 },
                 onFetching: () => {
                     const barra = document.querySelector('#form-checkout .progress-bar');
