@@ -1018,10 +1018,16 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </div>
 
             <div class="space-y-3">
+                <div class="rf-location-field p-2 rf-custom-select" data-rf-select="estado">
+                    <label class="block text-[10px] text-gray-500 uppercase">Estado <span class="text-brandLightPink">*</span></label>
+                    <input id="rf-ubicacion-estado" type="hidden" value="">
+                    <button type="button" class="rf-select-trigger" data-target="rf-estado-menu" aria-expanded="false">Estado <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
+                    <div id="rf-estado-menu" class="rf-custom-menu hidden"></div>
+                </div>
                 <div class="rf-location-field p-2 rf-custom-select" data-rf-select="ciudad">
                     <label class="block text-[10px] text-gray-500 uppercase">Ciudad <span class="text-brandLightPink">*</span></label>
                     <input id="rf-ubicacion-ciudad" type="hidden" value="">
-                    <button type="button" id="rf-ciudad-trigger" class="rf-select-trigger" data-target="rf-ciudad-menu" aria-expanded="false">Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
+                    <button type="button" id="rf-ciudad-trigger" class="rf-select-trigger is-disabled" data-target="rf-ciudad-menu" aria-expanded="false" disabled>Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span></button>
                     <div id="rf-ciudad-menu" class="rf-custom-menu hidden"></div>
                 </div>
                 <div class="rf-location-field p-2 rf-custom-select" data-rf-select="fecha">
@@ -1358,7 +1364,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         function obtenerUbicacionGuardadaRF() {
             try {
                 const datos = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null');
-                return (datos && datos.ciudad && datos.fecha) ? datos : null;
+                return (datos && datos.estado && datos.ciudad && datos.fecha) ? datos : null;
             } catch (_) {
                 return null;
             }
@@ -2083,7 +2089,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         let rfAccionPendiente = null;
         const RF_UBICACION_KEY = 'rf_ubicacion_entrega';
         // Las ciudades disponibles vienen de la tabla de zonas de cobertura
-        // (la misma que se administra en el panel, sección Envíos).
+        // (la misma que se administra en el panel, sección Envíos) -- cada
+        // una ya trae su estado, así que el Estado→Ciudad se arma solo.
         let zonasDisponiblesRF = [];
         async function cargarZonasDisponiblesRF() {
             try {
@@ -2094,41 +2101,55 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 zonasDisponiblesRF = [];
             }
         }
+        function estadosDisponiblesRF() {
+            const vistos = new Set();
+            const lista = [];
+            zonasDisponiblesRF.forEach(z => {
+                if (z.estado && !vistos.has(z.estado)) { vistos.add(z.estado); lista.push(z.estado); }
+            });
+            return lista;
+        }
 
         function ubicacionRFCompleta() {
             try {
                 const data = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null');
-                return !!(data && data.ciudad && data.fecha);
+                return !!(data && data.estado && data.ciudad && data.fecha);
             } catch (_) { return false; }
         }
 
-        function llenarMenuCiudadesRF() {
-            const menu = document.getElementById('rf-ciudad-menu');
-            menu.innerHTML = zonasDisponiblesRF.map(z => {
-                const safe = escaparHtmlRF(z.etiqueta);
-                const attr = String(z.etiqueta).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-                return `<button type="button" class="rf-option" data-value="${attr}" onclick="event.preventDefault(); event.stopPropagation(); seleccionarCiudadRF(this.dataset.value)">${safe}</button>`;
+        function llenarMenuEstadosRF() {
+            const menu = document.getElementById('rf-estado-menu');
+            menu.innerHTML = estadosDisponiblesRF().map(e => {
+                const safe = escaparHtmlRF(e);
+                const attr = String(e).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                return `<button type="button" class="rf-option" data-value="${attr}" onclick="event.preventDefault(); event.stopPropagation(); seleccionarEstadoRF(this.dataset.value)">${safe}</button>`;
             }).join('');
         }
 
         function cargarUbicacionGuardadaEnModal() {
             let guardada = null;
             try { guardada = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+            const estadoInput = document.getElementById('rf-ubicacion-estado');
             const ciudadInput = document.getElementById('rf-ubicacion-ciudad');
             const fechaInput = document.getElementById('rf-ubicacion-fecha');
+            const estadoTrigger = document.querySelector('[data-target="rf-estado-menu"]');
             const ciudadTrigger = document.getElementById('rf-ciudad-trigger');
             const fechaTrigger = document.querySelector('[data-target="rf-fecha-menu"]');
-            if (!ciudadInput || !fechaInput || !ciudadTrigger || !fechaTrigger) return;
+            if (!estadoInput || !ciudadInput || !fechaInput || !estadoTrigger || !ciudadTrigger || !fechaTrigger) return;
 
-            ciudadInput.value = ''; fechaInput.value = '';
+            estadoInput.value = ''; ciudadInput.value = ''; fechaInput.value = '';
+            estadoTrigger.innerHTML = 'Estado <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
             ciudadTrigger.innerHTML = 'Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
             fechaTrigger.innerHTML = 'Fecha de entrega <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
+            ciudadTrigger.disabled = true; ciudadTrigger.classList.add('is-disabled');
             fechaTrigger.disabled = true; fechaTrigger.classList.add('is-disabled');
             document.getElementById('rf-otra-fecha-wrap').classList.add('hidden');
             document.getElementById('rf-otra-fecha').value = '';
-            llenarMenuCiudadesRF();
+            llenarMenuEstadosRF();
 
-            if (!guardada?.ciudad) return;
+            if (!guardada?.estado) return;
+            seleccionarEstadoRF(guardada.estado);
+            if (!guardada.ciudad) return;
             seleccionarCiudadRF(guardada.ciudad);
             if (!guardada.fecha) return;
             let tipo = guardada.tipoFecha;
@@ -2215,6 +2236,42 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
         }
 
+        function seleccionarEstadoRF(valor) {
+            const input = document.getElementById('rf-ubicacion-estado');
+            const trigger = document.querySelector('[data-target="rf-estado-menu"]');
+            input.value = valor;
+            trigger.innerHTML = `${valor}<span class="rf-custom-chevron"></span>`;
+            document.querySelectorAll('#rf-estado-menu .rf-option').forEach(o => o.classList.toggle('is-selected', o.dataset.value === valor));
+            actualizarCiudadesRF();
+            const fechaTrigger = document.querySelector('[data-target="rf-fecha-menu"]');
+            if (fechaTrigger) {
+                fechaTrigger.disabled = true;
+                fechaTrigger.classList.add('is-disabled');
+            }
+            document.getElementById('rf-ubicacion-fecha').value = '';
+            document.getElementById('rf-otra-fecha').value = '';
+            document.getElementById('rf-otra-fecha-wrap').classList.add('hidden');
+            if (fechaTrigger) fechaTrigger.innerHTML = 'Fecha de entrega <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
+            cerrarDropdownsRF();
+        }
+
+        function actualizarCiudadesRF() {
+            const estadoSeleccionado = document.getElementById('rf-ubicacion-estado').value;
+            const ciudad = document.getElementById('rf-ubicacion-ciudad');
+            const trigger = document.getElementById('rf-ciudad-trigger');
+            const menu = document.getElementById('rf-ciudad-menu');
+            ciudad.value = '';
+            trigger.innerHTML = 'Ciudad <span class="text-brandLightPink">*</span><span class="rf-custom-chevron"></span>';
+            const ciudades = zonasDisponiblesRF.filter(z => z.estado === estadoSeleccionado);
+            menu.innerHTML = ciudades.map(z => {
+                const safe = escaparHtmlRF(z.etiqueta);
+                const attr = String(z.etiqueta).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                return `<button type="button" class="rf-option" data-value="${attr}" onclick="event.preventDefault(); event.stopPropagation(); seleccionarCiudadRF(this.dataset.value)">${safe}</button>`;
+            }).join('');
+            trigger.disabled = !ciudades.length;
+            trigger.classList.toggle('is-disabled', !ciudades.length);
+        }
+
         function seleccionarCiudadRF(valor) {
             const input = document.getElementById('rf-ubicacion-ciudad');
             const trigger = document.getElementById('rf-ciudad-trigger');
@@ -2274,15 +2331,16 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
 
         function confirmarUbicacion() {
+            const estado = document.getElementById('rf-ubicacion-estado').value;
             const ciudad = document.getElementById('rf-ubicacion-ciudad').value;
             const tipoFecha = document.getElementById('rf-ubicacion-fecha').value;
             const fecha = fechaEntregaRF();
             const error = document.getElementById('rf-ubicacion-error');
 
-            if (!ciudad || !tipoFecha || !fecha) {
+            if (!estado || !ciudad || !tipoFecha || !fecha) {
                 error.innerText = tipoFecha === 'otro' && !fecha
                     ? 'Selecciona la fecha de entrega.'
-                    : 'Completa la ciudad y la fecha de entrega para continuar.';
+                    : 'Completa estado, ciudad y fecha de entrega para continuar.';
                 error.classList.remove('hidden');
                 return;
             }
@@ -2295,7 +2353,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 return;
             }
 
-            const datos = { ciudad, fecha, tipoFecha, actualizadoEn: new Date().toISOString() };
+            const datos = { estado, ciudad, fecha, tipoFecha, actualizadoEn: new Date().toISOString() };
             localStorage.setItem(RF_UBICACION_KEY, JSON.stringify(datos));
             actualizarUbicacionProductoRF();
 

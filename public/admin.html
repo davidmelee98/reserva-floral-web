@@ -554,6 +554,11 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                                 <label class="adm-label">Cómo se muestra</label>
                                 <input type="text" id="zona_etiqueta" required class="adm-input" placeholder="Ej. Cd. Victoria">
                             </div>
+                            <div>
+                                <label class="adm-label">Estado</label>
+                                <input type="text" id="zona_estado" required class="adm-input" placeholder="Ej. Tamaulipas">
+                                <p class="text-[11px] text-gray-400 mt-1">Así se agrupan las ciudades por estado en el selector de ubicación del sitio.</p>
+                            </div>
                             <div class="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2.5 bg-gray-50">
                                 <p class="text-xs font-semibold text-brandDark">Zona activa</p>
                                 <label class="adm-switch"><input type="checkbox" id="zona_activa" checked><span class="adm-switch-track"></span></label>
@@ -1734,7 +1739,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         cont.innerHTML = zonas.length ? zonas.map(z => `
             <div class="px-6 py-3 flex items-center justify-between gap-3">
                 <div>
-                    <p class="text-sm font-medium text-brandDark">${escaparHtmlAdmin(z.etiqueta)}</p>
+                    <p class="text-sm font-medium text-brandDark">${escaparHtmlAdmin(z.etiqueta)} ${z.estado ? `<span class="adm-badge bg-gray-100 text-gray-500">${escaparHtmlAdmin(z.estado)}</span>` : '<span class="adm-badge bg-amber-50 text-amber-600">Sin estado</span>'}</p>
                     <p class="text-[11px] text-gray-400">clave interna: ${escaparHtmlAdmin(z.nombre)}</p>
                 </div>
                 <div class="flex items-center gap-3">
@@ -1753,6 +1758,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const body = {
             nombre: document.getElementById('zona_nombre').value,
             etiqueta: document.getElementById('zona_etiqueta').value,
+            estado: document.getElementById('zona_estado').value,
             activa: document.getElementById('zona_activa').checked
         };
         try {
@@ -1775,6 +1781,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById('zona_nombre').value = z.nombre;
         document.getElementById('zona_nombre').disabled = true;
         document.getElementById('zona_etiqueta').value = z.etiqueta;
+        document.getElementById('zona_estado').value = z.estado || '';
         document.getElementById('zona_activa').checked = z.activa;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }

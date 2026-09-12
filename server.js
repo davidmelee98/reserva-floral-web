@@ -195,6 +195,7 @@ async function inicializarDB() {
       id SERIAL PRIMARY KEY,
       nombre VARCHAR(100) UNIQUE NOT NULL,
       etiqueta VARCHAR(100) NOT NULL,
+      estado VARCHAR(100),
       activa BOOLEAN DEFAULT true,
       orden INTEGER DEFAULT 0,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -291,7 +292,8 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descuento DECIMAL(10,2) DEFAULT 0',
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS puntos_canjeados INTEGER DEFAULT 0',
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS google_id VARCHAR(100)',
-    'ALTER TABLE clientes_cuenta ALTER COLUMN password_hash DROP NOT NULL'
+    'ALTER TABLE clientes_cuenta ALTER COLUMN password_hash DROP NOT NULL',
+    'ALTER TABLE zonas_cobertura ADD COLUMN IF NOT EXISTS estado VARCHAR(100)'
   ];
 
   for (const query of alterQueries) {
@@ -304,16 +306,30 @@ async function inicializarDB() {
   const zonasExistentes = await pool.query('SELECT COUNT(*)::int AS n FROM zonas_cobertura');
   if (zonasExistentes.rows[0].n === 0) {
     const zonasIniciales = [
-      ['Tampico', 'Tampico', 1],
-      ['Madero', 'Cd. Madero', 2],
-      ['Altamira', 'Altamira', 3],
-      ['Monterrey', 'Monterrey', 4],
-      ['CDMX', 'CDMX', 5]
+      ['Tampico', 'Tampico', 'Tamaulipas', 1],
+      ['Madero', 'Cd. Madero', 'Tamaulipas', 2],
+      ['Altamira', 'Altamira', 'Tamaulipas', 3],
+      ['Monterrey', 'Monterrey', 'Nuevo León', 4],
+      ['CDMX', 'CDMX', 'Ciudad de México', 5]
     ];
-    for (const [nombre, etiqueta, orden] of zonasIniciales) {
-      await pool.query('INSERT INTO zonas_cobertura (nombre, etiqueta, orden) VALUES ($1,$2,$3) ON CONFLICT (nombre) DO NOTHING', [nombre, etiqueta, orden]);
+    for (const [nombre, etiqueta, estadoZona, orden] of zonasIniciales) {
+      await pool.query('INSERT INTO zonas_cobertura (nombre, etiqueta, estado, orden) VALUES ($1,$2,$3,$4) ON CONFLICT (nombre) DO NOTHING', [nombre, etiqueta, estadoZona, orden]);
     }
   }
+  // Si el sitio ya tenía zonas de antes de agregar esta columna, se les pone
+  // el estado que les corresponde según su nombre (para las 5 de siempre);
+  // cualquier zona que el negocio haya agregado después con otro nombre se
+  // queda sin estado hasta que la editen a mano en el panel -- no hay forma
+  // de adivinarlo con certeza.
+  await pool.query(`
+    UPDATE zonas_cobertura SET estado = CASE
+      WHEN nombre IN ('Tampico', 'Madero', 'Altamira') THEN 'Tamaulipas'
+      WHEN nombre = 'Monterrey' THEN 'Nuevo León'
+      WHEN nombre = 'CDMX' THEN 'Ciudad de México'
+      ELSE estado
+    END
+    WHERE estado IS NULL
+  `);
 
   console.log('Base de datos lista.');
 }
@@ -1852,7 +1868,7 @@ app.get('/api/admin/clientes', requireAuth, async (req, res) => {
 // ---------------------------------------------------------------------------
 app.get('/api/zonas', async (req, res) => {
   try {
-    const resultado = await pool.query('SELECT nombre, etiqueta FROM zonas_cobertura WHERE activa=true ORDER BY orden ASC, etiqueta ASC');
+    const resultado = await pool.query('SELECT nombre, etiqueta, estado FROM zonas_cobertura WHERE activa=true ORDER BY orden ASC, etiqueta ASC');
     res.json(resultado.rows);
   } catch (error) {
     console.error('GET /api/zonas:', error);
@@ -1871,14 +1887,14 @@ app.get('/api/admin/zonas', requireAuth, async (req, res) => {
 });
 
 app.post('/api/admin/zonas', requireAuth, async (req, res) => {
-  const { nombre, etiqueta, orden } = req.body || {};
-  if (!nombre?.trim() || !etiqueta?.trim()) {
-    return res.status(400).json({ error: 'El nombre y la etiqueta son obligatorios.' });
+  const { nombre, etiqueta, estado, orden } = req.body || {};
+  if (!nombre?.trim() || !etiqueta?.trim() || !estado?.trim()) {
+    return res.status(400).json({ error: 'El nombre, la etiqueta y el estado son obligatorios.' });
   }
   try {
     const resultado = await pool.query(
-      'INSERT INTO zonas_cobertura (nombre, etiqueta, orden) VALUES ($1,$2,$3) RETURNING *',
-      [nombre.trim(), etiqueta.trim(), Number.isFinite(Number(orden)) ? Number(orden) : 0]
+      'INSERT INTO zonas_cobertura (nombre, etiqueta, estado, orden) VALUES ($1,$2,$3,$4) RETURNING *',
+      [nombre.trim(), etiqueta.trim(), estado.trim(), Number.isFinite(Number(orden)) ? Number(orden) : 0]
     );
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
@@ -1893,6 +1909,7 @@ app.patch('/api/admin/zonas/:id', requireAuth, async (req, res) => {
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
   const campos = []; const valores = []; let i = 1;
   if (typeof req.body.etiqueta === 'string' && req.body.etiqueta.trim()) { campos.push(`etiqueta=$${i++}`); valores.push(req.body.etiqueta.trim()); }
+  if (typeof req.body.estado === 'string' && req.body.estado.trim()) { campos.push(`estado=$${i++}`); valores.push(req.body.estado.trim()); }
   if (typeof req.body.activa === 'boolean') { campos.push(`activa=$${i++}`); valores.push(req.body.activa); }
   if (Number.isFinite(Number(req.body.orden))) { campos.push(`orden=$${i++}`); valores.push(Number(req.body.orden)); }
   if (campos.length === 0) return res.status(400).json({ error: 'No hay cambios para guardar.' });

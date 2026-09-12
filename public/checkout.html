@@ -24,8 +24,19 @@
         }
     </script>
     <style>
-        .co-input{ width:100%; border:1px solid #d1d5db; border-radius:10px; padding:.65rem .85rem; font-size:.875rem; outline:none; transition:border-color .15s ease, box-shadow .15s ease; background:#fff; }
+        .co-input{ width:100%; height:2.6rem; box-sizing:border-box; border:1px solid #d1d5db; border-radius:10px; padding:.65rem .85rem; font-size:.875rem; outline:none; transition:border-color .15s ease, box-shadow .15s ease; background:#fff; }
+        /* Los <select> traen su propio "look" nativo en cada navegador (más
+           alto, flecha distinta) aunque compartan la misma clase que los
+           <input> de texto -- esto los empareja de verdad. */
+        select.co-input{
+            appearance:none; -webkit-appearance:none; -moz-appearance:none;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat:no-repeat; background-position:right .6rem center; background-size:1.1rem;
+            padding-right:1.9rem;
+        }
         .co-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.10); }
+        .co-input-error{ border-color:#dc2626 !important; background:#fef2f2; }
+        .co-input-error:focus{ box-shadow:0 0 0 3px rgba(220,38,38,.12); }
         .co-input.is-invalid{ border-color:#dc2626; }
         .co-label{ font-size:.72rem; color:#6b6b6b; font-weight:500; margin-bottom:.25rem; display:block; }
         .co-circulo{ width:28px; height:28px; border-radius:999px; border:2px solid #c2185b; color:#c2185b; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; flex:0 0 auto; transition:all .15s ease; }
@@ -536,6 +547,14 @@
 </style>
 
 <script>
+    // Se define aquí (aunque ya existe una copia más abajo) porque este
+    // bloque corre primero y también la necesita -- cargarSesionCliente()
+    // puede llamar a cargarDireccionesGuardadas() antes de que el bloque de
+    // más abajo llegue a ejecutarse.
+    function escaparHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
     // =======================================================================
     // Cuenta de cliente: sesión, modal de login/registro, widget del header
     // =======================================================================
@@ -980,6 +999,24 @@
         if (el) el.classList.toggle('hidden', !mostrar);
     }
 
+    // Resalta (o quita el resalte de) un campo específico en rojo -- distinto
+    // de marcarError(), que solo muestra/oculta el mensaje de texto de abajo.
+    // Con esto la persona ve exactamente CUÁL casilla le falta, no solo que
+    // "algo" falta.
+    function marcarCampoError(id, mostrar) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.toggle('co-input-error', mostrar);
+        if (mostrar && !el.dataset.rfErrorListener) {
+            // En cuanto la persona empieza a corregir el campo, se le quita
+            // el rojo de inmediato (no hay que esperar a que le vuelva a dar
+            // "Siguiente" para que desaparezca).
+            el.addEventListener('input', () => el.classList.remove('co-input-error'));
+            el.addEventListener('change', () => el.classList.remove('co-input-error'));
+            el.dataset.rfErrorListener = '1';
+        }
+    }
+
     // =======================================================================
     // PASO 1
     // =======================================================================
@@ -987,9 +1024,9 @@
         const telefono = document.getElementById('p1-telefono').value.trim();
         const email = sesionCliente ? (sesionCliente.email || document.getElementById('p1-email').value.trim()) : document.getElementById('p1-email').value.trim();
         let valido = true;
-        if (!/^\d{10}$/.test(telefono)) { marcarError('error-p1', true); valido = false; } else marcarError('error-p1', false);
+        if (!/^\d{10}$/.test(telefono)) { marcarError('error-p1', true); marcarCampoError('p1-telefono', true); valido = false; } else { marcarError('error-p1', false); marcarCampoError('p1-telefono', false); }
         if (!sesionCliente) {
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { marcarError('error-p1-email', true); valido = false; } else marcarError('error-p1-email', false);
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { marcarError('error-p1-email', true); marcarCampoError('p1-email', true); valido = false; } else { marcarError('error-p1-email', false); marcarCampoError('p1-email', false); }
         }
         if (!valido) return;
         estado.telefono = document.getElementById('p1-lada').value + ' ' + telefono;
@@ -1183,6 +1220,13 @@
         const numero = document.getElementById('p2-numero').value.trim();
         const colonia = document.getElementById('p2-colonia').value.trim();
         const tipo = document.getElementById('p2-tipo').value;
+
+        marcarCampoError('p2-nombre', !nombre);
+        marcarCampoError('p2-calle', !calle);
+        marcarCampoError('p2-numero', !numero);
+        marcarCampoError('p2-colonia', !colonia);
+        marcarCampoError('p2-tipo', !tipo);
+
         if (!nombre || !calle || !numero || !colonia || !tipo) { marcarError('error-p2', true); return; }
         marcarError('error-p2', false);
         abrirModalMapa();
