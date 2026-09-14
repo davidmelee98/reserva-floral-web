@@ -2022,7 +2022,7 @@ app.get('/api/configuracion-publica', async (req, res) => {
   try {
     const resultado = await pool.query(
       `SELECT clave, valor FROM configuracion WHERE clave = ANY($1::text[])`,
-      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer']]
+      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer', 'imagen_hero', 'imagen_categoria_flores_y_plantas', 'imagen_categoria_globos', 'imagen_categoria_regalos']]
     );
     const config = {};
     for (const fila of resultado.rows) config[fila.clave] = fila.valor;

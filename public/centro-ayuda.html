@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Ayuda | Reserva Floral</title>
+    <meta name="description" content="Resuelve tus dudas sobre pedidos, envíos, pagos, cupones y tu cuenta en Reserva Floral.">
+    <link rel="canonical" href="https://www.reservafloral.com/centro-ayuda.html">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'], serif: ['Playfair Display', 'serif'] },
+                    colors: { brandFuchsia: '#c2185b', brandLightPink: '#e91e63', brandDark: '#353535', brandGray: '#f8f9fa' }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar{ width:7px; height:7px; }
+        ::-webkit-scrollbar-thumb{ background:#e2c2d0; border-radius:999px; }
+        .ca-pregunta{ cursor:pointer; }
+        .ca-respuesta{ display:none; }
+        .ca-item.is-abierto .ca-respuesta{ display:block; }
+        .ca-item.is-abierto .ca-flecha{ transform:rotate(180deg); }
+        .ca-flecha{ transition:transform .15s ease; }
+        .ca-respuesta a{ color:#c2185b; font-weight:600; }
+        .ca-respuesta a:hover{ text-decoration:underline; }
+    </style>
+</head>
+<body class="bg-white font-sans text-brandDark antialiased">
+
+    <header class="bg-brandFuchsia text-white sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <a href="/" class="flex items-center">
+                <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[150px] h-10 object-contain" draggable="false">
+            </a>
+            <div class="flex items-center gap-4 text-sm">
+                <a href="/cuenta.html" class="hover:text-gray-200">Mi cuenta</a>
+                <a href="/" class="hover:text-gray-200 hidden sm:inline">Ver catálogo</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 min-h-[60vh]">
+        <!-- Vista: menú principal -->
+        <div id="ca-vista-menu">
+            <h1 class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-6">Centro de Ayuda</h1>
+            <div id="ca-lista-categorias" class="bg-white border border-gray-100 rounded-2xl divide-y divide-gray-100 shadow-sm"></div>
+        </div>
+
+        <!-- Vista: dentro de una categoría -->
+        <div id="ca-vista-categoria" class="hidden">
+            <nav class="text-xs text-gray-400 mb-3">
+                <a href="#/" class="hover:text-brandFuchsia">Centro de Ayuda</a>
+                <span class="mx-1">›</span>
+                <span id="ca-breadcrumb-actual" class="text-gray-600"></span>
+            </nav>
+            <h1 id="ca-categoria-titulo" class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-6"></h1>
+            <div id="ca-lista-preguntas" class="bg-white border border-gray-100 rounded-2xl divide-y divide-gray-100 shadow-sm"></div>
+        </div>
+    </main>
+
+    <footer class="bg-brandGray border-t border-gray-100 py-8 mt-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-gray-400">
+            <p>¿No encontraste lo que buscabas? <a href="#" id="ca-link-whatsapp" class="text-brandFuchsia font-semibold hover:underline">Escríbenos por WhatsApp</a></p>
+            <p class="mt-2">© <span id="ca-anio"></span> Reserva Floral</p>
+        </div>
+    </footer>
+
+<script>
+    document.getElementById('ca-anio').textContent = new Date().getFullYear();
+
+    // Botón de WhatsApp: toma el número real configurado en el panel (mismo
+    // patrón que el botón flotante de las demás páginas).
+    fetch('/api/configuracion-publica').then(r => r.json()).then(cfg => {
+        const numero = (cfg.whatsapp_numero || '').replace(/\D/g, '');
+        const link = document.getElementById('ca-link-whatsapp');
+        if (numero) link.href = 'https://wa.me/' + numero;
+        else link.href = '/cuenta.html';
+    }).catch(() => {});
+
+    // =======================================================================
+    // Contenido del Centro de Ayuda
+    // =======================================================================
+    const CONTACTO_WHATSAPP = '<a href="#" onclick="document.getElementById(\'ca-link-whatsapp\').click(); return false;">contáctanos por WhatsApp</a>';
+    const MIS_PEDIDOS = '<a href="/cuenta.html">Mis pedidos</a>';
+
+    const CENTRO_AYUDA = [
+        {
+            slug: 'seguimiento-cancelaciones',
+            titulo: 'Seguimiento y cancelaciones',
+            preguntas: [
+                {
+                    q: '¿Cómo veo el estatus de mi pedido?',
+                    r: `Para saber cómo va tu pedido, entra a ${MIS_PEDIDOS} y podrás ver el estatus de cada uno, junto con la fecha y dirección de entrega.
+                        <p class="mt-3">También te avisamos por correo electrónico cuando registramos tu pedido y cuando confirmamos tu pago.</p>`
+                },
+                {
+                    q: '¿Por cuáles estatus pasará mi pedido?',
+                    r: `Estos son los estatus por los que pasa un pedido:
+                        <p class="mt-3"><strong>Pendiente</strong><br>Registramos tu pedido y estamos esperando la confirmación de tu pago.</p>
+                        <p class="mt-3"><strong>Confirmado</strong><br>Tu pago fue acreditado. Empezamos a preparar tu regalo.</p>
+                        <p class="mt-3"><strong>En preparación</strong><br>Estamos armando tu arreglo con todo el cuidado.</p>
+                        <p class="mt-3"><strong>En camino</strong><br>Tu pedido va rumbo a su destino.</p>
+                        <p class="mt-3"><strong>Entregado</strong><br>¡Listo! Tu regalo ya llegó.</p>
+                        <p class="mt-3"><strong>Cancelado</strong><br>El pedido no se llevó a cabo (por ejemplo, si el pago no se acreditó).</p>`
+                },
+                {
+                    q: '¿Cómo sé si mi pedido ya fue entregado?',
+                    r: `Cuando tu regalo sea entregado, el estatus de tu pedido cambiará a <strong>Entregado</strong>. Puedes revisarlo en cualquier momento desde ${MIS_PEDIDOS}.`
+                },
+                {
+                    q: '¿Cómo cancelar un pedido?',
+                    r: `Puedes cancelar un pedido tú mismo mientras esté en el estatus de <strong>Pendiente</strong>. Para hacerlo, entra a ${MIS_PEDIDOS}, busca el pedido y presiona <strong>Cancelar pedido</strong>.
+                        <p class="mt-3">Si tu pedido ya está en otro estatus y necesitas cancelarlo, ${CONTACTO_WHATSAPP} para ayudarte.</p>`
+                },
+                {
+                    q: '¿Puedo modificar mi pedido?',
+                    r: `Si tu pedido sigue en estatus <strong>Pendiente</strong>, ${CONTACTO_WHATSAPP} y con gusto te ayudamos a hacer el cambio (dirección, fecha, dedicatoria).
+                        <p class="mt-3">Una vez que el pedido pasa a <strong>Confirmado</strong> o después, ya no es posible modificarlo porque empezamos a prepararlo.</p>`
+                },
+                {
+                    q: '¿A qué hora se entregará mi pedido?',
+                    r: `Al momento de comprar eliges un bloque de horario para la entrega. Tu regalo llegará dentro de ese bloque.
+                        <p class="mt-3">Aunque no podemos darte una hora exacta (nuestros repartidores llevan varias entregas en su ruta), puedes estar seguro de que llegará dentro del horario que elegiste.</p>`
+                },
+                {
+                    q: '¿Por qué mi pedido fue cancelado?',
+                    r: `Lo más común es que no se haya podido acreditar el pago. Para más información, ${CONTACTO_WHATSAPP}.
+                        <p class="mt-3">También puedes crear un pedido nuevo eligiendo otra forma de pago.</p>`
+                }
+            ]
+        },
+        {
+            slug: 'problemas-con-mi-pedido',
+            titulo: 'Problemas con mi pedido',
+            preguntas: [
+                {
+                    q: 'Mi pedido llegó con otros productos',
+                    r: `Si tu regalo llegó con productos diferentes a los que pediste, puede ser que hayamos tenido que hacer una sustitución (ve nuestra <a href="#/politicas-y-garantia">Política de Sustitución</a>).
+                        <p class="mt-3">Nuestros agentes pueden ayudarte con la situación, por favor ${CONTACTO_WHATSAPP}.</p>`
+                },
+                {
+                    q: 'Mi pedido llegó incompleto',
+                    r: `Si al ser entregado le hizo falta alguno de los productos que compraste, por favor ${CONTACTO_WHATSAPP} para recibir ayuda.`
+                },
+                {
+                    q: 'Mi pedido llegó tarde',
+                    r: `Nuestros repartidores entregan los regalos hasta que termina el bloque de horario que elegiste al hacer tu pedido.
+                        <p class="mt-3">Pero si tu pedido se entregó después de que finalizó el horario, o aún no se entrega, por favor ${CONTACTO_WHATSAPP} para asistirte.</p>`
+                },
+                {
+                    q: 'Mi pedido no fue entregado',
+                    r: `Puede ser que hayamos intentado entregar el pedido pero nadie pudo recibirlo. En ese caso, entra a ${MIS_PEDIDOS} para conocer más detalles y reprogramar la entrega.
+                        <p class="mt-3">Si necesitas ayuda, puedes ${CONTACTO_WHATSAPP} para ser atendido por un agente.</p>`
+                },
+                {
+                    q: 'No obtuve la calidad esperada',
+                    r: `En Reserva Floral nos comprometemos a entregar regalos de la más alta calidad.
+                        <p class="mt-3">Si los productos que recibió el destinatario no cumplieron tus expectativas, por favor ${CONTACTO_WHATSAPP} para darte una solución. Te pediremos fotografías que muestren el problema.</p>`
+                },
+                {
+                    q: 'No obtuve el servicio esperado',
+                    r: `Para nosotros es muy importante que cada detalle de tu experiencia sea perfecto. Si tuviste algún inconveniente durante el servicio, por favor ${CONTACTO_WHATSAPP} para darte una solución.`
+                },
+                {
+                    q: 'Mi pedido se entregó a alguien más',
+                    r: `Si la persona que recibió el regalo es alguien que el destinatario no conoce, puede tratarse de un recepcionista o guardia de seguridad. Esto pasa en domicilios como departamentos, privadas, oficinas u hospitales, donde nuestros repartidores no pueden acceder hasta el destinatario final.
+                        <p class="mt-3">Te recomendamos avisarle al destinatario que se acerque a la caseta de vigilancia o recepción para que reciba su sorpresa.</p>
+                        <p class="mt-3">Si no es el caso, por favor ${CONTACTO_WHATSAPP} para averiguar qué pasó con tu pedido.</p>`
+                }
+            ]
+        },
+        {
+            slug: 'hacer-un-pedido',
+            titulo: 'Hacer un pedido',
+            preguntas: [
+                {
+                    q: '¿Cómo se hace un pedido?',
+                    r: `Comprar en Reserva Floral es muy fácil:
+                        <ol class="list-decimal ml-5 mt-3 space-y-1">
+                            <li>Ingresa a nuestra página principal <a href="/">www.reservafloral.com</a>, selecciona el estado y la ciudad a la que quieres enviar el regalo, y escoge la fecha en que quieres que lo entreguemos.</li>
+                            <li>Explora todas las categorías de productos disponibles en esa ciudad.</li>
+                            <li>Elige el regalo que te gustó y agrégalo al carrito.</li>
+                            <li>Entra al carrito y si ya escogiste el regalo perfecto, da clic en <strong>Continuar con la compra</strong>.</li>
+                            <li>Tendrás que iniciar sesión (o continuar como invitado) para continuar.</li>
+                            <li>Completa el proceso de compra: la dirección del destinatario, una dedicatoria si quieres, y el pago.</li>
+                        </ol>
+                        <p class="mt-3">¡Listo! Recibirás la confirmación de tu pedido por correo, y te avisaremos cuando hayamos entregado tu regalo.</p>`
+                },
+                {
+                    q: '¿Puedo hacer un pedido con varias direcciones?',
+                    r: `No, cada pedido sólo puede entregarse en <strong>una dirección</strong>. Si deseas enviar regalos a diferentes direcciones, deberás hacer un pedido por cada una.`
+                },
+                {
+                    q: '¿Puedo comprar fuera de México?',
+                    r: `¡Sí! Puedes hacer tu pedido desde cualquier parte del mundo para enviar regalos a las ciudades de México en las que tenemos <a href="#/envios-y-entregas">cobertura</a>.
+                        <p class="mt-3">Aceptamos pago con tarjeta de crédito o débito internacional.</p>`
+                },
+                {
+                    q: '¿Puedo hacer mi pedido con anticipación?',
+                    r: `Sí, puedes programar tu pedido con varios días (o incluso semanas) de anticipación.
+                        <p class="mt-3">Solo durante temporadas altas, como San Valentín o Día de las Madres, podría haber restricciones del calendario conforme la fecha se acerca.</p>`
+                },
+                {
+                    q: '¿Cómo le agrego una dedicatoria al regalo?',
+                    r: `Al momento de hacer tu pedido, en el paso de dedicatoria podrás agregar un mensaje sin costo. Además, puedes agregar una firma o dejar el mensaje anónimo.
+                        <p class="mt-3">Por favor toma en cuenta que se entregará una única tarjeta con tu mensaje por cada pedido realizado, sin importar cuántos productos contenga. Si necesitas ayuda especial con tu dedicatoria, puedes comunicarte con nosotros vía WhatsApp.</p>`
+                }
+            ]
+        },
+        {
+            slug: 'envios-y-entregas',
+            titulo: 'Envíos y entregas',
+            preguntas: [
+                {
+                    q: '¿Cuáles son sus horarios de entrega?',
+                    r: `Puedes ver los horarios disponibles en cada ciudad al ingresar la dirección de entrega durante el proceso de compra, antes de pagar tu pedido. El regalo llegará a su destino dentro del horario que escojas.`
+                },
+                {
+                    q: '¿A qué ciudades entregan?',
+                    r: `Por ahora entregamos regalos en Tampico, Ciudad Madero, Altamira, Monterrey y Ciudad de México. Estamos trabajando para llegar a más ciudades pronto.`
+                },
+                {
+                    q: '¿Entregan en hospitales y oficinas?',
+                    r: `¡Sí! Podemos llevar tus regalos a un hospital, oficina, escuela, restaurante o cualquier tipo de dirección en la que se encuentre el destinatario.
+                        <p class="mt-3">Asegúrate de brindarnos los detalles necesarios para identificar el lugar (nombre completo del destinatario, número de habitación o área, y su teléfono) para poder entregar el regalo en la ubicación correcta.</p>
+                        <p class="mt-3">Algunos hospitales no aceptan entregas de flores por sus políticas sanitarias -- en esos casos te sugerimos elegir globos o peluches de nuestra colección.</p>`
+                },
+                {
+                    q: 'Política de Envío',
+                    r: `Sabemos lo importante que es esta fecha, por eso nos comprometemos a entregar tu regalo en el día, horario y lugar seleccionados.
+                        <p class="mt-3"><strong>Reprogramaciones</strong><br>En caso de que no logremos localizar al destinatario, intentaremos comunicarnos para resolver la situación.</p>
+                        <p class="mt-3">Si no tenemos respuesta pero nos encontramos en el domicilio correcto, entregaremos tu pedido con alguien cercano: un vecino, compañero de trabajo o en recepción.</p>
+                        <p class="mt-3">Si nadie puede recibir el arreglo, te notificaremos para reprogramar el envío sin costo.</p>
+                        <p class="mt-3"><strong>Importante:</strong> si la dirección se ingresó de manera incorrecta durante el proceso de compra y por eso la entrega no pudiera realizarse a tiempo, el pedido se reprogramará en el siguiente horario disponible una vez que se corrija la dirección. ${CONTACTO_WHATSAPP} para ayudarte a corregirla.</p>`
+                },
+                {
+                    q: '¿Puedo cambiar el horario de entrega?',
+                    r: `Si tu pedido se encuentra en el estatus de <strong>Pendiente</strong> o <strong>Confirmado</strong>, ${CONTACTO_WHATSAPP} y con gusto te ayudamos a ajustar el horario.
+                        <p class="mt-3">Si tu pedido ya está <strong>En camino</strong>, ya no será posible cambiar el horario.</p>`
+                },
+                {
+                    q: '¿Qué pasa si el destinatario no se encuentra?',
+                    r: `Si no logramos contactar al destinatario, el repartidor intentará dejar el regalo con alguien de confianza en el domicilio (recepción, un vecino).
+                        <p class="mt-3">Si no fue posible entregarlo, ${CONTACTO_WHATSAPP} para reprogramar la entrega.</p>`
+                },
+                {
+                    q: '¿Tienen envíos a EUA?',
+                    r: `Por ahora no. Consulta cuáles ciudades de la república mexicana puedes enviar regalos en la pregunta "¿A qué ciudades entregan?" de esta misma sección.
+                        <p class="mt-3">¡Esperamos pronto expandir nuestras fronteras!</p>`
+                },
+                {
+                    q: '¿Todos los pedidos tienen costo de envío?',
+                    r: `Sí, todos nuestros pedidos tienen un costo de envío que se incluye en el monto total de tu pedido. Podrás conocerlo antes de pagar.`
+                }
+            ]
+        },
+        {
+            slug: 'cupones-de-descuento',
+            titulo: 'Cupones de descuento',
+            preguntas: [
+                {
+                    q: '¿Cómo canjear un cupón de descuento?',
+                    r: `Aplicar un cupón en Reserva Floral es muy sencillo:
+                        <p class="mt-3"><strong>Paso 1:</strong> Agrega tus productos al carrito y da clic en <strong>Continuar con la compra</strong>.</p>
+                        <p class="mt-3"><strong>Paso 2:</strong> En el resumen de tu pedido, busca el campo <strong>Código de descuento</strong>.</p>
+                        <p class="mt-3"><strong>Paso 3:</strong> Escribe tu código y da clic en <strong>Aplicar</strong>. Si es válido, verás el descuento reflejado en tu total de inmediato.</p>
+                        <p class="mt-3">Si no funciona, es probable que haya vencido, no cumplas con la compra mínima, o el código esté mal escrito. ${CONTACTO_WHATSAPP} si necesitas ayuda.</p>`
+                },
+                {
+                    q: '¿Los cupones tienen fecha de expiración?',
+                    r: `Algunos cupones sí tienen fecha de vencimiento y otros no -- depende de cada promoción. Te recomendamos revisarlo antes de usarlo. Si tienes dudas sobre la vigencia de un cupón, ${CONTACTO_WHATSAPP}.`
+                },
+                {
+                    q: '¿Puedo usar más de un cupón en la misma compra?',
+                    r: `No, solo puedes usar un código de descuento por compra. Te recomendamos elegir el que te dé más ahorro según lo que estés comprando.`
+                },
+                {
+                    q: '¿Dónde encuentro cupones de Reserva Floral?',
+                    r: `Síguenos en nuestras redes sociales -- ahí compartimos nuestras promociones vigentes.`
+                },
+                {
+                    q: 'Programa de Puntos Reserva Floral',
+                    r: `Celebramos el acto de regalar y queremos recompensar a quienes envían felicidad.
+                        <p class="mt-3">Cada vez que uno de tus pedidos se entrega, generas puntos: cada peso (1 MXN) gastado en regalos es igual a 1 punto.</p>
+                        <p class="mt-3">Al juntar 3,000 puntos, puedes canjearlos por un cupón de descuento para tu siguiente compra desde la sección <a href="/cuenta.html">Programa de Puntos</a> de tu cuenta. ¡Así que entre más regalos envíes, más ahorras!</p>`
+                },
+                {
+                    q: 'Términos y condiciones de cupones y promociones',
+                    r: `Estos son los términos generales que se aplican a todos los cupones y códigos de descuento, a menos que otras condiciones se indiquen explícitamente en sus términos particulares:
+                        <ul class="list-disc ml-5 mt-3 space-y-1">
+                            <li>Solo se puede aplicar un código de promoción por compra.</li>
+                            <li>Los cupones de descuento podrían no ser válidos durante temporadas altas como San Valentín y Día de las Madres.</li>
+                            <li>Reserva Floral se reserva el derecho de cancelar cualquier pedido si se sospecha de fraude o actividad similar.</li>
+                            <li>Los cupones son válidos por un tiempo limitado. Reserva Floral se reserva el derecho de modificar o cancelar los cupones en cualquier momento.</li>
+                            <li>Los códigos de promoción no aplican sobre el costo del envío, a menos que así se indique explícitamente.</li>
+                        </ul>`
+                }
+            ]
+        },
+        {
+            slug: 'pagos-reembolsos-facturacion',
+            titulo: 'Pagos, reembolsos y facturación',
+            preguntas: [
+                {
+                    q: '¿Qué métodos de pago tienen?',
+                    r: `Puedes elegir entre distintos métodos para pagar tu pedido con el que más te acomode:
+                        <p class="mt-3"><strong>Tarjeta de crédito y débito</strong><br>Aceptamos Visa, Mastercard y American Express expedidas en cualquier país. Usamos un sistema de verificación seguro para garantizar la protección de tu información.</p>
+                        <p class="mt-3"><strong>OXXO</strong><br>Genera una ficha con el código que necesitas para pagar en tu OXXO más cercano.</p>
+                        <p class="mt-3"><strong>Transferencia interbancaria (SPEI)</strong><br>Genera una CLABE para realizar la transferencia desde la app del banco que prefieras.</p>
+                        <p class="mt-3"><strong>Importante:</strong> si eliges OXXO o SPEI, asegúrate de completar tu pago antes de la fecha límite indicada. De lo contrario, tu pedido podría cancelarse.</p>`
+                },
+                {
+                    q: '¿Por qué no puedo pagar con mi tarjeta?',
+                    r: `Hay varias razones por las que tu tarjeta puede ser rechazada:
+                        <p class="mt-3"><strong>Problemas con la tarjeta</strong><br>Asegúrate de haber ingresado correctamente todos los datos de tu tarjeta, o que todavía no haya expirado.</p>
+                        <p class="mt-3"><strong>Problemas con la cuenta</strong><br>Asegúrate de que la cuenta que usas para pagar tenga fondos suficientes o no tenga restricciones de compras por internet.</p>
+                        <p class="mt-3">Te recomendamos reintentar tu pago o probar con otro método (OXXO o SPEI). Si necesitas más ayuda, ${CONTACTO_WHATSAPP}.</p>`
+                },
+                {
+                    q: '¿Tienen meses sin intereses?',
+                    r: `Si tu tarjeta de crédito es elegible para pagar a meses sin intereses, podrás ver las opciones disponibles durante el proceso de compra al momento de ingresar los datos de tu tarjeta. Esto depende de tu banco emisor.`
+                },
+                {
+                    q: '¿Puedo pagar con mis puntos?',
+                    r: `No directamente, pero cada vez que acumules 3,000 puntos puedes canjearlos por un cupón de descuento para tu próxima compra. Recuerda: $1.00 MXN gastado en pedidos entregados = 1 punto.
+                        <p class="mt-3">Revisa tus puntos en la sección <a href="/cuenta.html">Programa de Puntos</a> de tu cuenta.</p>`
+                },
+                {
+                    q: '¿Cuándo recibiré mi reembolso?',
+                    r: `Si cancelaste tu pedido o tu reporte fue elegible para un reembolso, lo recibirás en la misma tarjeta con la que hiciste la compra.
+                        <p class="mt-3">Si pagaste en OXXO o por transferencia SPEI, ${CONTACTO_WHATSAPP} para recabar tus datos y procesar tu reembolso.</p>
+                        <p class="mt-3">Una vez emitido, recibirás tu reembolso de 3 a 7 días hábiles. Si después de ese periodo no recibes el dinero en tu cuenta, contacta a tu banco.</p>`
+                },
+                {
+                    q: '¿Cómo genero mi factura?',
+                    r: `Estamos trabajando para que puedas generar tu factura directamente desde <a href="/cuenta.html">Mis pedidos</a>. Mientras tanto, ${CONTACTO_WHATSAPP} y con gusto te ayudamos a facturar tu compra.`
+                }
+            ]
+        },
+        {
+            slug: 'configuracion-de-mi-cuenta',
+            titulo: 'Configuración de Mi cuenta',
+            preguntas: [
+                {
+                    q: 'No puedo entrar a mi cuenta',
+                    r: `Si tienes problemas para ingresar a tu cuenta, puedes intentar lo siguiente:
+                        <p class="mt-3">A. Asegúrate de que el correo que ingresaste esté bien escrito o que realmente sea el correo con el que registraste la cuenta.</p>
+                        <p class="mt-3">B. Prueba iniciar sesión con Google si te registraste usando esa opción.</p>
+                        <p class="mt-3">Si no recuerdas con qué correo creaste tu cuenta o necesitas ayuda con algo diferente, ${CONTACTO_WHATSAPP}.</p>`
+                },
+                {
+                    q: 'Quiero cambiar mis datos personales',
+                    r: `Para cambiar los datos de tu cuenta, entra a <a href="/cuenta.html">tu cuenta</a> > Mi perfil, y edita la información que quieras actualizar.
+                        <p class="mt-3">Es importante mantener tus datos actualizados ya que son necesarios para mantenerte informado sobre el estatus de tus pedidos.</p>`
+                },
+                {
+                    q: '¿Cómo se agrega un recordatorio?',
+                    r: `¡Que no se te olvide su regalo! Para hacer un recordatorio, entra a <a href="/cuenta.html">tu cuenta</a> > Recordatorios y da clic en agregar una nueva fecha.
+                        <p class="mt-3">Puedes ponerle un título, elegir la ocasión y registrar la fecha de la celebración. Guárdalo para tenerlo siempre a la mano en tu cuenta.</p>`
+                },
+                {
+                    q: 'Quiero dejar de recibir correos',
+                    r: `Para salir de nuestra lista de correos promocionales, puedes ${CONTACTO_WHATSAPP}. Nuestros agentes te ayudarán.`
+                },
+                {
+                    q: 'Quiero eliminar mi cuenta',
+                    r: `Antes de eliminar tu cuenta debes saber que la siguiente información no es posible recuperarla:
+                        <ul class="list-disc ml-5 mt-3 space-y-1">
+                            <li>Mis pedidos</li>
+                            <li>Programa de Puntos</li>
+                            <li>Mis cupones</li>
+                            <li>Direcciones de envío</li>
+                            <li>Recordatorios</li>
+                            <li>Datos de la cuenta</li>
+                        </ul>
+                        <p class="mt-3">Para borrarla, ve a <a href="/cuenta.html">tu cuenta</a> > Mi perfil. Al final de la página encontrarás la sección Eliminar cuenta.</p>`
+                }
+            ]
+        },
+        {
+            slug: 'politicas-y-garantia',
+            titulo: 'Políticas y Garantía',
+            preguntas: [
+                {
+                    q: 'Garantía Reserva Floral',
+                    r: `Nos preocupamos por brindarte la mejor calidad y la mejor experiencia de compra y envío de flores y regalos de ocasión. Es por eso que todos tus pedidos cuentan con una garantía de <strong>calidad y servicio</strong>.
+                        <p class="mt-3">Estas son las tres cosas que cada uno de tus pedidos tiene garantizado:</p>
+                        <ul class="list-disc ml-5 mt-2 space-y-1">
+                            <li>Calidad y frescura</li>
+                            <li>Entrega a tiempo</li>
+                            <li>Atención al cliente personalizada</li>
+                        </ul>
+                        <p class="mt-3"><strong>¿Cómo aplico la garantía?</strong><br>Si el regalo se entregó dañado, no cumple con la calidad esperada o llegó incompleto según las especificaciones del producto, deberás reportar el inconveniente dentro de las siguientes <strong>48 horas</strong> y enviarnos fotografías que muestren el problema.</p>
+                        <p class="mt-3">${CONTACTO_WHATSAPP} para que nuestros agentes te guíen durante todo el proceso.</p>`
+                },
+                {
+                    q: 'Política de Cancelaciones y Reembolsos',
+                    r: `<strong>Cancelaciones</strong>
+                        <p class="mt-2">Podrás cancelar tu pedido desde tu cuenta siempre y cuando se encuentre en el estatus de "Pendiente". Al cancelar tu pedido, la devolución se emitirá al mismo método de pago con el que hiciste el pedido.</p>
+                        <p class="mt-3">Una vez que tu pedido se encuentre en el estatus de "Confirmado" o posteriores, ya no será posible cancelarlo porque ya se empezó a preparar. Si necesitas ayuda para cancelar un pedido, ${CONTACTO_WHATSAPP}.</p>
+                        <p class="mt-3"><strong>Reembolsos</strong></p>
+                        <p class="mt-2">En caso de que canceles tu pedido desde tu cuenta, el reembolso incluirá el total del pedido.</p>
+                        <p class="mt-3">Si reportaste algún inconveniente con un pedido dentro de las primeras 48 horas después de la entrega y solicitaste una devolución, la cantidad reembolsada dependerá de lo acordado con nuestro equipo de Atención al Cliente.</p>
+                        <p class="mt-3">Las devoluciones tardan de 3 a 7 días hábiles en reflejarse en el mismo método de pago con el que hiciste la compra.</p>`
+                },
+                {
+                    q: 'Política de Envío',
+                    r: `Consulta el detalle completo de nuestra Política de Envío en la sección <a href="#/envios-y-entregas">Envíos y entregas</a> de este Centro de Ayuda.`
+                },
+                {
+                    q: 'Política de Sustitución',
+                    r: `<strong>Sustitución de flores</strong>
+                        <p class="mt-2">Cada arreglo es único y elaborado a mano, por lo que puede llegar a tener ligeras variaciones. En algunos casos, nuestros floristas pueden hacer pequeños cambios siempre y cuando el arreglo final sea de igual o mayor valor. Las flores principales del arreglo nunca serán sustituidas sin tu autorización.</p>
+                        <p class="mt-3"><strong>Sustitución de globos</strong><br>Los modelos de globos varían constantemente, por lo cual solo podemos garantizar que se entregará de acuerdo con la descripción del producto: un globo de valor equivalente, con la ocasión señalada y la medida apropiada.</p>
+                        <p class="mt-3"><strong>Sustitución de peluches</strong><br>El modelo del peluche puede variar de acuerdo con la disponibilidad. Si el peluche que escogiste se terminó, te contactaremos para pedirte que elijas alguna de nuestras alternativas disponibles.</p>`
+                }
+            ]
+        },
+        {
+            slug: 'servicios-corporativos',
+            titulo: 'Servicios Corporativos',
+            preguntas: [
+                {
+                    q: '¿Cuáles son sus servicios corporativos?',
+                    r: `Estamos preparando nuestro servicio corporativo para atender las necesidades de empresas y organizaciones: regalos corporativos para colaboradores y clientes, convenios empresariales con descuentos especiales, y certificados de regalo.
+                        <p class="mt-3">${CONTACTO_WHATSAPP} si te interesa ser de los primeros en conocer este servicio cuando esté disponible.</p>`
+                },
+                {
+                    q: '¿Cómo solicito una cotización para mi empresa?',
+                    r: `Muy pronto vas a poder solicitar tu cotización directamente desde nuestra página. Mientras tanto, ${CONTACTO_WHATSAPP} contándonos qué necesitas (fecha de entrega, direcciones, productos de interés y presupuesto) y con gusto te apoyamos.`
+                }
+            ]
+        },
+        {
+            slug: 'acerca-de-reserva-floral',
+            titulo: 'Acerca de Reserva Floral',
+            preguntas: [
+                {
+                    q: '¿Quiénes somos?',
+                    r: `En Reserva Floral nos apasionan las flores y los detalles sorpresa. Creemos que a través de ellos podemos transmitir grandes sentimientos y emociones.
+                        <p class="mt-3">Queremos romper la barrera de la distancia y hacer llegar detalles a personas especiales en momentos que recordarán siempre -- con productos frescos, entregas puntuales y atención cercana.</p>`
+                },
+                {
+                    q: '¿Cómo afiliar mi florería?',
+                    r: `¿Tienes una florería y quieres formar parte de nuestra red de floristerías afiliadas? ${CONTACTO_WHATSAPP} contándonos sobre tu negocio y en qué ciudad se encuentra. Nos pondremos en contacto contigo para platicarte del proceso.`
+                },
+                {
+                    q: 'Aviso de Privacidad',
+                    r: `Consulta nuestro <a href="/aviso-de-privacidad.html">Aviso de Privacidad</a> completo.`
+                },
+                {
+                    q: 'Términos y Condiciones de Uso',
+                    r: `Consulta nuestros <a href="/terminos-y-condiciones.html">Términos y Condiciones</a> completos.`
+                },
+                {
+                    q: 'Seguridad del sitio',
+                    r: `En Reserva Floral nos interesa mantener tu confianza, proteger tus datos y darte un servicio de calidad. Por ello contamos con un sistema de seguridad en nuestra plataforma que protege la confidencialidad de todos los datos que nos proporcionas durante el proceso de compra.
+                        <p class="mt-3">Cuando compras en www.reservafloral.com, la información que proporcionas viaja de manera encriptada. Esto quiere decir que viaja en un formato en el cual solo el servidor final es capaz de leer y entender, evitando que agentes externos logren acceder a tu información.</p>
+                        <p class="mt-3">Además, los datos de tu tarjeta nunca pasan por nuestros servidores: los procesa de forma segura nuestro proveedor de pagos.</p>`
+                }
+            ]
+        },
+        {
+            slug: 'contactanos',
+            titulo: 'Contáctanos',
+            preguntas: [
+                {
+                    q: 'Hablar con un agente',
+                    r: `¡Nuestros agentes están listos para ayudarte! Si necesitas atención personalizada, ${CONTACTO_WHATSAPP}.`
+                }
+            ]
+        }
+    ];
+
+    // =======================================================================
+    // Render y navegación (basada en el "hash" de la URL, ej. #/cupones-de-descuento)
+    // =======================================================================
+    function escaparHtmlCA(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function renderMenuPrincipal() {
+        const cont = document.getElementById('ca-lista-categorias');
+        cont.innerHTML = CENTRO_AYUDA.map(cat => `
+            <a href="#/${cat.slug}" class="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition">
+                <span class="font-medium text-brandDark">${escaparHtmlCA(cat.titulo)}</span>
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </a>
+        `).join('');
+    }
+
+    function renderCategoria(slug) {
+        const categoria = CENTRO_AYUDA.find(c => c.slug === slug);
+        if (!categoria) { window.location.hash = '#/'; return; }
+
+        document.getElementById('ca-categoria-titulo').innerText = categoria.titulo;
+        document.getElementById('ca-breadcrumb-actual').innerText = categoria.titulo;
+        document.title = `${categoria.titulo} | Centro de Ayuda | Reserva Floral`;
+
+        const cont = document.getElementById('ca-lista-preguntas');
+        cont.innerHTML = categoria.preguntas.map((item, i) => `
+            <div class="ca-item" data-indice="${i}">
+                <div class="ca-pregunta flex items-center justify-between px-5 py-4 select-none" onclick="alternarPreguntaCA(this)">
+                    <span class="font-medium text-brandDark pr-4">${escaparHtmlCA(item.q)}</span>
+                    <svg class="ca-flecha w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+                <div class="ca-respuesta px-5 pb-5 -mt-1 text-sm text-gray-600 leading-relaxed">${item.r}</div>
+            </div>
+        `).join('');
+    }
+
+    function alternarPreguntaCA(header) {
+        header.closest('.ca-item').classList.toggle('is-abierto');
+    }
+    window.alternarPreguntaCA = alternarPreguntaCA;
+
+    function enrutarCA() {
+        const hash = window.location.hash.replace('#/', '').trim();
+        const menu = document.getElementById('ca-vista-menu');
+        const vista = document.getElementById('ca-vista-categoria');
+        if (!hash) {
+            menu.classList.remove('hidden');
+            vista.classList.add('hidden');
+            document.title = 'Centro de Ayuda | Reserva Floral';
+            renderMenuPrincipal();
+        } else {
+            menu.classList.add('hidden');
+            vista.classList.remove('hidden');
+            renderCategoria(hash);
+            window.scrollTo({ top: 0 });
+        }
+    }
+
+    window.addEventListener('hashchange', enrutarCA);
+    renderMenuPrincipal();
+    enrutarCA();
+</script>
+</body>
+</html>

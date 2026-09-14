@@ -927,10 +927,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
     <!-- Hero Banner con Buscador -->
     <div class="relative mb-10 sm:mb-16 md:mb-8">
-        <div class="h-[320px] sm:h-[380px] md:h-[450px] w-full relative">
-            <img class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd?q=80&w=1920&auto=format&fit=crop" alt="Persona con flores">
+        <div class="h-[200px] sm:h-[240px] md:h-[280px] w-full relative">
+            <img id="hero-imagen" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd?q=80&w=1920&auto=format&fit=crop" alt="Persona con flores">
             <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-                <h1 class="text-4xl sm:text-5xl md:text-7xl text-white font-serif tracking-wide shadow-sm">Solo envía...</h1>
+                <h1 class="text-3xl sm:text-4xl md:text-6xl text-white font-serif tracking-wide shadow-sm">Solo envía...</h1>
             </div>
         </div>
 
@@ -971,6 +971,31 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Explora por categoría -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 sm:mt-10">
+        <h2 class="text-xl sm:text-2xl font-serif font-semibold text-brandDark mb-4 text-center">Explora por categoría</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <a href="#seccion-catalogo" onclick="cargarInventario('Flores y plantas')" class="group relative h-40 sm:h-48 rounded-xl overflow-hidden block">
+                <img id="portada-categoria-flores-y-plantas" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=800&auto=format&fit=crop" alt="Flores y plantas">
+                <div class="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-end p-4">
+                    <span class="text-white font-serif text-lg sm:text-xl">Flores y plantas</span>
+                </div>
+            </a>
+            <a href="#seccion-catalogo" onclick="cargarInventario('Globos')" class="group relative h-40 sm:h-48 rounded-xl overflow-hidden block">
+                <img id="portada-categoria-globos" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=800&auto=format&fit=crop" alt="Globos">
+                <div class="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-end p-4">
+                    <span class="text-white font-serif text-lg sm:text-xl">Globos</span>
+                </div>
+            </a>
+            <a href="#seccion-catalogo" onclick="cargarInventario('Regalos')" class="group relative h-40 sm:h-48 rounded-xl overflow-hidden block">
+                <img id="portada-categoria-regalos" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800&auto=format&fit=crop" alt="Regalos">
+                <div class="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-end p-4">
+                    <span class="text-white font-serif text-lg sm:text-xl">Regalos</span>
+                </div>
+            </a>
         </div>
     </div>
 
@@ -3432,6 +3457,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 btn.href = 'https://wa.me/' + numero;
                 btn.classList.remove('hidden');
             }
+            // Imágenes de portada -- si el negocio ya subió las suyas desde el
+            // panel, se usan esas; si no, se quedan las de muestra de siempre.
+            if (cfg.imagen_hero) document.getElementById('hero-imagen').src = cfg.imagen_hero;
+            if (cfg.imagen_categoria_flores_y_plantas) document.getElementById('portada-categoria-flores-y-plantas').src = cfg.imagen_categoria_flores_y_plantas;
+            if (cfg.imagen_categoria_globos) document.getElementById('portada-categoria-globos').src = cfg.imagen_categoria_globos;
+            if (cfg.imagen_categoria_regalos) document.getElementById('portada-categoria-regalos').src = cfg.imagen_categoria_regalos;
         }).catch(() => {});
     })();
 </script>
