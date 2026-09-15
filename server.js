@@ -296,6 +296,17 @@ async function inicializarDB() {
       activo BOOLEAN DEFAULT true,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS menu_navegacion (
+      id SERIAL PRIMARY KEY,
+      padre_id INTEGER REFERENCES menu_navegacion(id) ON DELETE CASCADE,
+      nivel INTEGER NOT NULL,
+      titulo VARCHAR(100) NOT NULL,
+      enlace VARCHAR(255),
+      orden INTEGER DEFAULT 0,
+      activo BOOLEAN DEFAULT true,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Compatibilidad con instalaciones anteriores de la base de datos.
@@ -407,6 +418,134 @@ async function inicializarDB() {
     // Las llaves sueltas del sistema anterior ya quedaron migradas a filas de
     // verdad -- se limpian para no dejar configuración huérfana.
     await pool.query(`DELETE FROM configuracion WHERE clave LIKE 'carrusel_categoria_%' OR clave LIKE 'carrusel_ocasion_%'`);
+  }
+
+  // Semilla del menú de navegación (las 6 pestañas de arriba y todos sus
+  // submenús). Antes, casi todos los enlaces de este menú eran "#" -- no
+  // hacían nada. Aquí quedan ya conectados de verdad: a una categoría real
+  // cuando existe, o a una búsqueda por palabra cuando es más específico
+  // (ej. "Rosas", una ocasión). El negocio puede corregir, agregar o quitar
+  // cualquiera de estos desde el panel sin tocar código.
+  const menuExistente = await pool.query('SELECT COUNT(*)::int AS n FROM menu_navegacion');
+  if (menuExistente.rows[0].n === 0) {
+    async function crearPestaña(titulo, enlace, orden, columnas) {
+      const pestaña = await pool.query(
+        'INSERT INTO menu_navegacion (padre_id, nivel, titulo, enlace, orden) VALUES (NULL,0,$1,$2,$3) RETURNING id',
+        [titulo, enlace, orden]
+      );
+      const pestañaId = pestaña.rows[0].id;
+      for (let i = 0; i < columnas.length; i++) {
+        const [tituloColumna, enlaces] = columnas[i];
+        const columna = await pool.query(
+          'INSERT INTO menu_navegacion (padre_id, nivel, titulo, enlace, orden) VALUES ($1,1,$2,NULL,$3) RETURNING id',
+          [pestañaId, tituloColumna, i + 1]
+        );
+        const columnaId = columna.rows[0].id;
+        for (let j = 0; j < enlaces.length; j++) {
+          const [tituloEnlace, urlEnlace] = enlaces[j];
+          await pool.query(
+            'INSERT INTO menu_navegacion (padre_id, nivel, titulo, enlace, orden) VALUES ($1,2,$2,$3,$4)',
+            [columnaId, tituloEnlace, urlEnlace, j + 1]
+          );
+        }
+      }
+    }
+
+    await crearPestaña('Inicio', '/', 1, []);
+
+    await crearPestaña('Cumpleaños', '/?buscar=Cumplea%C3%B1os', 2, [
+      ['Flores y Plantas', [
+        ['Todas las flores', '/?categoria=Flores%20y%20plantas'], ['Rosas', '/?buscar=Rosas'], ['Gerberas', '/?buscar=Gerberas'],
+        ['Tulipanes', '/?buscar=Tulipanes'], ['Orquídeas', '/?buscar=Orqu%C3%ADdeas'], ['Combinados', '/?buscar=Combinado'],
+        ['Premium', '/?buscar=Premium'], ['Plantas', '/?buscar=Planta']
+      ]],
+      ['Globos', [
+        ['Todos los globos', '/?categoria=Globos'], ['Globos Personalizados', '/?buscar=Personalizado'], ['Combos con globo', '/?buscar=Combo']
+      ]],
+      ['Regalos', [
+        ['Joyería', '/?buscar=Joyer%C3%ADa'], ['Peluches', '/?buscar=Peluche'], ['Belleza y Fragancias', '/?buscar=Belleza'],
+        ['Velas', '/?buscar=Vela'], ['Diarios y Agendas', '/?buscar=Diario']
+      ]],
+      ['Para quién', [
+        ['Para Ella', '/?buscar=Ella'], ['Para Él', '/?buscar=%C3%89l'], ['Para Mamá', '/?buscar=Mam%C3%A1'],
+        ['Para Papá', '/?buscar=Pap%C3%A1'], ['Para Niños', '/?buscar=Ni%C3%B1o']
+      ]]
+    ]);
+
+    await crearPestaña('Ocasiones', '/', 3, [
+      ['Celebraciones', [
+        ['Amor/Aniversario', '/?buscar=Aniversario'], ['Cumpleaños', '/?buscar=Cumplea%C3%B1os'], ['Gracias', '/?buscar=Gracias'],
+        ['Nacimiento', '/?buscar=Nacimiento'], ['Graduación', '/?buscar=Graduaci%C3%B3n'], ['Logros', '/?buscar=Logro'],
+        ['Felicitaciones', '/?buscar=Felicidades'], ['Solo porque sí', '/?buscar=Sorpresa']
+      ]],
+      ['Condolencias', [
+        ['Servicios Funerarios', '/?buscar=Funeral'], ['Consuelo en Casa', '/?buscar=Consuelo']
+      ]],
+      ['Momentos Difíciles', [
+        ['Mejórate pronto', '/?buscar=Mej%C3%B3rate'], ['Perdón', '/?buscar=Perd%C3%B3n']
+      ]]
+    ]);
+
+    await crearPestaña('Flores y plantas', '/?categoria=Flores%20y%20plantas', 4, [
+      ['Flores', [
+        ['Combinados', '/?buscar=Combinado'], ['Gerberas', '/?buscar=Gerbera'], ['Girasoles', '/?buscar=Girasol'],
+        ['Lilys y Stargazer', '/?buscar=Lily'], ['Orquídeas', '/?buscar=Orqu%C3%ADdea'], ['Rosas', '/?buscar=Rosa'],
+        ['Tulipanes y Cala Lilies', '/?buscar=Tulip%C3%A1n']
+      ]],
+      ['Por presentación', [
+        ['Ramos', '/?buscar=Ramo'], ['Jarrón', '/?buscar=Jarr%C3%B3n'], ['Cajas', '/?buscar=Caja'],
+        ['Coronas Funerarias', '/?buscar=Corona'], ['Canastas', '/?buscar=Canasta']
+      ]],
+      ['Premium', [
+        ['Flores premium', '/?buscar=Premium']
+      ]],
+      ['Condolencias', [
+        ['Servicios Funerarios', '/?buscar=Funeral'], ['Consuelo en Casa', '/?buscar=Consuelo']
+      ]],
+      ['Plantas', [
+        ['Mini plantas', '/?buscar=Mini%20planta'], ['Plantas medianas', '/?buscar=Planta%20mediana'], ['Plantas con regalos', '/?buscar=Planta%20regalo']
+      ]]
+    ]);
+
+    await crearPestaña('Globos', '/?categoria=Globos', 5, [
+      ['Por ocasión', [
+        ['Cumpleaños', '/?buscar=Cumplea%C3%B1os'], ['Graduación', '/?buscar=Graduaci%C3%B3n'], ['Nacimiento', '/?buscar=Nacimiento'],
+        ['Just Because', '/?buscar=Sorpresa'], ['Mejórate Pronto', '/?buscar=Mej%C3%B3rate']
+      ]],
+      ['Por Tipo', [
+        ['Metálicos', '/?buscar=Met%C3%A1lico'], ['Esfera', '/?buscar=Esfera'], ['Burbuja', '/?buscar=Burbuja'],
+        ['Ramilletes', '/?buscar=Ramillete'], ['Combos', '/?buscar=Combo']
+      ]],
+      ['Para quién', [
+        ['Para ella', '/?buscar=Ella'], ['Para Él', '/?buscar=%C3%89l']
+      ]]
+    ]);
+
+    await crearPestaña('Regalos', '/?categoria=Regalos', 6, [
+      ['Para quién', [
+        ['Para Ella', '/?buscar=Ella'], ['Para Él', '/?buscar=%C3%89l'], ['Para Mamá', '/?buscar=Mam%C3%A1'], ['Para Papá', '/?buscar=Pap%C3%A1']
+      ]],
+      ['Otros Regalos', [
+        ['Diarios y Agendas', '/?buscar=Diario'], ['Certificados', '/?buscar=Certificado']
+      ]],
+      ['Joyería', [
+        ['Collares', '/?buscar=Collar'], ['Pulseras', '/?buscar=Pulsera'], ['Aretes', '/?buscar=Arete'],
+        ['Sets', '/?buscar=Set'], ['Combos', '/?buscar=Combo']
+      ]],
+      ['Peluches', [
+        ['Osos', '/?buscar=Oso'], ['Otros Peluches', '/?buscar=Peluche'], ['Combos de peluches', '/?buscar=Combo%20peluche']
+      ]],
+      ['Belleza y Fragancias', [
+        ['Mascarillas', '/?buscar=Mascarilla'], ['Cremas', '/?buscar=Crema'], ['Sets de Belleza', '/?buscar=Set%20belleza'],
+        ['Perfumes', '/?buscar=Perfume'], ['Combos', '/?buscar=Combo']
+      ]],
+      ['Velas', [
+        ['Velas y Aromas', '/?buscar=Vela']
+      ]],
+      ['Regalos Corporativos', [
+        ['Personalizados', '/pedidos-corporativos'], ['Flores y Plantas', '/pedidos-corporativos'], ['Cajas de Regalo', '/pedidos-corporativos']
+      ]]
+    ]);
   }
 
   console.log('Base de datos lista.');
@@ -2115,6 +2254,141 @@ app.delete('/api/admin/carruseles/:id', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('DELETE /api/admin/carruseles/:id:', error);
     res.status(500).json({ error: 'No se pudo eliminar la tarjeta.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Menú de navegación (las pestañas de arriba del sitio: Cumpleaños, Ocasiones,
+// Flores y plantas, Globos, Regalos... y todos sus submenús). 3 niveles:
+// 0 = pestaña, 1 = columna dentro del submenú, 2 = enlace de esa columna.
+// Todo administrable desde el panel, sin tocar código.
+// ---------------------------------------------------------------------------
+function construirArbolMenu(filas) {
+  const porId = {};
+  filas.forEach(f => { porId[f.id] = { ...f, hijos: [] }; });
+  const raiz = [];
+  filas.forEach(f => {
+    if (f.padre_id === null) raiz.push(porId[f.id]);
+    else if (porId[f.padre_id]) porId[f.padre_id].hijos.push(porId[f.id]);
+  });
+  const ordenar = nodo => { nodo.hijos.sort((a, b) => a.orden - b.orden); nodo.hijos.forEach(ordenar); };
+  raiz.sort((a, b) => a.orden - b.orden);
+  raiz.forEach(ordenar);
+  return raiz;
+}
+
+app.get('/api/menu-navegacion', async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM menu_navegacion WHERE activo=true ORDER BY orden ASC, id ASC');
+    res.json(construirArbolMenu(resultado.rows));
+  } catch (error) {
+    console.error('GET /api/menu-navegacion:', error);
+    res.status(500).json({ error: 'No se pudo cargar el menú.' });
+  }
+});
+
+app.get('/api/admin/menu-navegacion', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM menu_navegacion ORDER BY orden ASC, id ASC');
+    res.json(construirArbolMenu(resultado.rows));
+  } catch (error) {
+    console.error('GET /api/admin/menu-navegacion:', error);
+    res.status(500).json({ error: 'No se pudo cargar el menú.' });
+  }
+});
+
+app.post('/api/admin/menu-navegacion', requireAuth, async (req, res) => {
+  const { padre_id, titulo, enlace } = req.body || {};
+  if (!titulo?.trim()) return res.status(400).json({ error: 'El título es obligatorio.' });
+  try {
+    let nivel = 0;
+    if (padre_id) {
+      const padre = await pool.query('SELECT nivel FROM menu_navegacion WHERE id=$1', [padre_id]);
+      if (padre.rowCount === 0) return res.status(400).json({ error: 'El elemento padre no existe.' });
+      nivel = padre.rows[0].nivel + 1;
+      if (nivel > 2) return res.status(400).json({ error: 'Ya no se pueden agregar más niveles aquí.' });
+    }
+    const maxOrden = await pool.query(
+      'SELECT COALESCE(MAX(orden), 0) + 1 AS siguiente FROM menu_navegacion WHERE padre_id IS NOT DISTINCT FROM $1',
+      [padre_id || null]
+    );
+    const resultado = await pool.query(
+      'INSERT INTO menu_navegacion (padre_id, nivel, titulo, enlace, orden) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [padre_id || null, nivel, titulo.trim(), enlace?.trim() || null, maxOrden.rows[0].siguiente]
+    );
+    res.status(201).json({ ...resultado.rows[0], hijos: [] });
+  } catch (error) {
+    console.error('POST /api/admin/menu-navegacion:', error);
+    res.status(500).json({ error: 'No se pudo crear el elemento.' });
+  }
+});
+
+app.patch('/api/admin/menu-navegacion/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  const campos = []; const valores = []; let i = 1;
+  if (typeof req.body.titulo === 'string' && req.body.titulo.trim()) { campos.push(`titulo=$${i++}`); valores.push(req.body.titulo.trim()); }
+  if ('enlace' in req.body) { campos.push(`enlace=$${i++}`); valores.push(req.body.enlace?.trim() || null); }
+  if (typeof req.body.activo === 'boolean') { campos.push(`activo=$${i++}`); valores.push(req.body.activo); }
+  if (campos.length === 0) return res.status(400).json({ error: 'No hay cambios para guardar.' });
+  valores.push(id);
+  try {
+    const resultado = await pool.query(`UPDATE menu_navegacion SET ${campos.join(', ')} WHERE id=$${i} RETURNING *`, valores);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Elemento no encontrado.' });
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    console.error('PATCH /api/admin/menu-navegacion/:id:', error);
+    res.status(500).json({ error: 'No se pudo actualizar.' });
+  }
+});
+
+app.post('/api/admin/menu-navegacion/reordenar', requireAuth, async (req, res) => {
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || ids.some(id => !Number.isInteger(id))) {
+    return res.status(400).json({ error: 'Se esperaba una lista de IDs.' });
+  }
+  try {
+    for (let pos = 0; pos < ids.length; pos++) {
+      await pool.query('UPDATE menu_navegacion SET orden=$1 WHERE id=$2', [pos + 1, ids[pos]]);
+    }
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('POST /api/admin/menu-navegacion/reordenar:', error);
+    res.status(500).json({ error: 'No se pudo guardar el nuevo orden.' });
+  }
+});
+
+app.delete('/api/admin/menu-navegacion/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const resultado = await pool.query('DELETE FROM menu_navegacion WHERE id=$1', [id]);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Elemento no encontrado.' });
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/menu-navegacion/:id:', error);
+    res.status(500).json({ error: 'No se pudo eliminar.' });
+  }
+});
+
+// Categorías y subcategorías realmente usadas en el catálogo -- se usa para
+// llenar el menú desplegable de "a dónde lleva" en el editor de tarjetas y
+// del menú, y se mantiene solo con lo que de verdad existe en tus productos.
+app.get('/api/admin/categorias-disponibles', requireAuth, async (req, res) => {
+  try {
+    const categorias = await pool.query(
+      "SELECT DISTINCT categoria FROM arreglos_florales WHERE categoria IS NOT NULL AND categoria <> '' ORDER BY categoria"
+    );
+    const subcategorias = await pool.query(
+      "SELECT DISTINCT categoria, subcategoria FROM arreglos_florales WHERE subcategoria IS NOT NULL AND subcategoria <> '' ORDER BY categoria, subcategoria"
+    );
+    res.json({
+      categorias: categorias.rows.map(f => f.categoria),
+      subcategorias: subcategorias.rows.map(f => ({ categoria: f.categoria, subcategoria: f.subcategoria }))
+    });
+  } catch (error) {
+    console.error('GET /api/admin/categorias-disponibles:', error);
+    res.status(500).json({ error: 'No se pudieron cargar las categorías.' });
   }
 });
 
