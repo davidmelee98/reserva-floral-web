@@ -14,6 +14,47 @@ const { Resend } = require('resend');
 const { OAuth2Client } = require('google-auth-library');
 
 const app = express();
+
+// Taxonomía del catálogo: categoría > subcategoría > tipo. Es la misma que
+// se usa para clasificar cada producto en el panel (Catálogo > editar
+// producto) y para armar el menú del sitio -- una sola fuente de verdad,
+// para que un enlace del menú y la clasificación real de un producto
+// siempre sean la misma cosa.
+const TAXONOMIA_CATALOGO = {
+  'Cumpleaños': {
+    'Flores y Plantas': ['Todas las flores', 'Rosas', 'Gerberas', 'Tulipanes', 'Orquídeas', 'Combinados', 'Premium', 'Plantas'],
+    'Globos': ['Todos los globos', 'Globos Personalizados', 'Combos con globo'],
+    'Regalos': ['Joyería', 'Peluches', 'Belleza y Fragancias', 'Velas', 'Diarios y Agendas'],
+    'Para quién': ['Para Ella', 'Para Él', 'Para Mamá', 'Para Papá', 'Para Niños']
+  },
+  'Ocasiones': {
+    'Celebraciones': ['Amor/Aniversario', 'Cumpleaños', 'Gracias', 'Nacimiento', 'Graduación', 'Logros', 'Felicitaciones', 'Solo porque sí'],
+    'Condolencias': ['Servicios Funerarios', 'Consuelo en Casa'],
+    'Momentos Difíciles': ['Mejórate pronto', 'Perdón']
+  },
+  'Flores y plantas': {
+    'Flores': ['Combinados', 'Gerberas', 'Girasoles', 'Lilys y Stargazer', 'Orquídeas', 'Rosas', 'Tulipanes y Cala Lilies'],
+    'Por presentación': ['Ramos', 'Jarrón', 'Cajas', 'Coronas Funerarias', 'Canastas'],
+    'Premium': ['Flores premium'],
+    'Condolencias': ['Servicios Funerarios', 'Consuelo en Casa'],
+    'Plantas': ['Mini plantas', 'Plantas medianas', 'Plantas con regalos']
+  },
+  'Globos': {
+    'Por ocasión': ['Cumpleaños', 'Graduación', 'Nacimiento', 'Just Because', 'Mejórate Pronto'],
+    'Por Tipo': ['Metálicos', 'Esfera', 'Burbuja', 'Ramilletes', 'Combos'],
+    'Para quién': ['Para ella', 'Para Él']
+  },
+  'Regalos': {
+    'Para quién': ['Para Ella', 'Para Él', 'Para Mamá', 'Para Papá'],
+    'Otros Regalos': ['Diarios y Agendas', 'Certificados'],
+    'Joyería': ['Collares', 'Pulseras', 'Aretes', 'Sets', 'Combos'],
+    'Peluches': ['Osos', 'Otros Peluches', 'Combos de peluches'],
+    'Belleza y Fragancias': ['Mascarillas', 'Cremas', 'Sets de Belleza', 'Perfumes', 'Combos'],
+    'Velas': ['Velas y Aromas'],
+    'Regalos Corporativos': ['Personalizados', 'Flores y Plantas', 'Cajas de Regalo']
+  }
+};
+
 const port = Number(process.env.PORT) || 3000;
 
 app.set('trust proxy', 1);
@@ -420,132 +461,44 @@ async function inicializarDB() {
     await pool.query(`DELETE FROM configuracion WHERE clave LIKE 'carrusel_categoria_%' OR clave LIKE 'carrusel_ocasion_%'`);
   }
 
+
+
   // Semilla del menú de navegación (las 6 pestañas de arriba y todos sus
-  // submenús). Antes, casi todos los enlaces de este menú eran "#" -- no
-  // hacían nada. Aquí quedan ya conectados de verdad: a una categoría real
-  // cuando existe, o a una búsqueda por palabra cuando es más específico
-  // (ej. "Rosas", una ocasión). El negocio puede corregir, agregar o quitar
-  // cualquiera de estos desde el panel sin tocar código.
+  // submenús), usando exactamente la misma taxonomía categoría > subcategoría
+  // > tipo con la que se etiquetan los productos en el panel (TAXONOMIA_CATALOGO,
+  // más abajo en este archivo). Así, un enlace del menú y la clasificación real
+  // de un producto son la misma cosa -- no una búsqueda por palabra.
   const menuExistente = await pool.query('SELECT COUNT(*)::int AS n FROM menu_navegacion');
   if (menuExistente.rows[0].n === 0) {
-    async function crearPestaña(titulo, enlace, orden, columnas) {
+    async function crearPestaña(titulo, categoria, orden, columnas) {
       const pestaña = await pool.query(
         'INSERT INTO menu_navegacion (padre_id, nivel, titulo, enlace, orden) VALUES (NULL,0,$1,$2,$3) RETURNING id',
-        [titulo, enlace, orden]
+        [titulo, categoria ? '/?categoria=' + encodeURIComponent(categoria) : '/', orden]
       );
       const pestañaId = pestaña.rows[0].id;
-      for (let i = 0; i < columnas.length; i++) {
-        const [tituloColumna, enlaces] = columnas[i];
+      let i = 0;
+      for (const [subcategoria, tipos] of Object.entries(columnas)) {
+        i++;
         const columna = await pool.query(
-          'INSERT INTO menu_navegacion (padre_id, nivel, titulo, enlace, orden) VALUES ($1,1,$2,NULL,$3) RETURNING id',
-          [pestañaId, tituloColumna, i + 1]
+          'INSERT INTO menu_navegacion (padre_id, nivel, titulo, enlace, orden) VALUES ($1,1,$2,$3,$4) RETURNING id',
+          [pestañaId, subcategoria, categoria ? '/?categoria=' + encodeURIComponent(categoria) + '&subcategoria=' + encodeURIComponent(subcategoria) : null, i]
         );
         const columnaId = columna.rows[0].id;
-        for (let j = 0; j < enlaces.length; j++) {
-          const [tituloEnlace, urlEnlace] = enlaces[j];
+        for (let j = 0; j < tipos.length; j++) {
+          const enlace = '/?categoria=' + encodeURIComponent(categoria) + '&subcategoria=' + encodeURIComponent(subcategoria) + '&subsubcategoria=' + encodeURIComponent(tipos[j]);
           await pool.query(
             'INSERT INTO menu_navegacion (padre_id, nivel, titulo, enlace, orden) VALUES ($1,2,$2,$3,$4)',
-            [columnaId, tituloEnlace, urlEnlace, j + 1]
+            [columnaId, tipos[j], enlace, j + 1]
           );
         }
       }
     }
 
-    await crearPestaña('Inicio', '/', 1, []);
-
-    await crearPestaña('Cumpleaños', '/?buscar=Cumplea%C3%B1os', 2, [
-      ['Flores y Plantas', [
-        ['Todas las flores', '/?categoria=Flores%20y%20plantas'], ['Rosas', '/?buscar=Rosas'], ['Gerberas', '/?buscar=Gerberas'],
-        ['Tulipanes', '/?buscar=Tulipanes'], ['Orquídeas', '/?buscar=Orqu%C3%ADdeas'], ['Combinados', '/?buscar=Combinado'],
-        ['Premium', '/?buscar=Premium'], ['Plantas', '/?buscar=Planta']
-      ]],
-      ['Globos', [
-        ['Todos los globos', '/?categoria=Globos'], ['Globos Personalizados', '/?buscar=Personalizado'], ['Combos con globo', '/?buscar=Combo']
-      ]],
-      ['Regalos', [
-        ['Joyería', '/?buscar=Joyer%C3%ADa'], ['Peluches', '/?buscar=Peluche'], ['Belleza y Fragancias', '/?buscar=Belleza'],
-        ['Velas', '/?buscar=Vela'], ['Diarios y Agendas', '/?buscar=Diario']
-      ]],
-      ['Para quién', [
-        ['Para Ella', '/?buscar=Ella'], ['Para Él', '/?buscar=%C3%89l'], ['Para Mamá', '/?buscar=Mam%C3%A1'],
-        ['Para Papá', '/?buscar=Pap%C3%A1'], ['Para Niños', '/?buscar=Ni%C3%B1o']
-      ]]
-    ]);
-
-    await crearPestaña('Ocasiones', '/', 3, [
-      ['Celebraciones', [
-        ['Amor/Aniversario', '/?buscar=Aniversario'], ['Cumpleaños', '/?buscar=Cumplea%C3%B1os'], ['Gracias', '/?buscar=Gracias'],
-        ['Nacimiento', '/?buscar=Nacimiento'], ['Graduación', '/?buscar=Graduaci%C3%B3n'], ['Logros', '/?buscar=Logro'],
-        ['Felicitaciones', '/?buscar=Felicidades'], ['Solo porque sí', '/?buscar=Sorpresa']
-      ]],
-      ['Condolencias', [
-        ['Servicios Funerarios', '/?buscar=Funeral'], ['Consuelo en Casa', '/?buscar=Consuelo']
-      ]],
-      ['Momentos Difíciles', [
-        ['Mejórate pronto', '/?buscar=Mej%C3%B3rate'], ['Perdón', '/?buscar=Perd%C3%B3n']
-      ]]
-    ]);
-
-    await crearPestaña('Flores y plantas', '/?categoria=Flores%20y%20plantas', 4, [
-      ['Flores', [
-        ['Combinados', '/?buscar=Combinado'], ['Gerberas', '/?buscar=Gerbera'], ['Girasoles', '/?buscar=Girasol'],
-        ['Lilys y Stargazer', '/?buscar=Lily'], ['Orquídeas', '/?buscar=Orqu%C3%ADdea'], ['Rosas', '/?buscar=Rosa'],
-        ['Tulipanes y Cala Lilies', '/?buscar=Tulip%C3%A1n']
-      ]],
-      ['Por presentación', [
-        ['Ramos', '/?buscar=Ramo'], ['Jarrón', '/?buscar=Jarr%C3%B3n'], ['Cajas', '/?buscar=Caja'],
-        ['Coronas Funerarias', '/?buscar=Corona'], ['Canastas', '/?buscar=Canasta']
-      ]],
-      ['Premium', [
-        ['Flores premium', '/?buscar=Premium']
-      ]],
-      ['Condolencias', [
-        ['Servicios Funerarios', '/?buscar=Funeral'], ['Consuelo en Casa', '/?buscar=Consuelo']
-      ]],
-      ['Plantas', [
-        ['Mini plantas', '/?buscar=Mini%20planta'], ['Plantas medianas', '/?buscar=Planta%20mediana'], ['Plantas con regalos', '/?buscar=Planta%20regalo']
-      ]]
-    ]);
-
-    await crearPestaña('Globos', '/?categoria=Globos', 5, [
-      ['Por ocasión', [
-        ['Cumpleaños', '/?buscar=Cumplea%C3%B1os'], ['Graduación', '/?buscar=Graduaci%C3%B3n'], ['Nacimiento', '/?buscar=Nacimiento'],
-        ['Just Because', '/?buscar=Sorpresa'], ['Mejórate Pronto', '/?buscar=Mej%C3%B3rate']
-      ]],
-      ['Por Tipo', [
-        ['Metálicos', '/?buscar=Met%C3%A1lico'], ['Esfera', '/?buscar=Esfera'], ['Burbuja', '/?buscar=Burbuja'],
-        ['Ramilletes', '/?buscar=Ramillete'], ['Combos', '/?buscar=Combo']
-      ]],
-      ['Para quién', [
-        ['Para ella', '/?buscar=Ella'], ['Para Él', '/?buscar=%C3%89l']
-      ]]
-    ]);
-
-    await crearPestaña('Regalos', '/?categoria=Regalos', 6, [
-      ['Para quién', [
-        ['Para Ella', '/?buscar=Ella'], ['Para Él', '/?buscar=%C3%89l'], ['Para Mamá', '/?buscar=Mam%C3%A1'], ['Para Papá', '/?buscar=Pap%C3%A1']
-      ]],
-      ['Otros Regalos', [
-        ['Diarios y Agendas', '/?buscar=Diario'], ['Certificados', '/?buscar=Certificado']
-      ]],
-      ['Joyería', [
-        ['Collares', '/?buscar=Collar'], ['Pulseras', '/?buscar=Pulsera'], ['Aretes', '/?buscar=Arete'],
-        ['Sets', '/?buscar=Set'], ['Combos', '/?buscar=Combo']
-      ]],
-      ['Peluches', [
-        ['Osos', '/?buscar=Oso'], ['Otros Peluches', '/?buscar=Peluche'], ['Combos de peluches', '/?buscar=Combo%20peluche']
-      ]],
-      ['Belleza y Fragancias', [
-        ['Mascarillas', '/?buscar=Mascarilla'], ['Cremas', '/?buscar=Crema'], ['Sets de Belleza', '/?buscar=Set%20belleza'],
-        ['Perfumes', '/?buscar=Perfume'], ['Combos', '/?buscar=Combo']
-      ]],
-      ['Velas', [
-        ['Velas y Aromas', '/?buscar=Vela']
-      ]],
-      ['Regalos Corporativos', [
-        ['Personalizados', '/pedidos-corporativos'], ['Flores y Plantas', '/pedidos-corporativos'], ['Cajas de Regalo', '/pedidos-corporativos']
-      ]]
-    ]);
+    await crearPestaña('Inicio', null, 1, {});
+    let orden = 2;
+    for (const [categoria, columnas] of Object.entries(TAXONOMIA_CATALOGO)) {
+      await crearPestaña(categoria, categoria, orden++, columnas);
+    }
   }
 
   console.log('Base de datos lista.');
@@ -2375,21 +2328,7 @@ app.delete('/api/admin/menu-navegacion/:id', requireAuth, async (req, res) => {
 // llenar el menú desplegable de "a dónde lleva" en el editor de tarjetas y
 // del menú, y se mantiene solo con lo que de verdad existe en tus productos.
 app.get('/api/admin/categorias-disponibles', requireAuth, async (req, res) => {
-  try {
-    const categorias = await pool.query(
-      "SELECT DISTINCT categoria FROM arreglos_florales WHERE categoria IS NOT NULL AND categoria <> '' ORDER BY categoria"
-    );
-    const subcategorias = await pool.query(
-      "SELECT DISTINCT categoria, subcategoria FROM arreglos_florales WHERE subcategoria IS NOT NULL AND subcategoria <> '' ORDER BY categoria, subcategoria"
-    );
-    res.json({
-      categorias: categorias.rows.map(f => f.categoria),
-      subcategorias: subcategorias.rows.map(f => ({ categoria: f.categoria, subcategoria: f.subcategoria }))
-    });
-  } catch (error) {
-    console.error('GET /api/admin/categorias-disponibles:', error);
-    res.status(500).json({ error: 'No se pudieron cargar las categorías.' });
-  }
+  res.json(TAXONOMIA_CATALOGO);
 });
 
 // ---------------------------------------------------------------------------

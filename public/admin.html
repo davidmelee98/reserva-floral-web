@@ -944,9 +944,10 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
 
     const TAXONOMIA = {
         "Cumpleaños": {
-            "Celebraciones": ["Amor/Aniversario", "Cumpleaños", "Gracias", "Nacimiento", "Graduación", "Logros", "Felicitaciones", "Solo porque sí"],
-            "Condolencias": ["Servicios Funerarios", "Consuelo en Casa"],
-            "Momentos Difíciles": ["Mejórate pronto", "Perdón"]
+            "Flores y Plantas": ["Todas las flores", "Rosas", "Gerberas", "Tulipanes", "Orquídeas", "Combinados", "Premium", "Plantas"],
+            "Globos": ["Todos los globos", "Globos Personalizados", "Combos con globo"],
+            "Regalos": ["Joyería", "Peluches", "Belleza y Fragancias", "Velas", "Diarios y Agendas"],
+            "Para quién": ["Para Ella", "Para Él", "Para Mamá", "Para Papá", "Para Niños"]
         },
         "Ocasiones": {
             "Celebraciones": ["Amor/Aniversario", "Cumpleaños", "Gracias", "Nacimiento", "Graduación", "Logros", "Felicitaciones", "Solo porque sí"],
@@ -955,7 +956,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         },
         "Flores y plantas": {
             "Flores": ["Combinados", "Gerberas", "Girasoles", "Lilys y Stargazer", "Orquídeas", "Rosas", "Tulipanes y Cala Lilies"],
-            "Por presentación": ["Ramos", "Jarrón", "Cajas", "Coronas Funerarias", "Canecas"],
+            "Por presentación": ["Ramos", "Jarrón", "Cajas", "Coronas Funerarias", "Canastas"],
             "Premium": ["Flores premium"],
             "Condolencias": ["Servicios Funerarios", "Consuelo en Casa"],
             "Plantas": ["Mini plantas", "Plantas medianas", "Plantas con regalos"]
@@ -963,16 +964,16 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         "Globos": {
             "Por ocasión": ["Cumpleaños", "Graduación", "Nacimiento", "Just Because", "Mejórate Pronto"],
             "Por Tipo": ["Metálicos", "Esfera", "Burbuja", "Ramilletes", "Combos"],
-            "Para quién": ["Para ella", "Para él"]
+            "Para quién": ["Para ella", "Para Él"]
         },
         "Regalos": {
             "Para quién": ["Para Ella", "Para Él", "Para Mamá", "Para Papá"],
+            "Otros Regalos": ["Diarios y Agendas", "Certificados"],
             "Joyería": ["Collares", "Pulseras", "Aretes", "Sets", "Combos"],
             "Peluches": ["Osos", "Otros Peluches", "Combos de peluches"],
             "Belleza y Fragancias": ["Mascarillas", "Cremas", "Sets de Belleza", "Perfumes", "Combos"],
             "Velas": ["Velas y Aromas"],
-            "Regalos Corporativos": ["Personalizados", "Flores y Plantas", "Cajas de Regalo"],
-            "Otros Regalos": ["Diarios y Agendas", "Certificados"]
+            "Regalos Corporativos": ["Personalizados", "Flores y Plantas", "Cajas de Regalo"]
         }
     };
 
@@ -2223,14 +2224,21 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
 
     async function cargarCategoriasDisponibles() {
         try {
-            const datos = await jsonOError(await fetch('/api/admin/categorias-disponibles'));
+            const taxonomia = await jsonOError(await fetch('/api/admin/categorias-disponibles'));
             const partes = [];
-            datos.categorias.forEach(cat => {
-                partes.push(`<option value="/?categoria=${encodeURIComponent(cat)}">Categoría: ${escaparHtmlAdmin(cat)}</option>`);
-            });
-            datos.subcategorias.forEach(({ categoria, subcategoria }) => {
-                partes.push(`<option value="/?buscar=${encodeURIComponent(subcategoria)}">Subcategoría: ${escaparHtmlAdmin(subcategoria)} (${escaparHtmlAdmin(categoria)})</option>`);
-            });
+            for (const [categoria, subcategorias] of Object.entries(taxonomia)) {
+                partes.push(`<optgroup label="${escaparHtmlAdmin(categoria)}">`);
+                partes.push(`<option value="/?categoria=${encodeURIComponent(categoria)}">Toda la categoría: ${escaparHtmlAdmin(categoria)}</option>`);
+                for (const [subcategoria, tipos] of Object.entries(subcategorias)) {
+                    const enlaceSub = `/?categoria=${encodeURIComponent(categoria)}&subcategoria=${encodeURIComponent(subcategoria)}`;
+                    partes.push(`<option value="${enlaceSub}">${escaparHtmlAdmin(categoria)} → ${escaparHtmlAdmin(subcategoria)}</option>`);
+                    tipos.forEach(tipo => {
+                        const enlaceTipo = `${enlaceSub}&subsubcategoria=${encodeURIComponent(tipo)}`;
+                        partes.push(`<option value="${enlaceTipo}">${escaparHtmlAdmin(categoria)} → ${escaparHtmlAdmin(subcategoria)} → ${escaparHtmlAdmin(tipo)}</option>`);
+                    });
+                }
+                partes.push('</optgroup>');
+            }
             partes.push('<option value="/">Página de inicio (sin filtro)</option>');
             partes.push('<option value="/pedidos-corporativos">Pedidos corporativos</option>');
             partes.push('<option value="personalizado">Otro (escribir abajo)</option>');

@@ -1118,15 +1118,19 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
         window.buscarEnCatalogo = buscarEnCatalogo;
 
-        async function cargarInventario(filtroCategoria = null) {
+        async function cargarInventario(filtroCategoria = null, filtroSubcategoria = null, filtroSubsubcategoria = null) {
             try {
                 const respuesta = await fetch('/api/catalogo');
                 todosLosArreglos = await respuesta.json();
                 let arreglos = todosLosArreglos;
 
-                if (filtroCategoria) {
-                    arreglos = arreglos.filter(arreglo => arreglo.categoria === filtroCategoria);
-                    document.getElementById('titulo-catalogo').innerText = "Colección: " + filtroCategoria;
+                if (filtroCategoria || filtroSubcategoria || filtroSubsubcategoria) {
+                    if (filtroCategoria) arreglos = arreglos.filter(a => a.categoria === filtroCategoria);
+                    if (filtroSubcategoria) arreglos = arreglos.filter(a => a.subcategoria === filtroSubcategoria);
+                    if (filtroSubsubcategoria) arreglos = arreglos.filter(a => a.subsubcategoria === filtroSubsubcategoria);
+
+                    const partesTitulo = [filtroCategoria, filtroSubcategoria, filtroSubsubcategoria].filter(Boolean);
+                    document.getElementById('titulo-catalogo').innerText = partesTitulo.length ? partesTitulo.join(' · ') : 'Colección';
                 } else {
                     document.getElementById('titulo-catalogo').innerText = "Flores y regalos en tendencia";
                     arreglos = filtrarTrendingRF(arreglos, filtroTrendingActualRF);
@@ -1138,7 +1142,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 contenedor.innerHTML = '';
 
                 if (arreglos.length === 0) {
-                    contenedor.innerHTML = '<p class="text-gray-500 py-10">No hay arreglos disponibles en esta categoría por el momento.</p>';
+                    contenedor.innerHTML = '<p class="text-gray-500 py-10">Todavía no hay arreglos en esta colección. Vuelve pronto.</p>';
                     actualizarFlechasFavoritosRF();
                     return;
                 }
@@ -2453,8 +2457,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         (function aplicarCategoriaDesdeUrl() {
             const parametros = new URLSearchParams(window.location.search);
             const categoria = parametros.get('categoria');
-            if (categoria) {
-                cargarInventario(categoria);
+            const subcategoria = parametros.get('subcategoria');
+            const subsubcategoria = parametros.get('subsubcategoria');
+            if (categoria || subcategoria || subsubcategoria) {
+                cargarInventario(categoria, subcategoria, subsubcategoria);
                 document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
             }
         })();
