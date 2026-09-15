@@ -428,7 +428,13 @@ async function inicializarDB() {
   // muestra de siempre. El enlace de cada una ya usa el formato que sí
   // filtra el catálogo (antes usaban rutas que no hacían nada).
   const carruselesExistentes = await pool.query("SELECT COUNT(*)::int AS n FROM carruseles_inicio");
-  if (carruselesExistentes.rows[0].n === 0) {
+  const carruselesConBusquedaVieja = await pool.query("SELECT COUNT(*)::int AS n FROM carruseles_inicio WHERE enlace LIKE '%buscar=%'");
+  if (carruselesConBusquedaVieja.rows[0].n > 0) {
+    // Quedaron guardados enlaces de una versión anterior que buscaban por
+    // palabra en vez de filtrar de verdad -- se corrigen solos, una vez.
+    await pool.query('DELETE FROM carruseles_inicio');
+  }
+  if (carruselesExistentes.rows[0].n === 0 || carruselesConBusquedaVieja.rows[0].n > 0) {
     const cfgPrevia = await pool.query('SELECT clave, valor FROM configuracion');
     const cfg = {};
     cfgPrevia.rows.forEach(fila => { cfg[fila.clave] = fila.valor; });
@@ -443,12 +449,12 @@ async function inicializarDB() {
       ['Desde $249', cfg.carrusel_categoria_desde249 || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=900&auto=format&fit=crop', '/', 7]
     ];
     const ocasionesIniciales = [
-      ['Cumpleaños', cfg.carrusel_ocasion_cumpleanos || 'https://images.unsplash.com/photo-1464349153735-e0c7500ce7e0?q=80&w=900&auto=format&fit=crop', '/?buscar=Cumplea%C3%B1os', 1],
-      ['Amor y Aniversario', cfg.carrusel_ocasion_amor || 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?q=80&w=900&auto=format&fit=crop', '/?buscar=Amor', 2],
-      ['Condolencias', cfg.carrusel_ocasion_condolencias || 'https://images.unsplash.com/photo-1587594905449-2b4ca337d2f1?q=80&w=900&auto=format&fit=crop', '/?buscar=Condolencias', 3],
-      ['Gracias', cfg.carrusel_ocasion_gracias || 'https://images.unsplash.com/photo-1487070183336-b863922373d4?q=80&w=900&auto=format&fit=crop', '/?buscar=Gracias', 4],
-      ['Bride to be', cfg.carrusel_ocasion_bride || 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?q=80&w=900&auto=format&fit=crop', '/?buscar=Bride', 5],
-      ['Mejórate pronto', cfg.carrusel_ocasion_mejorate || 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=900&auto=format&fit=crop', '/?buscar=Mejorate', 6]
+      ['Cumpleaños', cfg.carrusel_ocasion_cumpleanos || 'https://images.unsplash.com/photo-1464349153735-e0c7500ce7e0?q=80&w=900&auto=format&fit=crop', '/?categoria=Ocasiones&subcategoria=Celebraciones&subsubcategoria=Cumplea%C3%B1os', 1],
+      ['Amor y Aniversario', cfg.carrusel_ocasion_amor || 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?q=80&w=900&auto=format&fit=crop', '/?categoria=Ocasiones&subcategoria=Celebraciones&subsubcategoria=Amor%2FAniversario', 2],
+      ['Condolencias', cfg.carrusel_ocasion_condolencias || 'https://images.unsplash.com/photo-1587594905449-2b4ca337d2f1?q=80&w=900&auto=format&fit=crop', '/?categoria=Ocasiones&subcategoria=Condolencias', 3],
+      ['Gracias', cfg.carrusel_ocasion_gracias || 'https://images.unsplash.com/photo-1487070183336-b863922373d4?q=80&w=900&auto=format&fit=crop', '/?categoria=Ocasiones&subcategoria=Celebraciones&subsubcategoria=Gracias', 4],
+      ['Bride to be', cfg.carrusel_ocasion_bride || 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?q=80&w=900&auto=format&fit=crop', '/?categoria=Ocasiones', 5],
+      ['Mejórate pronto', cfg.carrusel_ocasion_mejorate || 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=900&auto=format&fit=crop', '/?categoria=Ocasiones&subcategoria=Momentos%20Dif%C3%ADciles&subsubcategoria=Mejórate%20pronto', 6]
     ];
     for (const [titulo, imagen, enlace, orden] of categoriasIniciales) {
       await pool.query('INSERT INTO carruseles_inicio (carrusel, titulo, imagen_url, enlace, orden) VALUES ($1,$2,$3,$4,$5)', ['categorias', titulo, imagen, enlace, orden]);
@@ -469,7 +475,13 @@ async function inicializarDB() {
   // más abajo en este archivo). Así, un enlace del menú y la clasificación real
   // de un producto son la misma cosa -- no una búsqueda por palabra.
   const menuExistente = await pool.query('SELECT COUNT(*)::int AS n FROM menu_navegacion');
-  if (menuExistente.rows[0].n === 0) {
+  const menuConBusquedaVieja = await pool.query("SELECT COUNT(*)::int AS n FROM menu_navegacion WHERE enlace LIKE '%buscar=%'");
+  if (menuConBusquedaVieja.rows[0].n > 0) {
+    // Igual que arriba: se corrige solo, una vez, si quedó algo de una
+    // versión anterior que usaba búsqueda por palabra en vez de un filtro real.
+    await pool.query('DELETE FROM menu_navegacion');
+  }
+  if (menuExistente.rows[0].n === 0 || menuConBusquedaVieja.rows[0].n > 0) {
     async function crearPestaña(titulo, categoria, orden, columnas) {
       const pestaña = await pool.query(
         'INSERT INTO menu_navegacion (padre_id, nivel, titulo, enlace, orden) VALUES (NULL,0,$1,$2,$3) RETURNING id',
