@@ -1848,10 +1848,6 @@ app.post('/api/pagos/webhook', async (req, res) => {
   }
 });
 
-app.get('/categoria/*splat', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'categoria.html'));
-});
-
 // ---------------------------------------------------------------------------
 // Panel de administración: pedidos
 // ---------------------------------------------------------------------------
@@ -2230,6 +2226,12 @@ function construirArbolMenu(filas) {
   return raiz;
 }
 
+// Taxonomía pública (categoría > subcategoría > tipo): la usa el front para
+// reconocer las rutas tipo /estado/ciudad/categoria/subcategoria/tipo.
+app.get('/api/taxonomia', (req, res) => {
+  res.json(TAXONOMIA_CATALOGO);
+});
+
 app.get('/api/menu-navegacion', async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM menu_navegacion WHERE activo=true ORDER BY orden ASC, id ASC');
@@ -2461,10 +2463,23 @@ app.put('/api/admin/configuracion', requireAuth, requireAdmin, async (req, res) 
 });
 
 // Enlaces tipo /producto/123 abren index.html, que los detecta y muestra el
-// producto correspondiente. Cualquier otra ruta que no exista de verdad
-// (archivo estático o esta excepción) recibe un 404 real, no la portada.
+// producto correspondiente. Lo mismo para /estado/ciudad/categoria/... (ej.
+// /tamaulipas/tampico/cumpleanos/flores-y-plantas/rosas): el navegador ya
+// hizo su parte al no encontrar coincidencia en ninguna ruta de arriba, así
+// que si "parece" una de estas rutas (2 a 5 tramos, sin puntos ni mayúsculas
+// raras) se sirve el mismo cascarón y el front arma el filtro leyendo la URL.
+// Cualquier otra ruta que no exista de verdad recibe un 404 real.
+function pareceRutaUbicacionCategoria(ruta) {
+  const tramos = ruta.replace(/^\/+|\/+$/g, '').split('/');
+  if (tramos.length < 2 || tramos.length > 5) return false;
+  return tramos.every(t => t.length > 0 && !t.includes('.'));
+}
+
 app.get(/.*/, (req, res) => {
   if (/^\/producto\/\d+\/?$/.test(req.path)) {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+  if (pareceRutaUbicacionCategoria(req.path)) {
     return res.sendFile(path.join(__dirname, 'public', 'index.html'));
   }
   res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));

@@ -913,6 +913,42 @@ function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[
             return String(str ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
         }
 
+        // --- Rutas "bonitas" por ubicación + categoría --------------------
+        // Todo enlace de categoría se guarda como "/?categoria=X&subcategoria=Y
+        // &subsubcategoria=Z" (funciona siempre, en cualquier página). Aquí lo
+        // convertimos a "/estado/ciudad/categoria/subcategoria/tipo" usando la
+        // ubicación que el cliente ya tenga guardada -- si no la tiene, se deja
+        // el enlace de siempre, que sigue funcionando igual.
+        function slugRF(texto) {
+            return String(texto ?? '')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+        function leerUbicacionActualRF() {
+            try {
+                const datos = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null');
+                return (datos && datos.estado && datos.ciudad) ? datos : null;
+            } catch (_) { return null; }
+        }
+        function construirRutaDesdeEnlaceRF(enlaceSemantico) {
+            if (!enlaceSemantico || !enlaceSemantico.startsWith('/?')) return enlaceSemantico;
+            const params = new URLSearchParams(enlaceSemantico.slice(2));
+            const categoria = params.get('categoria');
+            if (!categoria) return enlaceSemantico;
+            const ubicacion = leerUbicacionActualRF();
+            if (!ubicacion) return enlaceSemantico;
+            const partes = [slugRF(ubicacion.estado), slugRF(ubicacion.ciudad), slugRF(categoria)];
+            const subcategoria = params.get('subcategoria');
+            const subsubcategoria = params.get('subsubcategoria');
+            if (subcategoria) partes.push(slugRF(subcategoria));
+            if (subsubcategoria) partes.push(slugRF(subsubcategoria));
+            return '/' + partes.join('/');
+        }
+        window.construirRutaDesdeEnlaceRF = construirRutaDesdeEnlaceRF;
+        window.leerUbicacionActualRF = leerUbicacionActualRF;
+
         function pintarMenuDesktop(tabs) {
             const cont = document.getElementById('rf-menu-navegacion-desktop');
             if (!cont) return;
@@ -921,7 +957,7 @@ function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[
                 const tieneSubmenu = columnas.length > 0;
                 return `
                     <li class="nav-item group">
-                        <a href="${escaparHtmlMenuRF(tab.enlace || '/')}" class="nav-link block px-4 py-3 hover:text-brandFuchsia ${tieneSubmenu ? 'cursor-default' : ''} font-medium relative h-full flex items-center">
+                        <a href="${escaparHtmlMenuRF(construirRutaDesdeEnlaceRF(tab.enlace || '/'))}" data-enlace-semantico="${escaparHtmlMenuRF(tab.enlace || '/')}" class="nav-link block px-4 py-3 hover:text-brandFuchsia ${tieneSubmenu ? 'cursor-default' : ''} font-medium relative h-full flex items-center">
                             ${escaparHtmlMenuRF(tab.titulo)}
                             <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                         </a>
@@ -933,13 +969,13 @@ function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[
                                         <div>
                                             <h4 class="font-semibold text-brandDark mb-4">${escaparHtmlMenuRF(col.titulo)}</h4>
                                             <ul class="space-y-3 text-sm text-gray-600">
-                                                ${(col.hijos || []).map(link => `<li><a href="${escaparHtmlMenuRF(link.enlace || '#')}" class="hover:text-brandFuchsia">${escaparHtmlMenuRF(link.titulo)}</a></li>`).join('')}
+                                                ${(col.hijos || []).map(link => `<li><a href="${escaparHtmlMenuRF(construirRutaDesdeEnlaceRF(link.enlace || '#'))}" data-enlace-semantico="${escaparHtmlMenuRF(link.enlace || '#')}" class="hover:text-brandFuchsia">${escaparHtmlMenuRF(link.titulo)}</a></li>`).join('')}
                                             </ul>
                                         </div>
                                     `).join('')}
                                 </div>
                                 <div class="mt-6">
-                                    <a href="${escaparHtmlMenuRF(tab.enlace || '/')}" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo &gt;</a>
+                                    <a href="${escaparHtmlMenuRF(construirRutaDesdeEnlaceRF(tab.enlace || '/'))}" data-enlace-semantico="${escaparHtmlMenuRF(tab.enlace || '/')}" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo &gt;</a>
                                 </div>
                             </div>
                         </div>` : ''}
@@ -955,20 +991,36 @@ function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[
             const raiz = { label: 'Categorías', children: [] };
             tabs.forEach(tab => {
                 if (!tab.hijos || tab.hijos.length === 0) {
-                    raiz.children.push({ label: tab.titulo, href: tab.enlace || '/' });
+                    raiz.children.push({ label: tab.titulo, href: construirRutaDesdeEnlaceRF(tab.enlace || '/') });
                 } else {
                     raiz.children.push({
                         label: tab.titulo,
-                        href: tab.enlace || null,
+                        href: tab.enlace ? construirRutaDesdeEnlaceRF(tab.enlace) : null,
                         children: tab.hijos.map(col => ({
                             label: col.titulo,
-                            children: (col.hijos || []).map(link => ({ label: link.titulo, href: link.enlace || '#' }))
+                            children: (col.hijos || []).map(link => ({ label: link.titulo, href: construirRutaDesdeEnlaceRF(link.enlace || '#') }))
                         }))
                     });
                 }
             });
             return { 'Categorías': raiz.children };
         }
+
+        // Si no hay ubicación guardada todavía y esta página sí tiene el
+        // modal de ubicación (por ahora, solo el inicio), lo pedimos antes de
+        // dejar avanzar el clic -- así el enlace bonito con estado/ciudad
+        // queda bien armado desde el primer clic, no hasta el segundo.
+        document.addEventListener('click', function (e) {
+            const link = e.target.closest('a[data-enlace-semantico]');
+            if (!link) return;
+            const semantico = link.dataset.enlaceSemantico;
+            if (!semantico || !semantico.includes('categoria=')) return;
+            if (leerUbicacionActualRF()) return;
+            if (typeof abrirModalUbicacion !== 'function') return;
+            e.preventDefault();
+            e.stopPropagation();
+            abrirModalUbicacion(() => { window.location.href = construirRutaDesdeEnlaceRF(semantico); });
+        }, true);
 
         fetch('/api/menu-navegacion').then(r => r.json()).then(tabs => {
             pintarMenuDesktop(tabs);

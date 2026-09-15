@@ -689,6 +689,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
     <!-- Carrusel de productos por categoría -->
     <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-12">
+        <nav id="rf-breadcrumb-categoria" class="hidden text-sm text-gray-500 mb-4 flex-wrap items-center gap-1"></nav>
         <div class="rf-trending-heading">
             <h2 id="titulo-catalogo">Flores y regalos en tendencia</h2>
         </div>
@@ -1914,12 +1915,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
         async function inicializarSelectorHomeRF() {
             // Limpia datos de versiones anteriores para que la primera carga de esta versión
-            // realmente comience vacía. Después, la selección se conserva durante la sesión.
+            // realmente comience vacía. Después, la selección se conserva de verdad entre
+            // sesiones (antes se revisaba con sessionStorage, que es por pestaña y borraba
+            // la ubicación guardada cada vez que se abría una pestaña nueva).
             try {
                 const version = 'rf-location-v5';
-                if (sessionStorage.getItem('rf_location_ui_version') !== version) {
+                if (localStorage.getItem('rf_location_ui_version') !== version) {
                     localStorage.removeItem('rf_ubicacion_entrega');
-                    sessionStorage.setItem('rf_location_ui_version', version);
+                    localStorage.setItem('rf_location_ui_version', version);
                 }
             } catch (_) {}
             await cargarZonasDisponiblesRF();
@@ -2330,17 +2333,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 window.actualizarFlechasOcasionesRF = updateRfOccasionArrows;
                 updateRfOccasionArrows();
             }
-            // Delegado (no se busca el elemento al cargar la página) porque
-            // las tarjetas de "Ocasiones" ahora se agregan después, cuando
-            // llega la información del carrusel desde el servidor.
-            document.addEventListener('click', e => {
-                const link = e.target.closest('.rf-occasion-link');
-                if (!link) return;
-                if (ubicacionRFCompleta()) return;
-                e.preventDefault();
-                e.stopPropagation();
-                abrirModalUbicacion(() => { window.location.href = link.href; });
-            }, true);
 
             const rfFavTrack = document.getElementById('contenedor-arreglos');
             const rfFavPrev = document.querySelector('.rf-favorite-prev');
@@ -2452,17 +2444,127 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (busqueda) buscarEnCatalogo(busqueda);
         })();
 
-        // Si se llegó desde el menú de categorías de otra página (que no
-        // tiene catálogo propio), aplicamos esa categoría de una vez.
-        (function aplicarCategoriaDesdeUrl() {
+        // ---------------------------------------------------------------
+        // Rutas por ubicación + categoría: /estado/ciudad/categoria/
+        // subcategoria/tipo (ej. /tamaulipas/tampico/cumpleanos/flores-y-
+        // plantas/rosas), con su breadcrumb. También se sigue aceptando el
+        // formato con "?categoria=" de siempre (para enlaces guardados o
+        // páginas sin ubicación todavía) -- en ese caso se pide la ubicación
+        // primero y se sube de nivel a la ruta bonita.
+        // ---------------------------------------------------------------
+        function slugRutaRF(texto) {
+            return String(texto ?? '')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+
+        function renderBreadcrumbCategoriaRF(tramos) {
+            const nav = document.getElementById('rf-breadcrumb-categoria');
+            if (!nav) return;
+            if (!tramos || tramos.length === 0) { nav.classList.add('hidden'); nav.innerHTML = ''; return; }
+            nav.classList.remove('hidden');
+            nav.classList.add('flex');
+            const items = [{ texto: 'Inicio', href: '/' }, ...tramos];
+            nav.innerHTML = items.map((t, i) => {
+                const esUltimo = i === items.length - 1;
+                const separador = i > 0 ? '<span class="mx-1 text-gray-300">›</span>' : '';
+                return separador + (esUltimo || !t.href
+                    ? `<span class="${esUltimo ? 'text-brandDark font-medium' : ''}">${t.texto}</span>`
+                    : `<a href="${t.href}" class="hover:text-brandFuchsia">${t.texto}</a>`);
+            }).join('');
+        }
+
+        async function resolverRutaCategoriaRF() {
+            const ruta = window.location.pathname.replace(/^\/+|\/+$/g, '');
+            const tramos = ruta ? ruta.split('/') : [];
+            if (tramos.length === 0) return false; // es la portada normal
+
+            // Aseguramos tener las zonas reales para reconocer estado/ciudad.
+            if (zonasDisponiblesRF.length === 0) await cargarZonasDisponiblesRF();
+            let taxonomia = {};
+            try { taxonomia = await (await fetch('/api/taxonomia')).json(); } catch (_) {}
+
+            const zonaEncontrada = zonasDisponiblesRF.find(z => slugRutaRF(z.estado) === tramos[0] && slugRutaRF(z.etiqueta) === tramos[1]);
+            if (!zonaEncontrada) return false; // no es una de estas rutas -- se deja que siga el flujo normal (ej. 404)
+
+            // Guardamos la ubicación reconocida en la URL (sin pedir de nuevo
+            // fecha si ya la tenía guardada de antes).
+            let guardado = null;
+            try { guardado = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+            localStorage.setItem(RF_UBICACION_KEY, JSON.stringify({
+                estado: zonaEncontrada.estado, ciudad: zonaEncontrada.etiqueta,
+                fecha: guardado?.fecha || '', tipoFecha: guardado?.tipoFecha || '',
+                actualizadoEn: new Date().toISOString()
+            }));
+            if (typeof sincronizarSelectorHomeDesdeStorage === 'function') sincronizarSelectorHomeDesdeStorage();
+            if (typeof actualizarUbicacionProductoRF === 'function') actualizarUbicacionProductoRF();
+
+            const breadcrumb = [
+                { texto: zonaEncontrada.estado, href: `/${tramos[0]}/${tramos[1]}` },
+                { texto: zonaEncontrada.etiqueta, href: `/${tramos[0]}/${tramos[1]}` }
+            ];
+
+            let categoria = null, subcategoria = null, subsubcategoria = null;
+            if (tramos[2]) {
+                categoria = Object.keys(taxonomia).find(c => slugRutaRF(c) === tramos[2]) || null;
+                if (categoria) {
+                    breadcrumb.push({ texto: categoria, href: `/${tramos[0]}/${tramos[1]}/${tramos[2]}` });
+                    const subcats = taxonomia[categoria] || {};
+                    if (tramos[3]) {
+                        subcategoria = Object.keys(subcats).find(s => slugRutaRF(s) === tramos[3]) || null;
+                        if (subcategoria) {
+                            breadcrumb.push({ texto: subcategoria, href: `/${tramos[0]}/${tramos[1]}/${tramos[2]}/${tramos[3]}` });
+                            const tipos = subcats[subcategoria] || [];
+                            if (tramos[4]) {
+                                subsubcategoria = tipos.find(t => slugRutaRF(t) === tramos[4]) || null;
+                                if (subsubcategoria) breadcrumb.push({ texto: subsubcategoria, href: null });
+                            }
+                        }
+                    }
+                }
+            }
+
+            renderBreadcrumbCategoriaRF(breadcrumb);
+            cargarInventario(categoria, subcategoria, subsubcategoria);
+            document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
+            return true;
+        }
+
+        // Formato de siempre ("?categoria=..."): se usa como respaldo cuando
+        // todavía no hay ubicación guardada (ej. clic desde otra página). En
+        // cuanto se confirme la ubicación en el modal, subimos de nivel la URL
+        // a la ruta bonita del párrafo de arriba.
+        function aplicarCategoriaDesdeUrl() {
             const parametros = new URLSearchParams(window.location.search);
             const categoria = parametros.get('categoria');
             const subcategoria = parametros.get('subcategoria');
             const subsubcategoria = parametros.get('subsubcategoria');
-            if (categoria || subcategoria || subsubcategoria) {
-                cargarInventario(categoria, subcategoria, subsubcategoria);
-                document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
-            }
+            if (!categoria && !subcategoria && !subsubcategoria) return;
+
+            const irConEstaUbicacion = () => {
+                let guardado = null;
+                try { guardado = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+                if (guardado?.estado && guardado?.ciudad) {
+                    const partes = [slugRutaRF(guardado.estado), slugRutaRF(guardado.ciudad), slugRutaRF(categoria)];
+                    if (subcategoria) partes.push(slugRutaRF(subcategoria));
+                    if (subsubcategoria) partes.push(slugRutaRF(subsubcategoria));
+                    window.history.replaceState({}, '', '/' + partes.join('/'));
+                    resolverRutaCategoriaRF();
+                } else {
+                    cargarInventario(categoria, subcategoria, subsubcategoria);
+                    document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
+                }
+            };
+
+            if (ubicacionRFCompleta()) { irConEstaUbicacion(); return; }
+            abrirModalUbicacion(irConEstaUbicacion);
+        }
+
+        (async function iniciarRutaDeEntradaRF() {
+            const eraRutaBonita = await resolverRutaCategoriaRF();
+            if (!eraRutaBonita) aplicarCategoriaDesdeUrl();
         })();
     </script>
 
@@ -2993,10 +3095,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             return String(str ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
         }
         fetch('/api/carruseles').then(r => r.json()).then(datos => {
+            const construirRuta = window.construirRutaDesdeEnlaceRF || (x => x);
             const pistaCategorias = document.getElementById('rf-category-track');
             if (pistaCategorias && Array.isArray(datos.categorias)) {
                 pistaCategorias.innerHTML = datos.categorias.map(item => `
-                    <a href="${escaparHtmlInicioRF(item.enlace)}" class="rf-category-card group">
+                    <a href="${escaparHtmlInicioRF(construirRuta(item.enlace))}" data-enlace-semantico="${escaparHtmlInicioRF(item.enlace)}" class="rf-category-card group">
                         <img src="${escaparHtmlInicioRF(item.imagen_url)}" alt="${escaparHtmlInicioRF(item.titulo)}" loading="lazy">
                         <span>${escaparHtmlInicioRF(item.titulo)}</span>
                     </a>
@@ -3005,7 +3108,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const pistaOcasiones = document.getElementById('rf-occasion-track');
             if (pistaOcasiones && Array.isArray(datos.ocasiones)) {
                 pistaOcasiones.innerHTML = datos.ocasiones.map(item => `
-                    <a href="${escaparHtmlInicioRF(item.enlace)}" class="rf-occasion-card rf-occasion-link" aria-label="${escaparHtmlInicioRF(item.titulo)}">
+                    <a href="${escaparHtmlInicioRF(construirRuta(item.enlace))}" data-enlace-semantico="${escaparHtmlInicioRF(item.enlace)}" class="rf-occasion-card rf-occasion-link" aria-label="${escaparHtmlInicioRF(item.titulo)}">
                         <img src="${escaparHtmlInicioRF(item.imagen_url)}" alt="${escaparHtmlInicioRF(item.titulo)}" loading="lazy">
                     </a>
                 `).join('');
@@ -3103,6 +3206,42 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             return String(str ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
         }
 
+        // --- Rutas "bonitas" por ubicación + categoría --------------------
+        // Todo enlace de categoría se guarda como "/?categoria=X&subcategoria=Y
+        // &subsubcategoria=Z" (funciona siempre, en cualquier página). Aquí lo
+        // convertimos a "/estado/ciudad/categoria/subcategoria/tipo" usando la
+        // ubicación que el cliente ya tenga guardada -- si no la tiene, se deja
+        // el enlace de siempre, que sigue funcionando igual.
+        function slugRF(texto) {
+            return String(texto ?? '')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+        function leerUbicacionActualRF() {
+            try {
+                const datos = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null');
+                return (datos && datos.estado && datos.ciudad) ? datos : null;
+            } catch (_) { return null; }
+        }
+        function construirRutaDesdeEnlaceRF(enlaceSemantico) {
+            if (!enlaceSemantico || !enlaceSemantico.startsWith('/?')) return enlaceSemantico;
+            const params = new URLSearchParams(enlaceSemantico.slice(2));
+            const categoria = params.get('categoria');
+            if (!categoria) return enlaceSemantico;
+            const ubicacion = leerUbicacionActualRF();
+            if (!ubicacion) return enlaceSemantico;
+            const partes = [slugRF(ubicacion.estado), slugRF(ubicacion.ciudad), slugRF(categoria)];
+            const subcategoria = params.get('subcategoria');
+            const subsubcategoria = params.get('subsubcategoria');
+            if (subcategoria) partes.push(slugRF(subcategoria));
+            if (subsubcategoria) partes.push(slugRF(subsubcategoria));
+            return '/' + partes.join('/');
+        }
+        window.construirRutaDesdeEnlaceRF = construirRutaDesdeEnlaceRF;
+        window.leerUbicacionActualRF = leerUbicacionActualRF;
+
         function pintarMenuDesktop(tabs) {
             const cont = document.getElementById('rf-menu-navegacion-desktop');
             if (!cont) return;
@@ -3111,7 +3250,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 const tieneSubmenu = columnas.length > 0;
                 return `
                     <li class="nav-item group">
-                        <a href="${escaparHtmlMenuRF(tab.enlace || '/')}" class="nav-link block px-4 py-3 hover:text-brandFuchsia ${tieneSubmenu ? 'cursor-default' : ''} font-medium relative h-full flex items-center">
+                        <a href="${escaparHtmlMenuRF(construirRutaDesdeEnlaceRF(tab.enlace || '/'))}" data-enlace-semantico="${escaparHtmlMenuRF(tab.enlace || '/')}" class="nav-link block px-4 py-3 hover:text-brandFuchsia ${tieneSubmenu ? 'cursor-default' : ''} font-medium relative h-full flex items-center">
                             ${escaparHtmlMenuRF(tab.titulo)}
                             <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                         </a>
@@ -3123,13 +3262,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                                         <div>
                                             <h4 class="font-semibold text-brandDark mb-4">${escaparHtmlMenuRF(col.titulo)}</h4>
                                             <ul class="space-y-3 text-sm text-gray-600">
-                                                ${(col.hijos || []).map(link => `<li><a href="${escaparHtmlMenuRF(link.enlace || '#')}" class="hover:text-brandFuchsia">${escaparHtmlMenuRF(link.titulo)}</a></li>`).join('')}
+                                                ${(col.hijos || []).map(link => `<li><a href="${escaparHtmlMenuRF(construirRutaDesdeEnlaceRF(link.enlace || '#'))}" data-enlace-semantico="${escaparHtmlMenuRF(link.enlace || '#')}" class="hover:text-brandFuchsia">${escaparHtmlMenuRF(link.titulo)}</a></li>`).join('')}
                                             </ul>
                                         </div>
                                     `).join('')}
                                 </div>
                                 <div class="mt-6">
-                                    <a href="${escaparHtmlMenuRF(tab.enlace || '/')}" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo &gt;</a>
+                                    <a href="${escaparHtmlMenuRF(construirRutaDesdeEnlaceRF(tab.enlace || '/'))}" data-enlace-semantico="${escaparHtmlMenuRF(tab.enlace || '/')}" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo &gt;</a>
                                 </div>
                             </div>
                         </div>` : ''}
@@ -3145,20 +3284,36 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const raiz = { label: 'Categorías', children: [] };
             tabs.forEach(tab => {
                 if (!tab.hijos || tab.hijos.length === 0) {
-                    raiz.children.push({ label: tab.titulo, href: tab.enlace || '/' });
+                    raiz.children.push({ label: tab.titulo, href: construirRutaDesdeEnlaceRF(tab.enlace || '/') });
                 } else {
                     raiz.children.push({
                         label: tab.titulo,
-                        href: tab.enlace || null,
+                        href: tab.enlace ? construirRutaDesdeEnlaceRF(tab.enlace) : null,
                         children: tab.hijos.map(col => ({
                             label: col.titulo,
-                            children: (col.hijos || []).map(link => ({ label: link.titulo, href: link.enlace || '#' }))
+                            children: (col.hijos || []).map(link => ({ label: link.titulo, href: construirRutaDesdeEnlaceRF(link.enlace || '#') }))
                         }))
                     });
                 }
             });
             return { 'Categorías': raiz.children };
         }
+
+        // Si no hay ubicación guardada todavía y esta página sí tiene el
+        // modal de ubicación (por ahora, solo el inicio), lo pedimos antes de
+        // dejar avanzar el clic -- así el enlace bonito con estado/ciudad
+        // queda bien armado desde el primer clic, no hasta el segundo.
+        document.addEventListener('click', function (e) {
+            const link = e.target.closest('a[data-enlace-semantico]');
+            if (!link) return;
+            const semantico = link.dataset.enlaceSemantico;
+            if (!semantico || !semantico.includes('categoria=')) return;
+            if (leerUbicacionActualRF()) return;
+            if (typeof abrirModalUbicacion !== 'function') return;
+            e.preventDefault();
+            e.stopPropagation();
+            abrirModalUbicacion(() => { window.location.href = construirRutaDesdeEnlaceRF(semantico); });
+        }, true);
 
         fetch('/api/menu-navegacion').then(r => r.json()).then(tabs => {
             pintarMenuDesktop(tabs);
