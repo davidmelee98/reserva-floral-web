@@ -350,6 +350,15 @@ async function inicializarDB() {
     );
   `);
 
+  // Limpieza de tablas huérfanas: durante el desarrollo del menú por
+  // categorías, en un momento se crearon estas 3 tablas para un sistema de
+  // "etiquetas" que después se descartó a favor de la taxonomía real del
+  // catálogo. Si tu base de datos llegó a tener esa versión desplegada, se
+  // quedaron creadas sin usarse -- se eliminan aquí, una sola vez.
+  await pool.query('DROP TABLE IF EXISTS producto_etiquetas CASCADE');
+  await pool.query('DROP TABLE IF EXISTS etiquetas CASCADE');
+  await pool.query('DROP TABLE IF EXISTS categorias_catalogo CASCADE');
+
   // Compatibilidad con instalaciones anteriores de la base de datos.
   const alterQueries = [
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS imagenes TEXT',
