@@ -638,8 +638,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         </div>
     </nav>
 
-    <!-- Hero Banner con Buscador -->
-    <div class="relative mb-10 sm:mb-16 md:mb-8">
+    <!-- Hero Banner con Buscador (solo se ve en el inicio, no en una categoría) -->
+    <div id="rf-inicio-hero" class="relative mb-10 sm:mb-16 md:mb-8">
         <div class="h-[200px] sm:h-[240px] md:h-[280px] w-full relative">
             <img id="hero-imagen" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd?q=80&w=1920&auto=format&fit=crop" alt="Persona con flores">
             <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
@@ -690,35 +690,50 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     <!-- Carrusel de productos por categoría -->
     <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-12">
         <nav id="rf-breadcrumb-categoria" class="hidden text-sm text-gray-500 mb-4 flex-wrap items-center gap-1"></nav>
-        <div class="rf-trending-heading">
-            <h2 id="titulo-catalogo">Flores y regalos en tendencia</h2>
+
+        <!-- Vista de categoría: solo se ve cuando la URL trae un filtro real
+             (categoría/subcategoría/tipo). Es una vista propia -- no el
+             carrusel de tendencias del inicio -- con todos los productos que
+             de verdad coinciden. -->
+        <div id="rf-vista-categoria" class="hidden">
+            <h1 id="rf-categoria-titulo" class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-2"></h1>
+            <p id="rf-categoria-descripcion" class="text-sm text-gray-500 mb-6"></p>
+            <p id="rf-categoria-contador" class="text-xs text-gray-400 mb-4"></p>
+            <div id="rf-grid-categoria" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"></div>
         </div>
 
-        <div class="rf-trending-tabs" role="tablist" aria-label="Categorías de productos">
-            <button type="button" class="rf-trending-tab is-active" data-filter="best" role="tab" aria-selected="true">Más vendidos</button>
-            <button type="button" class="rf-trending-tab" data-filter="flores" role="tab" aria-selected="false">Flores</button>
-            <button type="button" class="rf-trending-tab" data-filter="globos" role="tab" aria-selected="false">Globos</button>
-            <button type="button" class="rf-trending-tab" data-filter="regalos" role="tab" aria-selected="false">Regalos</button>
-            <button type="button" class="rf-trending-tab" data-filter="plantas" role="tab" aria-selected="false">Plantas</button>
-            <button type="button" class="rf-trending-tab" data-filter="joyeria" role="tab" aria-selected="false">Joyería</button>
-            <button type="button" class="rf-trending-tab" data-filter="premium" role="tab" aria-selected="false">Línea Premium</button>
-            <button type="button" class="rf-trending-tab" data-filter="desde249" role="tab" aria-selected="false">Desde $249</button>
-        </div>
+        <div id="rf-inicio-trending">
+            <div class="rf-trending-heading">
+                <h2 id="titulo-catalogo">Flores y regalos en tendencia</h2>
+            </div>
 
-        <div class="rf-favorites-carousel-wrap rf-trending-products-wrap">
-            <button type="button" class="rf-favorite-arrow rf-favorite-prev" aria-label="Ver productos anteriores">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <div id="contenedor-arreglos" class="rf-favorites-track"></div>
-            <button type="button" class="rf-favorite-arrow rf-favorite-next" aria-label="Ver más productos">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
+            <div class="rf-trending-tabs" role="tablist" aria-label="Categorías de productos">
+                <button type="button" class="rf-trending-tab is-active" data-filter="best" role="tab" aria-selected="true">Más vendidos</button>
+                <button type="button" class="rf-trending-tab" data-filter="flores" role="tab" aria-selected="false">Flores</button>
+                <button type="button" class="rf-trending-tab" data-filter="globos" role="tab" aria-selected="false">Globos</button>
+                <button type="button" class="rf-trending-tab" data-filter="regalos" role="tab" aria-selected="false">Regalos</button>
+                <button type="button" class="rf-trending-tab" data-filter="plantas" role="tab" aria-selected="false">Plantas</button>
+                <button type="button" class="rf-trending-tab" data-filter="joyeria" role="tab" aria-selected="false">Joyería</button>
+                <button type="button" class="rf-trending-tab" data-filter="premium" role="tab" aria-selected="false">Línea Premium</button>
+                <button type="button" class="rf-trending-tab" data-filter="desde249" role="tab" aria-selected="false">Desde $249</button>
+            </div>
+
+            <div class="rf-favorites-carousel-wrap rf-trending-products-wrap">
+                <button type="button" class="rf-favorite-arrow rf-favorite-prev" aria-label="Ver productos anteriores">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div id="contenedor-arreglos" class="rf-favorites-track"></div>
+                <button type="button" class="rf-favorite-arrow rf-favorite-next" aria-label="Ver más productos">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
         </div>
     </main>
 
 
 
-    <!-- Categorías Principales -->
+    <!-- Categorías Principales + Ocasiones (solo en el inicio) -->
+    <div id="rf-inicio-carruseles">
     <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" aria-label="Categorías destacadas">
         <div class="text-center py-8">
             <h2 class="text-2xl md:text-3xl font-semibold text-brandDark">Entregas el mismo día, de lunes a domingo, a todo México</h2>
@@ -756,6 +771,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </button>
         </div>
     </section>
+    </div>
 
 
     <!-- Botón Flotante WhatsApp -->
@@ -1113,7 +1129,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 });
             }
             actualizarUI();
-            actualizarFlechasFavoritosRF();
+            if (typeof actualizarFlechasFavoritosRF === 'function') actualizarFlechasFavoritosRF();
             document.getElementById('barra-busqueda-movil').classList.add('hidden');
             document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
         }
@@ -1125,26 +1141,49 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 todosLosArreglos = await respuesta.json();
                 let arreglos = todosLosArreglos;
 
-                if (filtroCategoria || filtroSubcategoria || filtroSubsubcategoria) {
+                const hayFiltro = !!(filtroCategoria || filtroSubcategoria || filtroSubsubcategoria);
+                // Las secciones del inicio (portada, tendencias, carruseles) solo
+                // se ven cuando NO hay un filtro de categoría activo. Con filtro,
+                // se ve la cuadrícula de categoría, con todos los productos que
+                // de verdad cumplen -- no una copia recortada del inicio.
+                document.getElementById('rf-inicio-hero')?.classList.toggle('hidden', hayFiltro);
+                document.getElementById('rf-inicio-trending')?.classList.toggle('hidden', hayFiltro);
+                document.getElementById('rf-inicio-carruseles')?.classList.toggle('hidden', hayFiltro);
+                document.getElementById('rf-vista-categoria')?.classList.toggle('hidden', !hayFiltro);
+
+                if (hayFiltro) {
                     if (filtroCategoria) arreglos = arreglos.filter(a => a.categoria === filtroCategoria);
                     if (filtroSubcategoria) arreglos = arreglos.filter(a => a.subcategoria === filtroSubcategoria);
                     if (filtroSubsubcategoria) arreglos = arreglos.filter(a => a.subsubcategoria === filtroSubsubcategoria);
 
-                    const partesTitulo = [filtroCategoria, filtroSubcategoria, filtroSubsubcategoria].filter(Boolean);
-                    document.getElementById('titulo-catalogo').innerText = partesTitulo.length ? partesTitulo.join(' · ') : 'Colección';
-                } else {
-                    document.getElementById('titulo-catalogo').innerText = "Flores y regalos en tendencia";
-                    arreglos = filtrarTrendingRF(arreglos, filtroTrendingActualRF);
-                    // Mezcla ligera para que la sección de inicio no muestre siempre los mismos productos.
-                    arreglos = [...arreglos].sort(() => Math.random() - 0.5).slice(0, 12);
+                    const partesTitulo = [filtroSubsubcategoria, filtroSubcategoria, filtroCategoria].filter(Boolean);
+                    const tituloEl = document.getElementById('rf-categoria-titulo');
+                    if (tituloEl) tituloEl.innerText = partesTitulo[0] || 'Colección';
+                    const descripcionEl = document.getElementById('rf-categoria-descripcion');
+                    if (descripcionEl) {
+                        let datosUbicacion = null;
+                        try { datosUbicacion = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null'); } catch (_) {}
+                        if (datosUbicacion?.estado && datosUbicacion?.ciudad) {
+                            descripcionEl.innerText = `Entrega a domicilio en ${datosUbicacion.ciudad}, ${datosUbicacion.estado}.`;
+                        } else {
+                            descripcionEl.innerText = 'Elige tu ciudad para conocer tiempos y costo de entrega.';
+                        }
+                    }
+                    renderGridCategoriaRF(arreglos);
+                    return;
                 }
+
+                document.getElementById('titulo-catalogo').innerText = "Flores y regalos en tendencia";
+                arreglos = filtrarTrendingRF(arreglos, filtroTrendingActualRF);
+                // Mezcla ligera para que la sección de inicio no muestre siempre los mismos productos.
+                arreglos = [...arreglos].sort(() => Math.random() - 0.5).slice(0, 12);
 
                 const contenedor = document.getElementById('contenedor-arreglos');
                 contenedor.innerHTML = '';
 
                 if (arreglos.length === 0) {
                     contenedor.innerHTML = '<p class="text-gray-500 py-10">Todavía no hay arreglos en esta colección. Vuelve pronto.</p>';
-                    actualizarFlechasFavoritosRF();
+                    if (typeof actualizarFlechasFavoritosRF === 'function') actualizarFlechasFavoritosRF();
                     return;
                 }
 
@@ -1167,8 +1206,45 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     `;
                 });
                 actualizarUI();
-                actualizarFlechasFavoritosRF();
+                if (typeof actualizarFlechasFavoritosRF === 'function') actualizarFlechasFavoritosRF();
             } catch (error) { console.error("Error cargando el catálogo", error); }
+        }
+
+        // Cuadrícula de la vista de categoría: a diferencia del carrusel del
+        // inicio, aquí se muestran TODOS los productos que coinciden (sin
+        // límite de 12 ni scroll horizontal), en un acomodo que se ajusta solo.
+        function renderGridCategoriaRF(arreglos) {
+            const grid = document.getElementById('rf-grid-categoria');
+            const contador = document.getElementById('rf-categoria-contador');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            if (contador) contador.innerText = arreglos.length === 1 ? '1 producto' : `${arreglos.length} productos`;
+
+            if (arreglos.length === 0) {
+                grid.innerHTML = '<p class="text-gray-500 py-10 col-span-full">Todavía no hay productos registrados en esta categoría. Vuelve pronto.</p>';
+                return;
+            }
+
+            arreglos.forEach(arreglo => {
+                const urlImagen = (obtenerImagenes(arreglo)[0]) || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
+                const arregloData = encodeURIComponent(JSON.stringify(arreglo));
+                grid.innerHTML += `
+                    <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
+                        <div class="rf-favorite-card-image">
+                            <img src="${urlImagen}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                        </div>
+                        <div class="rf-favorite-card-body">
+                            <h3 class="font-medium text-sm text-gray-800 leading-tight">${arreglo.nombre}</h3>
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="font-bold text-gray-900 text-sm">$${formatearPrecio(arreglo.precio)}</span>
+                                <span class="text-brandLightPink font-medium text-xs">Agregar</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            actualizarUI();
         }
 
         function abrirProducto(dataStr, urlImagen) {
@@ -2433,7 +2509,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             });
         });
 
-        cargarInventario();
         abrirProductoDesdeRuta();
 
         // Si se llegó desde otra página con una búsqueda pendiente (ej. desde
@@ -2541,7 +2616,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const categoria = parametros.get('categoria');
             const subcategoria = parametros.get('subcategoria');
             const subsubcategoria = parametros.get('subsubcategoria');
-            if (!categoria && !subcategoria && !subsubcategoria) return;
+            if (!categoria && !subcategoria && !subsubcategoria) {
+                cargarInventario(); // inicio normal, sin ningún filtro de categoría
+                return;
+            }
 
             const irConEstaUbicacion = () => {
                 let guardado = null;
