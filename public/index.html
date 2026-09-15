@@ -3512,20 +3512,20 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <h3 class="font-semibold text-brandDark mb-3">Contáctanos</h3>
                     <div id="pie-redes-sociales" class="flex items-center gap-3 mb-6"></div>
                     <h3 class="font-semibold text-brandDark mb-3">Métodos de pago</h3>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-5 w-auto">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-4 max-w-[34px] object-contain">
                     </div>
                 </div>
             </div>
             <div class="border-t border-gray-100 mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-400">
                 <p>Copyright © <span id="pie-anio"></span>. ReservaFloral.com</p>
-                <a href="/aviso-de-privacidad.html" class="hover:text-brandFuchsia">Política de privacidad</a>
+                <a href="/centro-ayuda.html#/acerca-de-reserva-floral/3" class="hover:text-brandFuchsia">Política de privacidad</a>
             </div>
         </div>
     </footer>
@@ -3537,13 +3537,20 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             fetch('/api/configuracion-publica').then(r => r.json()).then(cfg => {
                 const cont = document.getElementById('pie-redes-sociales');
                 if (!cont) return;
-                const redes = [];
                 const numero = (cfg.whatsapp_numero || '').replace(/\D/g, '');
-                if (numero) redes.push({ url: `https://wa.me/${numero}`, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg', alt: 'WhatsApp' });
-                if (cfg.instagram_url) redes.push({ url: cfg.instagram_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg', alt: 'Instagram' });
-                if (cfg.facebook_url) redes.push({ url: cfg.facebook_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg', alt: 'Facebook' });
-                if (cfg.tiktok_url) redes.push({ url: cfg.tiktok_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg', alt: 'TikTok' });
-                cont.innerHTML = redes.map(r => `<a href="${r.url}" target="_blank" rel="noopener"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6"></a>`).join('');
+                // Los 4 iconos siempre se muestran; el que todavía no esté
+                // configurado en el panel se ve atenuado y sin poder darle clic
+                // -- en cuanto se configure, queda activo solo.
+                const redes = [
+                    { url: numero ? `https://wa.me/${numero}` : null, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg', alt: 'WhatsApp' },
+                    { url: cfg.instagram_url || null, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg', alt: 'Instagram' },
+                    { url: cfg.facebook_url || null, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg', alt: 'Facebook' },
+                    { url: cfg.tiktok_url || null, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg', alt: 'TikTok' }
+                ];
+                cont.innerHTML = redes.map(r => r.url
+                    ? `<a href="${r.url}" target="_blank" rel="noopener"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6"></a>`
+                    : `<span title="Próximamente"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6 opacity-30"></span>`
+                ).join('');
             }).catch(() => {});
         })();
     </script>

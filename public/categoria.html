@@ -129,17 +129,19 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 
                 <!-- Buscador global -->
                 <div class="flex-1 max-w-2xl mx-8 hidden lg:block">
-                    <div class="relative">
-                        <input type="text" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
-                        <svg class="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
+                    <form onsubmit="event.preventDefault(); buscarEnCatalogo(document.getElementById('input-busqueda-desktop').value);" class="relative">
+                        <input type="text" id="input-busqueda-desktop" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+                        <button type="submit" aria-label="Buscar" class="absolute right-3 top-2.5">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                    </form>
                 </div>
 
 
                 <!-- Iconos derecha -->
                 <div class="flex items-center gap-3 sm:gap-4 md:gap-6 text-sm font-medium">
-                    <!-- Búsqueda (móvil, funcionalidad pendiente) -->
-                    <button type="button" class="md:hidden flex items-center justify-center hover:text-gray-200" aria-label="Buscar" title="Buscar">
+                    <!-- Búsqueda (móvil): abre la barra de búsqueda de abajo -->
+                    <button type="button" onclick="alternarBusquedaMovil()" class="md:hidden flex items-center justify-center hover:text-gray-200" aria-label="Buscar" title="Buscar">
                         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="6.8"></circle><path stroke-linecap="round" d="m16.2 16.2 4.1 4.1"></path></svg>
                     </button>
                     <div class="hidden md:flex items-center gap-1 cursor-pointer hover:text-gray-200">
@@ -153,7 +155,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                         </button>
                         <div id="menu-cuenta" class="hidden absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-2 text-brandDark z-50"></div>
                     </div>
-                    <button onclick="abrirCarrito()" class="relative p-1 hover:text-gray-200 transition">
+                    <button type="button" id="btn-carrito-header" class="relative p-1 hover:text-gray-200 transition" aria-label="Abrir carrito">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         <span id="contador-carrito" class="absolute -top-1 -right-1 block h-4 w-4 rounded-full bg-white text-brandFuchsia text-[10px] font-bold flex items-center justify-center">0</span>
                     </button>
@@ -161,19 +163,16 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </div>
         </div>
     </header>
-    <nav class="bg-white border-b border-gray-200 hidden md:block sticky top-16 z-40">
-        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            <ul class="flex justify-center text-sm text-gray-700">
-                <li><a href="/" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Inicio</a></li>
-                <li><a href="/?categoria=Cumpleaños" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Cumpleaños</a></li>
-                <li><a href="/?categoria=Ocasiones" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Ocasiones</a></li>
-                <li><a href="/?categoria=Flores%20y%20plantas" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Flores y plantas</a></li>
-                <li><a href="/?categoria=Globos" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Globos</a></li>
-                <li><a href="/?categoria=Regalos" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Regalos</a></li>
-            </ul>
-        </div>
-    </nav>
 
+    <!-- Barra de búsqueda móvil: oculta hasta que se toque la lupa del header -->
+    <div id="barra-busqueda-movil" class="hidden md:hidden bg-brandFuchsia px-4 pb-3 sticky top-16 z-40">
+        <form onsubmit="event.preventDefault(); buscarEnCatalogo(document.getElementById('input-busqueda-movil').value);" class="relative">
+            <input type="text" id="input-busqueda-movil" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
+            <button type="submit" aria-label="Buscar" class="absolute right-3 top-2.5">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </button>
+        </form>
+    </div>
 
 
 <!-- Navegación móvil jerárquica -->
@@ -194,7 +193,299 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 </aside>
 
 
+    <!-- Menú Secundario (Blanco) con Mega Menús -->
+    <nav class="bg-white border-b border-gray-200 hidden md:block sticky top-16 z-40">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ul class="flex justify-center text-sm text-gray-700">
+                <li class="nav-item group">
+                    <a href="#" onclick="irACategoriaMenu()" class="nav-link block px-4 py-3 hover:text-brandFuchsia font-medium relative h-full flex items-center">
+                        Inicio
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                </li>
+                
+                <!-- Mega Menú Cumpleaños -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="irACategoriaMenu('Cumpleaños')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Cumpleaños
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-5 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Flores y Plantas</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Todas las flores</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Rosas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Gerberas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Tulipanes</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Orquídeas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combinados</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Premium</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Plantas</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Globos</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Todos los globos</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Globos Personalizados</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos con globo</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <!-- Espacio vacío intencional -->
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Regalos</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Joyería</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Peluches</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Belleza y Fragancias</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Velas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Diarios y Agendas</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Para quién</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Ella</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Él</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Mamá</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Papá</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Niños</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="irACategoriaMenu('Cumpleaños')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
 
+                <!-- Mega Menú Ocasiones -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="irACategoriaMenu('Ocasiones')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Ocasiones
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-4 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Celebraciones</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Amor/Aniversario</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cumpleaños</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Gracias</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Nacimiento</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Graduación</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Logros</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Felicitaciones</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Solo porque sí</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Condolencias</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Servicios Funerarios</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Consuelo en Casa</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Momentos Difíciles</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Mejórate pronto</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Perdón</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="irACategoriaMenu('Ocasiones')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Mega Menú Flores y plantas -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="irACategoriaMenu('Flores y plantas')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Flores y plantas
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-5 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Flores</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combinados</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Gerberas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Girasoles</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Lilys y Stargazer</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Orquídeas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Rosas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Tulipanes y Cala Lilies</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Por presentación</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Ramos</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Jarrón</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cajas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Coronas Funerarias</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Caneas</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Premium</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Flores premium</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Condolencias</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Servicios Funerarios</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Consuelo en Casa</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Plantas</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Mini plantas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Plantas medianas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Plantas con regalos</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="irACategoriaMenu('Flores y plantas')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Mega Menú Globos -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="irACategoriaMenu('Globos')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Globos
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-4 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Por ocasión</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cumpleaños</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Graduación</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Nacimiento</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Just Because</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Mejórate Pronto</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Por Tipo</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Metálicos</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Esfera</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Burbuja</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Ramilletes</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Para quién</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para ella</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Él</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="irACategoriaMenu('Globos')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Mega Menú Regalos -->
+                <li class="nav-item group">
+                    <a href="#seccion-catalogo" onclick="irACategoriaMenu('Regalos')" class="nav-link block px-4 py-3 hover:text-brandFuchsia cursor-default relative h-full flex items-center">
+                        Regalos
+                        <span class="absolute bottom-0 left-0 w-full h-[2px] bg-brandFuchsia scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    </a>
+                    <div class="mega-menu pt-6 pb-8 top-full">
+                        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-5 gap-8">
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Para quién</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Ella</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Él</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Mamá</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Para Papá</a></li>
+                                    </ul>
+                                    <h4 class="font-semibold text-brandDark mt-6 mb-4">Otros Regalos</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Diarios y Agendas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Certificados</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Joyería</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Collares</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Pulseras</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Aretes</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Sets</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Peluches</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Osos</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Otros Peluches</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos de peluches</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Belleza y Fragancias</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Mascarillas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cremas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Sets de Belleza</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Perfumes</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Combos</a></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-brandDark mb-4">Velas</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Velas y Aromas</a></li>
+                                    </ul>
+                                    <h4 class="font-semibold text-brandDark mt-6 mb-4">Regalos Corporativos</h4>
+                                    <ul class="space-y-3 text-sm text-gray-600">
+                                        <li><a href="#" class="hover:text-brandFuchsia">Personalizados</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Flores y Plantas</a></li>
+                                        <li><a href="#" class="hover:text-brandFuchsia">Cajas de Regalo</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <a href="#seccion-catalogo" onclick="irACategoriaMenu('Regalos')" class="text-sm font-semibold hover:text-brandFuchsia">Ver todo ></a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </nav>
 
 <section class="border-b border-gray-100 bg-white"><div class="max-w-screen-xl mx-auto px-6 py-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
   <div class="font-semibold whitespace-nowrap">Enviar a:</div>
@@ -999,20 +1290,20 @@ function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[
                     <h3 class="font-semibold text-brandDark mb-3">Contáctanos</h3>
                     <div id="pie-redes-sociales" class="flex items-center gap-3 mb-6"></div>
                     <h3 class="font-semibold text-brandDark mb-3">Métodos de pago</h3>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-5 w-auto">
-                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-5 w-auto">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-4 max-w-[34px] object-contain">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-4 max-w-[34px] object-contain">
                     </div>
                 </div>
             </div>
             <div class="border-t border-gray-100 mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-400">
                 <p>Copyright © <span id="pie-anio"></span>. ReservaFloral.com</p>
-                <a href="/aviso-de-privacidad.html" class="hover:text-brandFuchsia">Política de privacidad</a>
+                <a href="/centro-ayuda.html#/acerca-de-reserva-floral/3" class="hover:text-brandFuchsia">Política de privacidad</a>
             </div>
         </div>
     </footer>
@@ -1024,15 +1315,31 @@ function abrirCarrito(){const c=JSON.parse(localStorage.getItem('carritoRF')||'[
             fetch('/api/configuracion-publica').then(r => r.json()).then(cfg => {
                 const cont = document.getElementById('pie-redes-sociales');
                 if (!cont) return;
-                const redes = [];
                 const numero = (cfg.whatsapp_numero || '').replace(/\D/g, '');
-                if (numero) redes.push({ url: `https://wa.me/${numero}`, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg', alt: 'WhatsApp' });
-                if (cfg.instagram_url) redes.push({ url: cfg.instagram_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg', alt: 'Instagram' });
-                if (cfg.facebook_url) redes.push({ url: cfg.facebook_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg', alt: 'Facebook' });
-                if (cfg.tiktok_url) redes.push({ url: cfg.tiktok_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg', alt: 'TikTok' });
-                cont.innerHTML = redes.map(r => `<a href="${r.url}" target="_blank" rel="noopener"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6"></a>`).join('');
+                // Los 4 iconos siempre se muestran; el que todavía no esté
+                // configurado en el panel se ve atenuado y sin poder darle clic
+                // -- en cuanto se configure, queda activo solo.
+                const redes = [
+                    { url: numero ? `https://wa.me/${numero}` : null, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg', alt: 'WhatsApp' },
+                    { url: cfg.instagram_url || null, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg', alt: 'Instagram' },
+                    { url: cfg.facebook_url || null, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg', alt: 'Facebook' },
+                    { url: cfg.tiktok_url || null, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg', alt: 'TikTok' }
+                ];
+                cont.innerHTML = redes.map(r => r.url
+                    ? `<a href="${r.url}" target="_blank" rel="noopener"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6"></a>`
+                    : `<span title="Próximamente"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6 opacity-30"></span>`
+                ).join('');
             }).catch(() => {});
         })();
     </script>
+
+<script>
+    // Estas páginas no tienen catálogo propio, así que cualquier categoría
+    // del menú manda al inicio con esa categoría ya aplicada.
+    function irACategoriaMenu(categoria) {
+        window.location.href = categoria ? '/?categoria=' + encodeURIComponent(categoria) : '/';
+    }
+    window.irACategoriaMenu = irACategoriaMenu;
+</script>
 
 </body></html>
