@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciudades de envío | Reserva Floral</title>
+    <meta name="description" content="Conoce todos los estados y ciudades donde Reserva Floral entrega flores y regalos a domicilio.">
+    <link rel="canonical" href="https://www.reservafloral.com/cobertura.html">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: {
+            fontFamily: { sans: ['Poppins', 'sans-serif'], serif: ['Playfair Display', 'serif'] },
+            colors: { brandFuchsia: '#c2185b', brandLightPink: '#e91e63', brandDark: '#353535', brandGray: '#f8f9fa' }
+        } } }
+    </script>
+</head>
+<body class="bg-white font-sans text-brandDark antialiased">
+
+    <header class="bg-brandFuchsia text-white z-50 sticky top-0">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="/" class="flex-shrink-0 flex items-center">
+                    <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
+                </a>
+                <a href="/" class="text-sm font-medium hover:text-gray-200">Volver al inicio</a>
+            </div>
+        </div>
+    </header>
+
+    <nav class="bg-white border-b border-gray-200 hidden md:block sticky top-16 z-40">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ul class="flex justify-center text-sm text-gray-700">
+                <li><a href="/" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Inicio</a></li>
+                <li><a href="/?categoria=Cumpleaños" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Cumpleaños</a></li>
+                <li><a href="/?categoria=Ocasiones" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Ocasiones</a></li>
+                <li><a href="/?categoria=Flores%20y%20plantas" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Flores y plantas</a></li>
+                <li><a href="/?categoria=Globos" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Globos</a></li>
+                <li><a href="/?categoria=Regalos" class="block px-4 py-3 hover:text-brandFuchsia font-medium">Regalos</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        <h1 class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-2">Ciudades de envío</h1>
+        <p class="text-sm text-gray-500 mb-8">¡Envía regalos a todas estas ciudades! La variedad de productos y el costo de envío depende de la dirección de entrega.</p>
+
+        <div id="cobertura-cargando" class="text-sm text-gray-400 py-10 text-center">Cargando ciudades...</div>
+        <div id="cobertura-lista" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-8"></div>
+        <div id="cobertura-vacio" class="hidden text-sm text-gray-400 py-10 text-center">Por el momento no tenemos ciudades activas configuradas.</div>
+    </main>
+
+<script>
+    async function cargarCobertura() {
+        try {
+            const r = await fetch('/api/zonas');
+            const zonas = await r.json();
+            document.getElementById('cobertura-cargando').classList.add('hidden');
+
+            if (!Array.isArray(zonas) || zonas.length === 0) {
+                document.getElementById('cobertura-vacio').classList.remove('hidden');
+                return;
+            }
+
+            // Se agrupan las ciudades activas por estado -- esto se arma solo
+            // a partir de lo que esté dado de alta en el panel (Envíos), así
+            // que siempre queda al día sin tocar código.
+            const porEstado = {};
+            zonas.forEach(z => {
+                const estado = z.estado || 'Otras ciudades';
+                if (!porEstado[estado]) porEstado[estado] = [];
+                porEstado[estado].push(z.etiqueta);
+            });
+
+            const estados = Object.keys(porEstado).sort((a, b) => a.localeCompare(b, 'es'));
+            document.getElementById('cobertura-lista').innerHTML = estados.map(estado => `
+                <div>
+                    <h2 class="font-semibold text-brandDark mb-3">${escaparHtmlCob(estado)}</h2>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        ${porEstado[estado].sort((a,b)=>a.localeCompare(b,'es')).map(ciudad => `<li>${escaparHtmlCob(ciudad)}</li>`).join('')}
+                    </ul>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error cargando cobertura', error);
+            document.getElementById('cobertura-cargando').innerText = 'No se pudo cargar la cobertura. Intenta de nuevo más tarde.';
+        }
+    }
+    function escaparHtmlCob(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    cargarCobertura();
+</script>
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-8 text-sm">
+                <div>
+                    <h3 class="font-semibold text-brandDark mb-3">Ayuda e información</h3>
+                    <ul class="space-y-2 text-gray-500">
+                        <li><a href="/pedidos-corporativos.html" class="hover:text-brandFuchsia">Pedidos corporativos</a></li>
+                        <li><a href="/cobertura.html" class="hover:text-brandFuchsia">Cobertura</a></li>
+                        <li><a href="/centro-ayuda.html#/hacer-un-pedido/0" class="hover:text-brandFuchsia">¿Cómo comprar?</a></li>
+                        <li><a href="/centro-ayuda.html#/politicas-y-garantia/2" class="hover:text-brandFuchsia">Política de envío</a></li>
+                        <li><a href="/centro-ayuda.html#/configuracion-de-mi-cuenta/2" class="hover:text-brandFuchsia">Agendar recordatorio</a></li>
+                        <li><a href="/centro-ayuda.html#/cupones-de-descuento" class="hover:text-brandFuchsia">Cupones de descuento</a></li>
+                        <li><a href="/centro-ayuda.html#/pagos-reembolsos-facturacion/0" class="hover:text-brandFuchsia">Métodos de pago</a></li>
+                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral/2" class="hover:text-brandFuchsia">¿Cómo afiliar tu florería?</a></li>
+                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral/4" class="hover:text-brandFuchsia">Términos y condiciones</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-brandDark mb-3">Acerca de nosotros</h3>
+                    <ul class="space-y-2 text-gray-500">
+                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral/1" class="hover:text-brandFuchsia">¿Quiénes somos?</a></li>
+                        <li><a href="/centro-ayuda.html#/politicas-y-garantia/0" class="hover:text-brandFuchsia">Garantía Reserva Floral</a></li>
+                        <li><a href="/centro-ayuda.html#/contactanos/0" class="hover:text-brandFuchsia">Comentarios y sugerencias</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-brandDark mb-3">Mi pedido</h3>
+                    <ul class="space-y-2 text-gray-500">
+                        <li><a href="/centro-ayuda.html#/seguimiento-cancelaciones/1" class="hover:text-brandFuchsia">Estatus de mi pedido</a></li>
+                        <li><a href="/centro-ayuda.html#/pagos-reembolsos-facturacion/5" class="hover:text-brandFuchsia">Facturación</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-brandDark mb-3">Contáctanos</h3>
+                    <div id="pie-redes-sociales" class="flex items-center gap-3 mb-6"></div>
+                    <h3 class="font-semibold text-brandDark mb-3">Métodos de pago</h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-5 w-auto">
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-100 mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-400">
+                <p>Copyright © <span id="pie-anio"></span>. ReservaFloral.com</p>
+                <a href="/aviso-de-privacidad.html" class="hover:text-brandFuchsia">Política de privacidad</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        (function () {
+            const el = document.getElementById('pie-anio');
+            if (el) el.textContent = new Date().getFullYear();
+            fetch('/api/configuracion-publica').then(r => r.json()).then(cfg => {
+                const cont = document.getElementById('pie-redes-sociales');
+                if (!cont) return;
+                const redes = [];
+                const numero = (cfg.whatsapp_numero || '').replace(/\D/g, '');
+                if (numero) redes.push({ url: `https://wa.me/${numero}`, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg', alt: 'WhatsApp' });
+                if (cfg.instagram_url) redes.push({ url: cfg.instagram_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg', alt: 'Instagram' });
+                if (cfg.facebook_url) redes.push({ url: cfg.facebook_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg', alt: 'Facebook' });
+                if (cfg.tiktok_url) redes.push({ url: cfg.tiktok_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg', alt: 'TikTok' });
+                cont.innerHTML = redes.map(r => `<a href="${r.url}" target="_blank" rel="noopener"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6"></a>`).join('');
+            }).catch(() => {});
+        })();
+    </script>
+
+</body>
+</html>

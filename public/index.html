@@ -974,31 +974,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         </div>
     </div>
 
-    <!-- Explora por categoría -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 sm:mt-10">
-        <h2 class="text-xl sm:text-2xl font-serif font-semibold text-brandDark mb-4 text-center">Explora por categoría</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <a href="#seccion-catalogo" onclick="cargarInventario('Flores y plantas')" class="group relative h-40 sm:h-48 rounded-xl overflow-hidden block">
-                <img id="portada-categoria-flores-y-plantas" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=800&auto=format&fit=crop" alt="Flores y plantas">
-                <div class="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-end p-4">
-                    <span class="text-white font-serif text-lg sm:text-xl">Flores y plantas</span>
-                </div>
-            </a>
-            <a href="#seccion-catalogo" onclick="cargarInventario('Globos')" class="group relative h-40 sm:h-48 rounded-xl overflow-hidden block">
-                <img id="portada-categoria-globos" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=800&auto=format&fit=crop" alt="Globos">
-                <div class="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-end p-4">
-                    <span class="text-white font-serif text-lg sm:text-xl">Globos</span>
-                </div>
-            </a>
-            <a href="#seccion-catalogo" onclick="cargarInventario('Regalos')" class="group relative h-40 sm:h-48 rounded-xl overflow-hidden block">
-                <img id="portada-categoria-regalos" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800&auto=format&fit=crop" alt="Regalos">
-                <div class="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors flex items-end p-4">
-                    <span class="text-white font-serif text-lg sm:text-xl">Regalos</span>
-                </div>
-            </a>
-        </div>
-    </div>
-
     <!-- Carrusel de productos por categoría -->
     <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-12">
         <div class="rf-trending-heading">
@@ -1042,31 +1017,31 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
             <div class="rf-category-track" id="rf-category-track">
                 <a href="/categoria/flores-y-plantas" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1591886960571-74d43a9d4166?q=80&w=900&auto=format&fit=crop" alt="Flores" loading="lazy">
+                    <img id="carrusel-categoria-flores" src="https://images.unsplash.com/photo-1591886960571-74d43a9d4166?q=80&w=900&auto=format&fit=crop" alt="Flores" loading="lazy">
                     <span>Flores</span>
                 </a>
                 <a href="/categoria/globos" class="rf-category-card group">
-                    <img src="https://img.flowers.ua/images/Flowers/ext/1908_1.jpg" alt="Globos" loading="lazy">
+                    <img id="carrusel-categoria-globos" src="https://img.flowers.ua/images/Flowers/ext/1908_1.jpg" alt="Globos" loading="lazy">
                     <span>Globos</span>
                 </a>
                 <a href="/categoria/regalos" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=900&auto=format&fit=crop" alt="Regalos" loading="lazy">
+                    <img id="carrusel-categoria-regalos" src="https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=900&auto=format&fit=crop" alt="Regalos" loading="lazy">
                     <span>Regalos</span>
                 </a>
                 <a href="/categoria/flores-y-plantas/plantas" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=900&auto=format&fit=crop" alt="Plantas" loading="lazy">
+                    <img id="carrusel-categoria-plantas" src="https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=900&auto=format&fit=crop" alt="Plantas" loading="lazy">
                     <span>Plantas</span>
                 </a>
                 <a href="/categoria/regalos/joyeria" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=900&auto=format&fit=crop" alt="Joyería" loading="lazy">
+                    <img id="carrusel-categoria-joyeria" src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=900&auto=format&fit=crop" alt="Joyería" loading="lazy">
                     <span>Joyería</span>
                 </a>
                 <a href="/categoria/flores-y-plantas/flores-premium" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=900&auto=format&fit=crop" alt="Línea Premium" loading="lazy">
+                    <img id="carrusel-categoria-premium" src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=900&auto=format&fit=crop" alt="Línea Premium" loading="lazy">
                     <span>Línea Premium</span>
                 </a>
                 <a href="/categoria/desde-249" class="rf-category-card group">
-                    <img src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=900&auto=format&fit=crop" alt="Desde $249" loading="lazy">
+                    <img id="carrusel-categoria-desde249" src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=900&auto=format&fit=crop" alt="Desde $249" loading="lazy">
                     <span>Desde $249</span>
                 </a>
             </div>
@@ -1091,22 +1066,22 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
             <div class="rf-occasion-track" id="rf-occasion-track">
                 <a href="/categoria/ocasiones/cumpleanos" class="rf-occasion-card rf-occasion-link" aria-label="Cumpleaños">
-                    <img src="/ocasiones/cumpleanos.jpg" alt="Cumpleaños" loading="lazy">
+                    <img id="carrusel-ocasion-cumpleanos" src="/ocasiones/cumpleanos.jpg" alt="Cumpleaños" loading="lazy">
                 </a>
                 <a href="/categoria/ocasiones/amor-aniversario" class="rf-occasion-card rf-occasion-link" aria-label="Amor y Aniversario">
-                    <img src="/ocasiones/amor-aniversario.jpg" alt="Amor/Aniversario" loading="lazy">
+                    <img id="carrusel-ocasion-amor" src="/ocasiones/amor-aniversario.jpg" alt="Amor/Aniversario" loading="lazy">
                 </a>
                 <a href="/categoria/ocasiones/condolencias" class="rf-occasion-card rf-occasion-link" aria-label="Condolencias">
-                    <img src="/ocasiones/condolencias.jpg" alt="Condolencias" loading="lazy">
+                    <img id="carrusel-ocasion-condolencias" src="/ocasiones/condolencias.jpg" alt="Condolencias" loading="lazy">
                 </a>
                 <a href="/categoria/ocasiones/gracias" class="rf-occasion-card rf-occasion-link" aria-label="Gracias">
-                    <img src="/ocasiones/gracias.jpg" alt="Gracias" loading="lazy">
+                    <img id="carrusel-ocasion-gracias" src="/ocasiones/gracias.jpg" alt="Gracias" loading="lazy">
                 </a>
                 <a href="/categoria/ocasiones/bride-to-be" class="rf-occasion-card rf-occasion-link" aria-label="Bride to be">
-                    <img src="/ocasiones/bride-to-be.jpg" alt="Bride to be" loading="lazy">
+                    <img id="carrusel-ocasion-bride" src="/ocasiones/bride-to-be.jpg" alt="Bride to be" loading="lazy">
                 </a>
                 <a href="/categoria/ocasiones/mejorate-pronto" class="rf-occasion-card rf-occasion-link" aria-label="Mejórate pronto">
-                    <img src="/ocasiones/mejorate-pronto.jpg" alt="Mejórate pronto" loading="lazy">
+                    <img id="carrusel-ocasion-mejorate" src="/ocasiones/mejorate-pronto.jpg" alt="Mejórate pronto" loading="lazy">
                 </a>
             </div>
 
@@ -2802,6 +2777,17 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const busqueda = parametros.get('buscar');
             if (busqueda) buscarEnCatalogo(busqueda);
         })();
+
+        // Si se llegó desde el menú de categorías de otra página (que no
+        // tiene catálogo propio), aplicamos esa categoría de una vez.
+        (function aplicarCategoriaDesdeUrl() {
+            const parametros = new URLSearchParams(window.location.search);
+            const categoria = parametros.get('categoria');
+            if (categoria) {
+                cargarInventario(categoria);
+                document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
+            }
+        })();
     </script>
 
     <!-- Panel lateral de descripción del producto -->
@@ -3479,9 +3465,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             // Imágenes de portada -- si el negocio ya subió las suyas desde el
             // panel, se usan esas; si no, se quedan las de muestra de siempre.
             if (cfg.imagen_hero) document.getElementById('hero-imagen').src = cfg.imagen_hero;
-            if (cfg.imagen_categoria_flores_y_plantas) document.getElementById('portada-categoria-flores-y-plantas').src = cfg.imagen_categoria_flores_y_plantas;
-            if (cfg.imagen_categoria_globos) document.getElementById('portada-categoria-globos').src = cfg.imagen_categoria_globos;
-            if (cfg.imagen_categoria_regalos) document.getElementById('portada-categoria-regalos').src = cfg.imagen_categoria_regalos;
+            // Imágenes de los carruseles del inicio -- cada una es opcional;
+            // si no se ha configurado, se queda con la de muestra de siempre.
+            const IMAGENES_CARRUSEL = ['carrusel-categoria-flores','carrusel-categoria-globos','carrusel-categoria-regalos','carrusel-categoria-plantas','carrusel-categoria-joyeria','carrusel-categoria-premium','carrusel-categoria-desde249','carrusel-ocasion-cumpleanos','carrusel-ocasion-amor','carrusel-ocasion-condolencias','carrusel-ocasion-gracias','carrusel-ocasion-bride','carrusel-ocasion-mejorate'];
+            IMAGENES_CARRUSEL.forEach(id => {
+                const clave = id.replace(/-/g, '_');
+                if (cfg[clave]) { const el = document.getElementById(id); if (el) el.src = cfg[clave]; }
+            });
         }).catch(() => {});
     })();
 </script>
@@ -3492,43 +3482,44 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 <div>
                     <h3 class="font-semibold text-brandDark mb-3">Ayuda e información</h3>
                     <ul class="space-y-2 text-gray-500">
-                        <li><a href="/centro-ayuda.html#/servicios-corporativos" class="hover:text-brandFuchsia">Pedidos corporativos</a></li>
-                        <li><a href="/centro-ayuda.html#/envios-y-entregas" class="hover:text-brandFuchsia">Cobertura</a></li>
-                        <li><a href="/centro-ayuda.html#/hacer-un-pedido" class="hover:text-brandFuchsia">¿Cómo comprar?</a></li>
-                        <li><a href="/centro-ayuda.html#/politicas-y-garantia" class="hover:text-brandFuchsia">Política de envío</a></li>
-                        <li><a href="/centro-ayuda.html#/configuracion-de-mi-cuenta" class="hover:text-brandFuchsia">Agendar recordatorio</a></li>
+                        <li><a href="/pedidos-corporativos.html" class="hover:text-brandFuchsia">Pedidos corporativos</a></li>
+                        <li><a href="/cobertura.html" class="hover:text-brandFuchsia">Cobertura</a></li>
+                        <li><a href="/centro-ayuda.html#/hacer-un-pedido/0" class="hover:text-brandFuchsia">¿Cómo comprar?</a></li>
+                        <li><a href="/centro-ayuda.html#/politicas-y-garantia/2" class="hover:text-brandFuchsia">Política de envío</a></li>
+                        <li><a href="/centro-ayuda.html#/configuracion-de-mi-cuenta/2" class="hover:text-brandFuchsia">Agendar recordatorio</a></li>
                         <li><a href="/centro-ayuda.html#/cupones-de-descuento" class="hover:text-brandFuchsia">Cupones de descuento</a></li>
-                        <li><a href="/centro-ayuda.html#/pagos-reembolsos-facturacion" class="hover:text-brandFuchsia">Métodos de pago</a></li>
-                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral" class="hover:text-brandFuchsia">¿Cómo afiliar tu florería?</a></li>
-                        <li><a href="/terminos-y-condiciones.html" class="hover:text-brandFuchsia">Términos y condiciones</a></li>
+                        <li><a href="/centro-ayuda.html#/pagos-reembolsos-facturacion/0" class="hover:text-brandFuchsia">Métodos de pago</a></li>
+                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral/2" class="hover:text-brandFuchsia">¿Cómo afiliar tu florería?</a></li>
+                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral/4" class="hover:text-brandFuchsia">Términos y condiciones</a></li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="font-semibold text-brandDark mb-3">Acerca de nosotros</h3>
                     <ul class="space-y-2 text-gray-500">
-                        <li><a href="#" onclick="alert('Nuestro blog está en camino. ¡Vuelve pronto!'); return false;" class="hover:text-brandFuchsia">Blog</a></li>
-                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral" class="hover:text-brandFuchsia">¿Quiénes somos?</a></li>
-                        <li><a href="/centro-ayuda.html#/politicas-y-garantia" class="hover:text-brandFuchsia">Garantía Reserva Floral</a></li>
-                        <li><a href="mailto:hey@reservafloral.com" class="hover:text-brandFuchsia">Comentarios y sugerencias</a></li>
+                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral/1" class="hover:text-brandFuchsia">¿Quiénes somos?</a></li>
+                        <li><a href="/centro-ayuda.html#/politicas-y-garantia/0" class="hover:text-brandFuchsia">Garantía Reserva Floral</a></li>
+                        <li><a href="/centro-ayuda.html#/contactanos/0" class="hover:text-brandFuchsia">Comentarios y sugerencias</a></li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="font-semibold text-brandDark mb-3">Mi pedido</h3>
                     <ul class="space-y-2 text-gray-500">
-                        <li><a href="/centro-ayuda.html#/seguimiento-cancelaciones" class="hover:text-brandFuchsia">Estatus de mi pedido</a></li>
-                        <li><a href="/centro-ayuda.html#/pagos-reembolsos-facturacion" class="hover:text-brandFuchsia">Facturación</a></li>
+                        <li><a href="/centro-ayuda.html#/seguimiento-cancelaciones/1" class="hover:text-brandFuchsia">Estatus de mi pedido</a></li>
+                        <li><a href="/centro-ayuda.html#/pagos-reembolsos-facturacion/5" class="hover:text-brandFuchsia">Facturación</a></li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="font-semibold text-brandDark mb-3">Contáctanos</h3>
                     <div id="pie-redes-sociales" class="flex items-center gap-3 mb-6"></div>
                     <h3 class="font-semibold text-brandDark mb-3">Métodos de pago</h3>
-                    <div class="flex flex-wrap items-center gap-1.5">
-                        <span class="inline-flex items-center text-white text-[10px] font-bold px-2 py-1 rounded" style="background:#1434CB;">VISA</span>
-                        <span class="inline-flex items-center text-white text-[10px] font-bold px-2 py-1 rounded" style="background:#EB001B;">Mastercard</span>
-                        <span class="inline-flex items-center text-white text-[10px] font-bold px-2 py-1 rounded" style="background:#006FCF;">AMEX</span>
-                        <span class="inline-flex items-center text-white text-[10px] font-bold px-2 py-1 rounded" style="background:#DD1D21;">OXXO</span>
-                        <span class="inline-flex items-center text-white text-[10px] font-bold px-2 py-1 rounded" style="background:#5B3B90;">SPEI</span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-5 w-auto">
+                        <img src="https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-5 w-auto">
                     </div>
                 </div>
             </div>
@@ -3548,12 +3539,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 if (!cont) return;
                 const redes = [];
                 const numero = (cfg.whatsapp_numero || '').replace(/\D/g, '');
-                if (numero) redes.push({ url: `https://wa.me/${numero}`, svg: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 6.3A8.9 8.9 0 0012 3.9a8.9 8.9 0 00-7.7 13.4L3 21l3.8-1.3A8.9 8.9 0 0012 20.9a8.9 8.9 0 006.3-15.2L17.6 6.3zM12 19.3a7.4 7.4 0 01-3.8-1l-.3-.2-2.8 1 1-2.7-.2-.3a7.4 7.4 0 1112.6-5.2A7.4 7.4 0 0112 19.3zm4.1-5.6c-.2-.1-1.3-.7-1.5-.7-.2-.1-.4-.1-.5.1-.2.2-.6.7-.7.9-.1.1-.3.2-.5.1a6 6 0 01-1.8-1.1 6.7 6.7 0 01-1.2-1.6c-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.3c0-.1-.5-1.2-.7-1.7-.2-.4-.4-.4-.5-.4h-.5c-.1 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2 1 2.4c.1.1 1.6 2.5 3.9 3.5.5.2.9.4 1.3.5.5.2 1 .1 1.3-.1.4-.2 1.3-.5 1.4-1.1.2-.5.2-1 .1-1.1-.1-.1-.2-.2-.4-.3z"/></svg>' });
-                if (cfg.instagram_url) redes.push({ url: cfg.instagram_url, svg: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.2" cy="6.8" r="1"></circle></svg>' });
-                if (cfg.facebook_url) redes.push({ url: cfg.facebook_url, svg: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.5h2.5l.4-3H13.5V8.5c0-.9.2-1.5 1.5-1.5h1.6V4.3C16.3 4.2 15.2 4 14 4c-2.5 0-4.2 1.5-4.2 4.3v2.2H7.3v3h2.5V21h3.7z"/></svg>' });
-                if (cfg.tiktok_url) redes.push({ url: cfg.tiktok_url, svg: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 5.8a4.3 4.3 0 01-2.7-2.6h-2.8v11.9a2.5 2.5 0 11-2.5-2.6c.2 0 .4 0 .6.1V9.7a5.3 5.3 0 00-.6 0 5.4 5.4 0 105.4 5.4V9.6a6.8 6.8 0 003.6 1v-2.8a4.3 4.3 0 01-1-.1z"/></svg>' });
-                if (cfg.twitter_url) redes.push({ url: cfg.twitter_url, svg: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 3.2h3l-6.6 7.5 7.7 10.1h-6l-4.7-6.2-5.4 6.2H3.9l7-8-7.4-9.6h6.1l4.3 5.7 5-5.7zm-1 15.8h1.6L8.2 5H6.5l11.4 14z"/></svg>' });
-                cont.innerHTML = redes.map(r => `<a href="${r.url}" target="_blank" rel="noopener" class="text-gray-400 hover:text-brandFuchsia transition">${r.svg}</a>`).join('');
+                if (numero) redes.push({ url: `https://wa.me/${numero}`, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg', alt: 'WhatsApp' });
+                if (cfg.instagram_url) redes.push({ url: cfg.instagram_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg', alt: 'Instagram' });
+                if (cfg.facebook_url) redes.push({ url: cfg.facebook_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg', alt: 'Facebook' });
+                if (cfg.tiktok_url) redes.push({ url: cfg.tiktok_url, img: 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg', alt: 'TikTok' });
+                cont.innerHTML = redes.map(r => `<a href="${r.url}" target="_blank" rel="noopener"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6"></a>`).join('');
             }).catch(() => {});
         })();
     </script>

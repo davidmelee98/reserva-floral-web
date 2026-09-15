@@ -724,49 +724,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
 
                 <div class="adm-card p-6 max-w-2xl mt-6">
                     <h2 class="text-lg font-semibold text-brandDark mb-1">Imágenes del sitio</h2>
-                    <p class="text-xs text-gray-400 mb-5">La portada del inicio y las 3 fotos de "Explora por categoría". Cada cambio se ve reflejado de inmediato.</p>
-                    <div class="space-y-5">
-                        <div id="img-site-imagen_hero" class="flex items-center gap-4">
-                            <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="">
-                            <div>
-                                <p class="text-sm font-medium text-brandDark mb-1">Portada del inicio</p>
-                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
-                                    <span class="texto-subir-site">Cambiar imagen</span>
-                                    <input type="file" accept="image/*" class="hidden archivo-site-imagen">
-                                </label>
-                            </div>
-                        </div>
-                        <div id="img-site-imagen_categoria_flores_y_plantas" class="flex items-center gap-4">
-                            <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="">
-                            <div>
-                                <p class="text-sm font-medium text-brandDark mb-1">Categoría: Flores y plantas</p>
-                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
-                                    <span class="texto-subir-site">Cambiar imagen</span>
-                                    <input type="file" accept="image/*" class="hidden archivo-site-imagen">
-                                </label>
-                            </div>
-                        </div>
-                        <div id="img-site-imagen_categoria_globos" class="flex items-center gap-4">
-                            <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="">
-                            <div>
-                                <p class="text-sm font-medium text-brandDark mb-1">Categoría: Globos</p>
-                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
-                                    <span class="texto-subir-site">Cambiar imagen</span>
-                                    <input type="file" accept="image/*" class="hidden archivo-site-imagen">
-                                </label>
-                            </div>
-                        </div>
-                        <div id="img-site-imagen_categoria_regalos" class="flex items-center gap-4">
-                            <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="">
-                            <div>
-                                <p class="text-sm font-medium text-brandDark mb-1">Categoría: Regalos</p>
-                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
-                                    <span class="texto-subir-site">Cambiar imagen</span>
-                                    <input type="file" accept="image/*" class="hidden archivo-site-imagen">
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+                    <p class="text-xs text-gray-400 mb-5">La portada del inicio y las fotos de los carruseles "Entregas el mismo día" y "Ocasiones". Cada cambio se ve reflejado de inmediato.</p>
+                    <div id="lista-imagenes-sitio" class="space-y-5"></div>
                 </div>
 
             </section>
@@ -2074,7 +2033,66 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // =======================================================================
     // CONFIGURACIÓN
     // =======================================================================
-    const IMAGENES_SITIO = ['imagen_hero', 'imagen_categoria_flores_y_plantas', 'imagen_categoria_globos', 'imagen_categoria_regalos'];
+    const IMAGENES_SITIO = [
+        { clave: 'imagen_hero', etiqueta: 'Portada del inicio' },
+        { clave: 'carrusel_categoria_flores', etiqueta: 'Carrusel "Entregas el mismo día": Flores' },
+        { clave: 'carrusel_categoria_globos', etiqueta: 'Carrusel "Entregas el mismo día": Globos' },
+        { clave: 'carrusel_categoria_regalos', etiqueta: 'Carrusel "Entregas el mismo día": Regalos' },
+        { clave: 'carrusel_categoria_plantas', etiqueta: 'Carrusel "Entregas el mismo día": Plantas' },
+        { clave: 'carrusel_categoria_joyeria', etiqueta: 'Carrusel "Entregas el mismo día": Joyería' },
+        { clave: 'carrusel_categoria_premium', etiqueta: 'Carrusel "Entregas el mismo día": Línea Premium' },
+        { clave: 'carrusel_categoria_desde249', etiqueta: 'Carrusel "Entregas el mismo día": Desde $249' },
+        { clave: 'carrusel_ocasion_cumpleanos', etiqueta: 'Carrusel "Ocasiones": Cumpleaños' },
+        { clave: 'carrusel_ocasion_amor', etiqueta: 'Carrusel "Ocasiones": Amor y Aniversario' },
+        { clave: 'carrusel_ocasion_condolencias', etiqueta: 'Carrusel "Ocasiones": Condolencias' },
+        { clave: 'carrusel_ocasion_gracias', etiqueta: 'Carrusel "Ocasiones": Gracias' },
+        { clave: 'carrusel_ocasion_bride', etiqueta: 'Carrusel "Ocasiones": Bride to be' },
+        { clave: 'carrusel_ocasion_mejorate', etiqueta: 'Carrusel "Ocasiones": Mejórate pronto' }
+    ];
+
+    function renderListaImagenesSitio() {
+        document.getElementById('lista-imagenes-sitio').innerHTML = IMAGENES_SITIO.map(img => `
+            <div id="img-site-${img.clave}" class="flex items-center gap-4">
+                <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
+                <div>
+                    <p class="text-sm font-medium text-brandDark mb-1">${img.etiqueta}</p>
+                    <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
+                        <span class="texto-subir-site">Cambiar imagen</span>
+                        <input type="file" accept="image/*" class="hidden archivo-site-imagen">
+                    </label>
+                </div>
+            </div>
+        `).join('');
+
+        // El listener se conecta hasta aquí (después de crear los elementos),
+        // ya que antes de esto el contenedor todavía estaba vacío.
+        document.querySelectorAll('.archivo-site-imagen').forEach(input => {
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const bloque = e.target.closest('[id^="img-site-"]');
+                const clave = bloque.id.replace('img-site-', '');
+                const textoEl = bloque.querySelector('.texto-subir-site');
+                const original = textoEl.innerText;
+                textoEl.innerText = 'Subiendo...';
+                try {
+                    const url = await subirArchivoImagen(file);
+                    await jsonOError(await fetch('/api/admin/configuracion', {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ [clave]: url })
+                    }));
+                    bloque.querySelector('.img-site-preview').src = url;
+                    bloque.querySelector('.img-site-preview').style.opacity = '1';
+                    mostrarToast('Imagen actualizada.');
+                } catch (error) {
+                    mostrarToast(error.message || 'No se pudo subir la imagen.', 'error');
+                } finally {
+                    textoEl.innerText = original;
+                    e.target.value = '';
+                }
+            });
+        });
+    }
 
     async function cargarConfiguracion() {
         try {
@@ -2088,47 +2106,18 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             document.getElementById('cfg_tiktok_url').value = cfg.tiktok_url || '';
             document.getElementById('cfg_twitter_url').value = cfg.twitter_url || '';
 
-            IMAGENES_SITIO.forEach(clave => {
-                const bloque = document.getElementById('img-site-' + clave);
+            renderListaImagenesSitio();
+            IMAGENES_SITIO.forEach(img => {
+                const bloque = document.getElementById('img-site-' + img.clave);
                 if (!bloque) return;
                 const preview = bloque.querySelector('.img-site-preview');
-                preview.src = cfg[clave] || '';
-                preview.style.opacity = cfg[clave] ? '1' : '.15';
+                preview.src = cfg[img.clave] || '';
+                preview.style.opacity = cfg[img.clave] ? '1' : '.15';
             });
         } catch (error) {
             console.error('Error cargando configuración', error);
         }
     }
-
-    // Subir cualquiera de las 4 imágenes del sitio: al elegir el archivo, se
-    // sube y se guarda de inmediato como esa clave de configuración (no hace
-    // falta darle "Guardar configuración" para estas).
-    document.querySelectorAll('.archivo-site-imagen').forEach(input => {
-        input.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const bloque = e.target.closest('[id^="img-site-"]');
-            const clave = bloque.id.replace('img-site-', '');
-            const textoEl = bloque.querySelector('.texto-subir-site');
-            const original = textoEl.innerText;
-            textoEl.innerText = 'Subiendo...';
-            try {
-                const url = await subirArchivoImagen(file);
-                await jsonOError(await fetch('/api/admin/configuracion', {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ [clave]: url })
-                }));
-                bloque.querySelector('.img-site-preview').src = url;
-                bloque.querySelector('.img-site-preview').style.opacity = '1';
-                mostrarToast('Imagen actualizada.');
-            } catch (error) {
-                mostrarToast(error.message || 'No se pudo subir la imagen.', 'error');
-            } finally {
-                textoEl.innerText = original;
-                e.target.value = '';
-            }
-        });
-    });
 
     document.getElementById('form-configuracion').addEventListener('submit', async (e) => {
         e.preventDefault();
