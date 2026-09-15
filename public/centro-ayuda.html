@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Centro de Ayuda | Reserva Floral</title>
     <meta name="description" content="Resuelve tus dudas sobre pedidos, envíos, pagos, cupones y tu cuenta en Reserva Floral.">
-    <link rel="canonical" href="https://www.reservafloral.com/centro-ayuda.html">
+    <link rel="canonical" href="https://www.reservafloral.com/centro-ayuda">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
@@ -483,17 +483,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </ul>
         </div>
     </nav>
-
-
-    <div id="barra-busqueda-movil" class="hidden md:hidden bg-brandFuchsia px-4 pb-3 sticky top-16 z-40">
-        <form onsubmit="event.preventDefault(); location.href='/?buscar=' + encodeURIComponent(document.getElementById('input-busqueda-movil').value);" class="relative">
-            <input type="text" id="input-busqueda-movil" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
-            <button type="submit" aria-label="Buscar" class="absolute right-3 top-2.5">
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </button>
-        </form>
-    </div>
-
     <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 min-h-[60vh]">
         <!-- Vista: menú principal -->
         <div id="ca-vista-menu">
@@ -543,23 +532,23 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         if (sesionCliente) {
             texto.innerText = `¡Hola, ${sesionCliente.nombre}!`;
             menu.innerHTML = `
-                <a href="/cuenta.html" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
+                <a href="/cuenta" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
                     <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path stroke-linecap="round" d="M4 20c0-4 4-6 8-6s8 2 8 6"></path></svg>
                     Mi perfil
                 </a>
-                <a href="/cuenta.html#pedidos" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
+                <a href="/cuenta#pedidos" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
                     <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14l-1 12H6L5 8zm0 0L4 4H2m9 8v4m4-4v4"></path></svg>
                     Mis pedidos
                 </a>
-                <a href="/cuenta.html#puntos" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
+                <a href="/cuenta#puntos" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
                     <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.958a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.368 2.447a1 1 0 00-.363 1.118l1.287 3.957c.3.922-.755 1.688-1.538 1.118l-3.367-2.446a1 1 0 00-1.176 0l-3.367 2.446c-.783.57-1.838-.196-1.538-1.118l1.287-3.957a1 1 0 00-.363-1.118L2.063 9.385c-.783-.57-.38-1.81.588-1.81h4.163a1 1 0 00.95-.69l1.285-3.958z"></path></svg>
                     Programa de puntos
                 </a>
-                <a href="/cuenta.html#cupones" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
+                <a href="/cuenta#cupones" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
                     <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v3a2 2 0 01-2 2 2 2 0 012 2v3a2 2 0 002 2h2m6-14h2a2 2 0 012 2v3a2 2 0 002 2 2 2 0 00-2 2v3a2 2 0 01-2 2h-2"></path></svg>
                     Mis cupones
                 </a>
-                <a href="/centro-ayuda.html" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
+                <a href="/centro-ayuda" class="flex items-center gap-2.5 px-4 py-2 text-sm text-brandDark hover:bg-gray-50">
                     <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 9a2.5 2.5 0 015 .5c0 1.5-2 1.7-2 3.2M12 17h.01"></path></svg>
                     Centro de Ayuda
                 </a>
@@ -609,14 +598,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const numero = (cfg.whatsapp_numero || '').replace(/\D/g, '');
         const link = document.getElementById('ca-link-whatsapp');
         if (numero) link.href = 'https://wa.me/' + numero;
-        else link.href = '/cuenta.html';
+        else link.href = '/cuenta';
     }).catch(() => {});
 
     // =======================================================================
     // Contenido del Centro de Ayuda
     // =======================================================================
     const CONTACTO_WHATSAPP = '<a href="#" onclick="document.getElementById(\'ca-link-whatsapp\').click(); return false;">contáctanos por WhatsApp</a>';
-    const MIS_PEDIDOS = '<a href="/cuenta.html">Mis pedidos</a>';
+    const MIS_PEDIDOS = '<a href="/cuenta">Mis pedidos</a>';
 
     const CENTRO_AYUDA = [
         {
@@ -817,7 +806,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     q: 'Programa de Puntos Reserva Floral',
                     r: `Celebramos el acto de regalar y queremos recompensar a quienes envían felicidad.
                         <p class="mt-3">Cada vez que uno de tus pedidos se entrega, generas puntos: cada peso (1 MXN) gastado en regalos es igual a 1 punto.</p>
-                        <p class="mt-3">Al juntar 3,000 puntos, puedes canjearlos por un cupón de descuento para tu siguiente compra desde la sección <a href="/cuenta.html">Programa de Puntos</a> de tu cuenta. ¡Así que entre más regalos envíes, más ahorras!</p>`
+                        <p class="mt-3">Al juntar 3,000 puntos, puedes canjearlos por un cupón de descuento para tu siguiente compra desde la sección <a href="/cuenta">Programa de Puntos</a> de tu cuenta. ¡Así que entre más regalos envíes, más ahorras!</p>`
                 },
                 {
                     q: 'Términos y condiciones de cupones y promociones',
@@ -860,7 +849,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 {
                     q: '¿Puedo pagar con mis puntos?',
                     r: `No directamente, pero cada vez que acumules 3,000 puntos puedes canjearlos por un cupón de descuento para tu próxima compra. Recuerda: $1.00 MXN gastado en pedidos entregados = 1 punto.
-                        <p class="mt-3">Revisa tus puntos en la sección <a href="/cuenta.html">Programa de Puntos</a> de tu cuenta.</p>`
+                        <p class="mt-3">Revisa tus puntos en la sección <a href="/cuenta">Programa de Puntos</a> de tu cuenta.</p>`
                 },
                 {
                     q: '¿Cuándo recibiré mi reembolso?',
@@ -870,7 +859,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 },
                 {
                     q: '¿Cómo genero mi factura?',
-                    r: `Estamos trabajando para que puedas generar tu factura directamente desde <a href="/cuenta.html">Mis pedidos</a>. Mientras tanto, ${CONTACTO_WHATSAPP} y con gusto te ayudamos a facturar tu compra.`
+                    r: `Estamos trabajando para que puedas generar tu factura directamente desde <a href="/cuenta">Mis pedidos</a>. Mientras tanto, ${CONTACTO_WHATSAPP} y con gusto te ayudamos a facturar tu compra.`
                 }
             ]
         },
@@ -887,12 +876,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 },
                 {
                     q: 'Quiero cambiar mis datos personales',
-                    r: `Para cambiar los datos de tu cuenta, entra a <a href="/cuenta.html">tu cuenta</a> > Mi perfil, y edita la información que quieras actualizar.
+                    r: `Para cambiar los datos de tu cuenta, entra a <a href="/cuenta">tu cuenta</a> > Mi perfil, y edita la información que quieras actualizar.
                         <p class="mt-3">Es importante mantener tus datos actualizados ya que son necesarios para mantenerte informado sobre el estatus de tus pedidos.</p>`
                 },
                 {
                     q: '¿Cómo se agrega un recordatorio?',
-                    r: `¡Que no se te olvide su regalo! Para hacer un recordatorio, entra a <a href="/cuenta.html">tu cuenta</a> > Recordatorios y da clic en agregar una nueva fecha.
+                    r: `¡Que no se te olvide su regalo! Para hacer un recordatorio, entra a <a href="/cuenta">tu cuenta</a> > Recordatorios y da clic en agregar una nueva fecha.
                         <p class="mt-3">Puedes ponerle un título, elegir la ocasión y registrar la fecha de la celebración. Guárdalo para tenerlo siempre a la mano en tu cuenta.</p>`
                 },
                 {
@@ -910,7 +899,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                             <li>Recordatorios</li>
                             <li>Datos de la cuenta</li>
                         </ul>
-                        <p class="mt-3">Para borrarla, ve a <a href="/cuenta.html">tu cuenta</a> > Mi perfil. Al final de la página encontrarás la sección Eliminar cuenta.</p>`
+                        <p class="mt-3">Para borrarla, ve a <a href="/cuenta">tu cuenta</a> > Mi perfil. Al final de la página encontrarás la sección Eliminar cuenta.</p>`
                 }
             ]
         },
@@ -1179,30 +1168,30 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 <div>
                     <h3 class="font-semibold text-brandDark mb-3">Ayuda e información</h3>
                     <ul class="space-y-2 text-gray-500">
-                        <li><a href="/pedidos-corporativos.html" class="hover:text-brandFuchsia">Pedidos corporativos</a></li>
-                        <li><a href="/cobertura.html" class="hover:text-brandFuchsia">Cobertura</a></li>
-                        <li><a href="/centro-ayuda.html#/hacer-un-pedido/0" class="hover:text-brandFuchsia">¿Cómo comprar?</a></li>
-                        <li><a href="/centro-ayuda.html#/politicas-y-garantia/2" class="hover:text-brandFuchsia">Política de envío</a></li>
-                        <li><a href="/centro-ayuda.html#/configuracion-de-mi-cuenta/2" class="hover:text-brandFuchsia">Agendar recordatorio</a></li>
-                        <li><a href="/centro-ayuda.html#/cupones-de-descuento" class="hover:text-brandFuchsia">Cupones de descuento</a></li>
-                        <li><a href="/centro-ayuda.html#/pagos-reembolsos-facturacion/0" class="hover:text-brandFuchsia">Métodos de pago</a></li>
-                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral/2" class="hover:text-brandFuchsia">¿Cómo afiliar tu florería?</a></li>
-                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral/4" class="hover:text-brandFuchsia">Términos y condiciones</a></li>
+                        <li><a href="/pedidos-corporativos" class="hover:text-brandFuchsia">Pedidos corporativos</a></li>
+                        <li><a href="/cobertura" class="hover:text-brandFuchsia">Cobertura</a></li>
+                        <li><a href="/centro-ayuda#/hacer-un-pedido/0" class="hover:text-brandFuchsia">¿Cómo comprar?</a></li>
+                        <li><a href="/centro-ayuda#/politicas-y-garantia/2" class="hover:text-brandFuchsia">Política de envío</a></li>
+                        <li><a href="/centro-ayuda#/configuracion-de-mi-cuenta/2" class="hover:text-brandFuchsia">Agendar recordatorio</a></li>
+                        <li><a href="/centro-ayuda#/cupones-de-descuento" class="hover:text-brandFuchsia">Cupones de descuento</a></li>
+                        <li><a href="/centro-ayuda#/pagos-reembolsos-facturacion/0" class="hover:text-brandFuchsia">Métodos de pago</a></li>
+                        <li><a href="/centro-ayuda#/acerca-de-reserva-floral/2" class="hover:text-brandFuchsia">¿Cómo afiliar tu florería?</a></li>
+                        <li><a href="/centro-ayuda#/acerca-de-reserva-floral/4" class="hover:text-brandFuchsia">Términos y condiciones</a></li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="font-semibold text-brandDark mb-3">Acerca de nosotros</h3>
                     <ul class="space-y-2 text-gray-500">
-                        <li><a href="/centro-ayuda.html#/acerca-de-reserva-floral/1" class="hover:text-brandFuchsia">¿Quiénes somos?</a></li>
-                        <li><a href="/centro-ayuda.html#/politicas-y-garantia/0" class="hover:text-brandFuchsia">Garantía Reserva Floral</a></li>
-                        <li><a href="/centro-ayuda.html#/contactanos/0" class="hover:text-brandFuchsia">Comentarios y sugerencias</a></li>
+                        <li><a href="/centro-ayuda#/acerca-de-reserva-floral/1" class="hover:text-brandFuchsia">¿Quiénes somos?</a></li>
+                        <li><a href="/centro-ayuda#/politicas-y-garantia/0" class="hover:text-brandFuchsia">Garantía Reserva Floral</a></li>
+                        <li><a href="/centro-ayuda#/contactanos/0" class="hover:text-brandFuchsia">Comentarios y sugerencias</a></li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="font-semibold text-brandDark mb-3">Mi pedido</h3>
                     <ul class="space-y-2 text-gray-500">
-                        <li><a href="/centro-ayuda.html#/seguimiento-cancelaciones/1" class="hover:text-brandFuchsia">Estatus de mi pedido</a></li>
-                        <li><a href="/centro-ayuda.html#/pagos-reembolsos-facturacion/5" class="hover:text-brandFuchsia">Facturación</a></li>
+                        <li><a href="/centro-ayuda#/seguimiento-cancelaciones/1" class="hover:text-brandFuchsia">Estatus de mi pedido</a></li>
+                        <li><a href="/centro-ayuda#/pagos-reembolsos-facturacion/5" class="hover:text-brandFuchsia">Facturación</a></li>
                     </ul>
                 </div>
                 <div>
@@ -1222,7 +1211,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </div>
             <div class="border-t border-gray-100 mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-400">
                 <p>Copyright © <span id="pie-anio"></span>. ReservaFloral.com</p>
-                <a href="/centro-ayuda.html#/acerca-de-reserva-floral/3" class="hover:text-brandFuchsia">Política de privacidad</a>
+                <a href="/centro-ayuda#/acerca-de-reserva-floral/3" class="hover:text-brandFuchsia">Política de privacidad</a>
             </div>
         </div>
     </footer>

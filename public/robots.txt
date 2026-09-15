@@ -1,9 +1,14 @@
 User-agent: *
 Allow: /
+Disallow: /checkout
 Disallow: /checkout.html
+Disallow: /carrito
 Disallow: /carrito.html
+Disallow: /cuenta
 Disallow: /cuenta.html
+Disallow: /admin
 Disallow: /admin.html
+Disallow: /gracias
 Disallow: /gracias.html
 Disallow: /api/
 

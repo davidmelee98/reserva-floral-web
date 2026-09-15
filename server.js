@@ -131,6 +131,33 @@ const subirImagen = multer({
   }
 });
 
+// ---------------------------------------------------------------------------
+// URLs limpias (sin ".html"): cada página también se sirve en su ruta corta.
+// Los enlaces del sitio ya usan estas rutas; el ".html" de toda la vida
+// también se redirige aquí por si alguien lo escribe a mano o entra desde un
+// enlace viejo guardado.
+// ---------------------------------------------------------------------------
+const PAGINAS_LIMPIAS = {
+  '/carrito': 'carrito.html',
+  '/checkout': 'checkout.html',
+  '/gracias': 'gracias.html',
+  '/cuenta': 'cuenta.html',
+  '/centro-ayuda': 'centro-ayuda.html',
+  '/admin': 'admin.html',
+  '/cobertura': 'cobertura.html',
+  '/pedidos-corporativos': 'pedidos-corporativos.html'
+};
+for (const [rutaLimpia, archivo] of Object.entries(PAGINAS_LIMPIAS)) {
+  app.get(rutaLimpia, (req, res) => res.sendFile(path.join(__dirname, 'public', archivo)));
+  // El enlace clásico con ".html" redirige a la versión limpia, conservando
+  // cualquier query string o "hash" (el hash no llega al servidor, pero el
+  // navegador lo vuelve a agregar solo tras la redirección).
+  app.get(`${rutaLimpia}.html`, (req, res) => {
+    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    res.redirect(301, rutaLimpia + query);
+  });
+}
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Las páginas de producto usan el mismo cascarón de la tienda; el frontend carga el ID desde la URL.
