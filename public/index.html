@@ -1015,36 +1015,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
 
-            <div class="rf-category-track" id="rf-category-track">
-                <a href="/categoria/flores-y-plantas" class="rf-category-card group">
-                    <img id="carrusel-categoria-flores" src="https://images.unsplash.com/photo-1591886960571-74d43a9d4166?q=80&w=900&auto=format&fit=crop" alt="Flores" loading="lazy">
-                    <span>Flores</span>
-                </a>
-                <a href="/categoria/globos" class="rf-category-card group">
-                    <img id="carrusel-categoria-globos" src="https://img.flowers.ua/images/Flowers/ext/1908_1.jpg" alt="Globos" loading="lazy">
-                    <span>Globos</span>
-                </a>
-                <a href="/categoria/regalos" class="rf-category-card group">
-                    <img id="carrusel-categoria-regalos" src="https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=900&auto=format&fit=crop" alt="Regalos" loading="lazy">
-                    <span>Regalos</span>
-                </a>
-                <a href="/categoria/flores-y-plantas/plantas" class="rf-category-card group">
-                    <img id="carrusel-categoria-plantas" src="https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=900&auto=format&fit=crop" alt="Plantas" loading="lazy">
-                    <span>Plantas</span>
-                </a>
-                <a href="/categoria/regalos/joyeria" class="rf-category-card group">
-                    <img id="carrusel-categoria-joyeria" src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=900&auto=format&fit=crop" alt="Joyería" loading="lazy">
-                    <span>Joyería</span>
-                </a>
-                <a href="/categoria/flores-y-plantas/flores-premium" class="rf-category-card group">
-                    <img id="carrusel-categoria-premium" src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=900&auto=format&fit=crop" alt="Línea Premium" loading="lazy">
-                    <span>Línea Premium</span>
-                </a>
-                <a href="/categoria/desde-249" class="rf-category-card group">
-                    <img id="carrusel-categoria-desde249" src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=900&auto=format&fit=crop" alt="Desde $249" loading="lazy">
-                    <span>Desde $249</span>
-                </a>
-            </div>
+            <div class="rf-category-track" id="rf-category-track"></div>
 
             <button type="button" class="rf-category-arrow rf-category-next" aria-label="Ver más categorías">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1064,26 +1035,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
 
-            <div class="rf-occasion-track" id="rf-occasion-track">
-                <a href="/categoria/ocasiones/cumpleanos" class="rf-occasion-card rf-occasion-link" aria-label="Cumpleaños">
-                    <img id="carrusel-ocasion-cumpleanos" src="/ocasiones/cumpleanos.jpg" alt="Cumpleaños" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/amor-aniversario" class="rf-occasion-card rf-occasion-link" aria-label="Amor y Aniversario">
-                    <img id="carrusel-ocasion-amor" src="/ocasiones/amor-aniversario.jpg" alt="Amor/Aniversario" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/condolencias" class="rf-occasion-card rf-occasion-link" aria-label="Condolencias">
-                    <img id="carrusel-ocasion-condolencias" src="/ocasiones/condolencias.jpg" alt="Condolencias" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/gracias" class="rf-occasion-card rf-occasion-link" aria-label="Gracias">
-                    <img id="carrusel-ocasion-gracias" src="/ocasiones/gracias.jpg" alt="Gracias" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/bride-to-be" class="rf-occasion-card rf-occasion-link" aria-label="Bride to be">
-                    <img id="carrusel-ocasion-bride" src="/ocasiones/bride-to-be.jpg" alt="Bride to be" loading="lazy">
-                </a>
-                <a href="/categoria/ocasiones/mejorate-pronto" class="rf-occasion-card rf-occasion-link" aria-label="Mejórate pronto">
-                    <img id="carrusel-ocasion-mejorate" src="/ocasiones/mejorate-pronto.jpg" alt="Mejórate pronto" loading="lazy">
-                </a>
-            </div>
+            <div class="rf-occasion-track" id="rf-occasion-track"></div>
 
             <button type="button" class="rf-occasion-arrow rf-occasion-next" aria-label="Ver más ocasiones">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2658,16 +2610,20 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 rfOccNext.addEventListener('click', () => scrollRfOccasions(1));
                 rfOccTrack.addEventListener('scroll', updateRfOccasionArrows, {passive:true});
                 window.addEventListener('resize', updateRfOccasionArrows);
+                window.actualizarFlechasOcasionesRF = updateRfOccasionArrows;
                 updateRfOccasionArrows();
             }
-            document.querySelectorAll('.rf-occasion-link').forEach(link => {
-                link.addEventListener('click', e => {
-                    if (ubicacionRFCompleta()) return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    abrirModalUbicacion(() => { window.location.href = link.href; });
-                }, true);
-            });
+            // Delegado (no se busca el elemento al cargar la página) porque
+            // las tarjetas de "Ocasiones" ahora se agregan después, cuando
+            // llega la información del carrusel desde el servidor.
+            document.addEventListener('click', e => {
+                const link = e.target.closest('.rf-occasion-link');
+                if (!link) return;
+                if (ubicacionRFCompleta()) return;
+                e.preventDefault();
+                e.stopPropagation();
+                abrirModalUbicacion(() => { window.location.href = link.href; });
+            }, true);
 
             const rfFavTrack = document.getElementById('contenedor-arreglos');
             const rfFavPrev = document.querySelector('.rf-favorite-prev');
@@ -2716,6 +2672,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 rfNext.addEventListener('click', () => scrollRfCategories(1));
                 rfTrack.addEventListener('scroll', updateRfCategoryArrows, {passive:true});
                 window.addEventListener('resize', updateRfCategoryArrows);
+                window.actualizarFlechasCategoriasRF = updateRfCategoryArrows;
                 updateRfCategoryArrows();
             }
             normalizarCarrito();
@@ -3462,17 +3419,40 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 btn.href = 'https://wa.me/' + numero;
                 btn.classList.remove('hidden');
             }
-            // Imágenes de portada -- si el negocio ya subió las suyas desde el
-            // panel, se usan esas; si no, se quedan las de muestra de siempre.
+            // Imagen de portada -- si el negocio ya subió la suya desde el
+            // panel, se usa esa; si no, se queda con la de muestra de siempre.
             if (cfg.imagen_hero) document.getElementById('hero-imagen').src = cfg.imagen_hero;
-            // Imágenes de los carruseles del inicio -- cada una es opcional;
-            // si no se ha configurado, se queda con la de muestra de siempre.
-            const IMAGENES_CARRUSEL = ['carrusel-categoria-flores','carrusel-categoria-globos','carrusel-categoria-regalos','carrusel-categoria-plantas','carrusel-categoria-joyeria','carrusel-categoria-premium','carrusel-categoria-desde249','carrusel-ocasion-cumpleanos','carrusel-ocasion-amor','carrusel-ocasion-condolencias','carrusel-ocasion-gracias','carrusel-ocasion-bride','carrusel-ocasion-mejorate'];
-            IMAGENES_CARRUSEL.forEach(id => {
-                const clave = id.replace(/-/g, '_');
-                if (cfg[clave]) { const el = document.getElementById(id); if (el) el.src = cfg[clave]; }
-            });
         }).catch(() => {});
+
+        // Carruseles del inicio: las tarjetas (imagen, título y a dónde
+        // llevan) se administran por completo desde el panel -- se cargan
+        // aquí en vez de venir escritas en el HTML.
+        function escaparHtmlInicioRF(str) {
+            return String(str ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+        }
+        fetch('/api/carruseles').then(r => r.json()).then(datos => {
+            const pistaCategorias = document.getElementById('rf-category-track');
+            if (pistaCategorias && Array.isArray(datos.categorias)) {
+                pistaCategorias.innerHTML = datos.categorias.map(item => `
+                    <a href="${escaparHtmlInicioRF(item.enlace)}" class="rf-category-card group">
+                        <img src="${escaparHtmlInicioRF(item.imagen_url)}" alt="${escaparHtmlInicioRF(item.titulo)}" loading="lazy">
+                        <span>${escaparHtmlInicioRF(item.titulo)}</span>
+                    </a>
+                `).join('');
+            }
+            const pistaOcasiones = document.getElementById('rf-occasion-track');
+            if (pistaOcasiones && Array.isArray(datos.ocasiones)) {
+                pistaOcasiones.innerHTML = datos.ocasiones.map(item => `
+                    <a href="${escaparHtmlInicioRF(item.enlace)}" class="rf-occasion-card rf-occasion-link" aria-label="${escaparHtmlInicioRF(item.titulo)}">
+                        <img src="${escaparHtmlInicioRF(item.imagen_url)}" alt="${escaparHtmlInicioRF(item.titulo)}" loading="lazy">
+                    </a>
+                `).join('');
+            }
+            // Las flechas de "siguiente/anterior" miden el ancho real de las
+            // tarjetas -- hay que recalcularlas ya que el contenido cargó.
+            if (window.actualizarFlechasCategoriasRF) window.actualizarFlechasCategoriasRF();
+            if (window.actualizarFlechasOcasionesRF) window.actualizarFlechasOcasionesRF();
+        }).catch(error => console.error('No se pudo cargar el contenido del inicio', error));
     })();
 </script>
 

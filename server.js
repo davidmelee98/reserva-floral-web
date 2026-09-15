@@ -285,6 +285,17 @@ async function inicializarDB() {
       fecha_expiracion DATE,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS carruseles_inicio (
+      id SERIAL PRIMARY KEY,
+      carrusel VARCHAR(30) NOT NULL,
+      titulo VARCHAR(100) NOT NULL,
+      imagen_url TEXT NOT NULL,
+      enlace VARCHAR(255) NOT NULL,
+      orden INTEGER DEFAULT 0,
+      activo BOOLEAN DEFAULT true,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Compatibilidad con instalaciones anteriores de la base de datos.
@@ -357,6 +368,46 @@ async function inicializarDB() {
     END
     WHERE estado IS NULL
   `);
+
+  // Semilla del contenido de los carruseles del inicio ("Entregas el mismo
+  // día..." y "Ocasiones") -- si el negocio ya había subido alguna imagen
+  // con el sistema anterior (guardada como configuración suelta), se
+  // recupera aquí para no perder ese trabajo; si no, se usan las fotos de
+  // muestra de siempre. El enlace de cada una ya usa el formato que sí
+  // filtra el catálogo (antes usaban rutas que no hacían nada).
+  const carruselesExistentes = await pool.query("SELECT COUNT(*)::int AS n FROM carruseles_inicio");
+  if (carruselesExistentes.rows[0].n === 0) {
+    const cfgPrevia = await pool.query('SELECT clave, valor FROM configuracion');
+    const cfg = {};
+    cfgPrevia.rows.forEach(fila => { cfg[fila.clave] = fila.valor; });
+
+    const categoriasIniciales = [
+      ['Flores', cfg.carrusel_categoria_flores || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?q=80&w=900&auto=format&fit=crop', '/?categoria=' + encodeURIComponent('Flores y plantas'), 1],
+      ['Globos', cfg.carrusel_categoria_globos || 'https://img.flowers.ua/images/Flowers/ext/1908_1.jpg', '/?categoria=Globos', 2],
+      ['Regalos', cfg.carrusel_categoria_regalos || 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=900&auto=format&fit=crop', '/?categoria=Regalos', 3],
+      ['Plantas', cfg.carrusel_categoria_plantas || 'https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=900&auto=format&fit=crop', '/?categoria=' + encodeURIComponent('Flores y plantas'), 4],
+      ['Joyería', cfg.carrusel_categoria_joyeria || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=900&auto=format&fit=crop', '/?categoria=Regalos', 5],
+      ['Línea Premium', cfg.carrusel_categoria_premium || 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=900&auto=format&fit=crop', '/?categoria=' + encodeURIComponent('Flores y plantas'), 6],
+      ['Desde $249', cfg.carrusel_categoria_desde249 || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=900&auto=format&fit=crop', '/', 7]
+    ];
+    const ocasionesIniciales = [
+      ['Cumpleaños', cfg.carrusel_ocasion_cumpleanos || 'https://images.unsplash.com/photo-1464349153735-e0c7500ce7e0?q=80&w=900&auto=format&fit=crop', '/?buscar=Cumplea%C3%B1os', 1],
+      ['Amor y Aniversario', cfg.carrusel_ocasion_amor || 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?q=80&w=900&auto=format&fit=crop', '/?buscar=Amor', 2],
+      ['Condolencias', cfg.carrusel_ocasion_condolencias || 'https://images.unsplash.com/photo-1587594905449-2b4ca337d2f1?q=80&w=900&auto=format&fit=crop', '/?buscar=Condolencias', 3],
+      ['Gracias', cfg.carrusel_ocasion_gracias || 'https://images.unsplash.com/photo-1487070183336-b863922373d4?q=80&w=900&auto=format&fit=crop', '/?buscar=Gracias', 4],
+      ['Bride to be', cfg.carrusel_ocasion_bride || 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?q=80&w=900&auto=format&fit=crop', '/?buscar=Bride', 5],
+      ['Mejórate pronto', cfg.carrusel_ocasion_mejorate || 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=900&auto=format&fit=crop', '/?buscar=Mejorate', 6]
+    ];
+    for (const [titulo, imagen, enlace, orden] of categoriasIniciales) {
+      await pool.query('INSERT INTO carruseles_inicio (carrusel, titulo, imagen_url, enlace, orden) VALUES ($1,$2,$3,$4,$5)', ['categorias', titulo, imagen, enlace, orden]);
+    }
+    for (const [titulo, imagen, enlace, orden] of ocasionesIniciales) {
+      await pool.query('INSERT INTO carruseles_inicio (carrusel, titulo, imagen_url, enlace, orden) VALUES ($1,$2,$3,$4,$5)', ['ocasiones', titulo, imagen, enlace, orden]);
+    }
+    // Las llaves sueltas del sistema anterior ya quedaron migradas a filas de
+    // verdad -- se limpian para no dejar configuración huérfana.
+    await pool.query(`DELETE FROM configuracion WHERE clave LIKE 'carrusel_categoria_%' OR clave LIKE 'carrusel_ocasion_%'`);
+  }
 
   console.log('Base de datos lista.');
 }
@@ -1965,6 +2016,109 @@ app.delete('/api/admin/zonas/:id', requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Carruseles del inicio ("Entregas el mismo día..." y "Ocasiones")
+// El negocio administra estas tarjetas -- imagen, título y a dónde llevan --
+// desde el panel, sin tocar código. "carrusel" es 'categorias' u 'ocasiones'.
+// ---------------------------------------------------------------------------
+app.get('/api/carruseles', async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      "SELECT carrusel, titulo, imagen_url, enlace FROM carruseles_inicio WHERE activo=true ORDER BY carrusel ASC, orden ASC, id ASC"
+    );
+    const agrupado = { categorias: [], ocasiones: [] };
+    resultado.rows.forEach(fila => {
+      if (agrupado[fila.carrusel]) agrupado[fila.carrusel].push(fila);
+    });
+    res.json(agrupado);
+  } catch (error) {
+    console.error('GET /api/carruseles:', error);
+    res.status(500).json({ error: 'No se pudo cargar el contenido del inicio.' });
+  }
+});
+
+app.get('/api/admin/carruseles', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM carruseles_inicio ORDER BY carrusel ASC, orden ASC, id ASC');
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/admin/carruseles:', error);
+    res.status(500).json({ error: 'No se pudo cargar el contenido del inicio.' });
+  }
+});
+
+app.post('/api/admin/carruseles', requireAuth, async (req, res) => {
+  const { carrusel, titulo, imagen_url, enlace } = req.body || {};
+  if (!['categorias', 'ocasiones'].includes(carrusel)) return res.status(400).json({ error: 'El carrusel debe ser "categorias" u "ocasiones".' });
+  if (!titulo?.trim() || !imagen_url?.trim() || !enlace?.trim()) {
+    return res.status(400).json({ error: 'El título, la imagen y el enlace son obligatorios.' });
+  }
+  try {
+    const maxOrden = await pool.query('SELECT COALESCE(MAX(orden), 0) + 1 AS siguiente FROM carruseles_inicio WHERE carrusel=$1', [carrusel]);
+    const resultado = await pool.query(
+      'INSERT INTO carruseles_inicio (carrusel, titulo, imagen_url, enlace, orden) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [carrusel, titulo.trim(), imagen_url.trim(), enlace.trim(), maxOrden.rows[0].siguiente]
+    );
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    console.error('POST /api/admin/carruseles:', error);
+    res.status(500).json({ error: 'No se pudo crear la tarjeta.' });
+  }
+});
+
+app.patch('/api/admin/carruseles/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  const campos = []; const valores = []; let i = 1;
+  if (typeof req.body.titulo === 'string' && req.body.titulo.trim()) { campos.push(`titulo=$${i++}`); valores.push(req.body.titulo.trim()); }
+  if (typeof req.body.imagen_url === 'string' && req.body.imagen_url.trim()) { campos.push(`imagen_url=$${i++}`); valores.push(req.body.imagen_url.trim()); }
+  if (typeof req.body.enlace === 'string' && req.body.enlace.trim()) { campos.push(`enlace=$${i++}`); valores.push(req.body.enlace.trim()); }
+  if (typeof req.body.activo === 'boolean') { campos.push(`activo=$${i++}`); valores.push(req.body.activo); }
+  if (Number.isFinite(Number(req.body.orden))) { campos.push(`orden=$${i++}`); valores.push(Number(req.body.orden)); }
+  if (campos.length === 0) return res.status(400).json({ error: 'No hay cambios para guardar.' });
+  valores.push(id);
+  try {
+    const resultado = await pool.query(`UPDATE carruseles_inicio SET ${campos.join(', ')} WHERE id=$${i} RETURNING *`, valores);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Tarjeta no encontrada.' });
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    console.error('PATCH /api/admin/carruseles/:id:', error);
+    res.status(500).json({ error: 'No se pudo actualizar la tarjeta.' });
+  }
+});
+
+// Reordenar: recibe la lista completa de IDs de un carrusel en el orden
+// deseado (arrastrar y soltar en el panel) y actualiza el campo "orden" de
+// todas de una vez.
+app.post('/api/admin/carruseles/reordenar', requireAuth, async (req, res) => {
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || ids.some(id => !Number.isInteger(id))) {
+    return res.status(400).json({ error: 'Se esperaba una lista de IDs.' });
+  }
+  try {
+    for (let pos = 0; pos < ids.length; pos++) {
+      await pool.query('UPDATE carruseles_inicio SET orden=$1 WHERE id=$2', [pos + 1, ids[pos]]);
+    }
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('POST /api/admin/carruseles/reordenar:', error);
+    res.status(500).json({ error: 'No se pudo guardar el nuevo orden.' });
+  }
+});
+
+app.delete('/api/admin/carruseles/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const resultado = await pool.query('DELETE FROM carruseles_inicio WHERE id=$1', [id]);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Tarjeta no encontrada.' });
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/carruseles/:id:', error);
+    res.status(500).json({ error: 'No se pudo eliminar la tarjeta.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Panel de administración: cupones de descuento
 // ---------------------------------------------------------------------------
 app.get('/api/admin/cupones', requireAuth, async (req, res) => {
@@ -2049,9 +2203,7 @@ app.get('/api/configuracion-publica', async (req, res) => {
   try {
     const resultado = await pool.query(
       `SELECT clave, valor FROM configuracion WHERE clave = ANY($1::text[])`,
-      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer', 'imagen_hero', 'instagram_url', 'facebook_url', 'tiktok_url', 'twitter_url',
-        'carrusel_categoria_flores', 'carrusel_categoria_globos', 'carrusel_categoria_regalos', 'carrusel_categoria_plantas', 'carrusel_categoria_joyeria', 'carrusel_categoria_premium', 'carrusel_categoria_desde249',
-        'carrusel_ocasion_cumpleanos', 'carrusel_ocasion_amor', 'carrusel_ocasion_condolencias', 'carrusel_ocasion_gracias', 'carrusel_ocasion_bride', 'carrusel_ocasion_mejorate']]
+      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer', 'imagen_hero', 'instagram_url', 'facebook_url', 'tiktok_url', 'twitter_url']]
     );
     const config = {};
     for (const fila of resultado.rows) config[fila.clave] = fila.valor;

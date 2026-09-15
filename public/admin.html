@@ -163,6 +163,10 @@
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v3a2 2 0 010 4v3a2 2 0 002 2h2m6-14h2a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2h-2M9 9h6m-6 3h6m-6 3h6" /></svg>
                 Cupones
             </div>
+            <div class="adm-nav-item" data-vista="inicio-web">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                Página de inicio
+            </div>
             <p class="text-[10px] font-bold text-gray-300 uppercase tracking-wider px-3 pt-4 pb-1">Administración</p>
             <div class="adm-nav-item" data-vista="equipo" data-solo-admin="1">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -626,6 +630,92 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 </div>
             </section>
 
+            <!-- ============ PÁGINA DE INICIO ============ -->
+            <section id="vista-inicio-web" class="hidden">
+                <div class="adm-card p-6 max-w-2xl mb-6">
+                    <h2 class="text-lg font-semibold text-brandDark mb-1">Portada</h2>
+                    <p class="text-xs text-gray-400 mb-4">La foto grande hasta arriba de la página de inicio.</p>
+                    <div class="flex items-center gap-4">
+                        <img id="ib-preview-hero" class="w-28 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
+                        <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
+                            <span id="ib-texto-hero">Cambiar imagen</span>
+                            <input type="file" accept="image/*" id="ib-archivo-hero" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="adm-card p-6 mb-6">
+                    <div class="flex items-start justify-between mb-1">
+                        <div>
+                            <h2 class="text-lg font-semibold text-brandDark">Carrusel: "Entregas el mismo día..."</h2>
+                            <p class="text-xs text-gray-400 mt-0.5">Las tarjetas con foto y nombre que aparecen justo debajo del buscador del inicio.</p>
+                        </div>
+                        <button type="button" onclick="abrirFormCarrusel('categorias')" class="shrink-0 bg-brandFuchsia hover:bg-pink-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition">+ Agregar tarjeta</button>
+                    </div>
+                    <div id="lista-carrusel-categorias" class="divide-y divide-gray-100 mt-4"></div>
+                </div>
+
+                <div class="adm-card p-6">
+                    <div class="flex items-start justify-between mb-1">
+                        <div>
+                            <h2 class="text-lg font-semibold text-brandDark">Carrusel: "Ocasiones"</h2>
+                            <p class="text-xs text-gray-400 mt-0.5">Las tarjetas de solo foto (sin texto encima) más abajo en la página de inicio.</p>
+                        </div>
+                        <button type="button" onclick="abrirFormCarrusel('ocasiones')" class="shrink-0 bg-brandFuchsia hover:bg-pink-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition">+ Agregar tarjeta</button>
+                    </div>
+                    <div id="lista-carrusel-ocasiones" class="divide-y divide-gray-100 mt-4"></div>
+                </div>
+            </section>
+
+            <!-- Modal: crear/editar tarjeta de carrusel -->
+            <div id="modal-carrusel" class="hidden fixed inset-0 bg-black/40 z-50 items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 id="titulo-modal-carrusel" class="text-base font-semibold text-brandDark">Nueva tarjeta</h3>
+                        <button type="button" onclick="cerrarFormCarrusel()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <form id="form-carrusel" class="space-y-4">
+                        <input type="hidden" id="carrusel_id">
+                        <input type="hidden" id="carrusel_tipo">
+                        <div>
+                            <label class="adm-label">Título</label>
+                            <input type="text" id="carrusel_titulo" required class="adm-input" placeholder="Ej. Flores">
+                            <p id="carrusel_titulo_ayuda" class="text-[11px] text-gray-400 mt-1">Este texto se muestra encima de la foto.</p>
+                        </div>
+                        <div>
+                            <label class="adm-label">Imagen</label>
+                            <div class="flex items-center gap-3 mt-1">
+                                <img id="carrusel_preview" class="w-20 h-20 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
+                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
+                                    <span id="carrusel_texto_subir">Subir imagen</span>
+                                    <input type="file" accept="image/*" id="carrusel_archivo" class="hidden">
+                                </label>
+                            </div>
+                            <input type="hidden" id="carrusel_imagen_url">
+                        </div>
+                        <div>
+                            <label class="adm-label">¿A dónde lleva al tocarla?</label>
+                            <select id="carrusel_enlace_tipo" class="adm-input">
+                                <option value="/?categoria=Flores y plantas">Categoría: Flores y plantas</option>
+                                <option value="/?categoria=Globos">Categoría: Globos</option>
+                                <option value="/?categoria=Regalos">Categoría: Regalos</option>
+                                <option value="/">Página de inicio (sin filtro)</option>
+                                <option value="/pedidos-corporativos">Pedidos corporativos</option>
+                                <option value="personalizado">Otro (escribir abajo)</option>
+                            </select>
+                            <input type="text" id="carrusel_enlace" class="adm-input mt-2" placeholder="/?buscar=Cumpleaños">
+                            <p class="text-[11px] text-gray-400 mt-1">Para buscar por palabra (ej. una ocasión), usa <code class="bg-gray-100 px-1 rounded">/?buscar=palabra</code>.</p>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="submit" class="flex-1 bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">Guardar</button>
+                            <button type="button" onclick="cerrarFormCarrusel()" class="px-5 py-2.5 rounded-lg text-sm border border-gray-200 hover:bg-gray-50">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- ============ EQUIPO ============ -->
             <section id="vista-equipo" class="hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -720,12 +810,6 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
 
                         <button type="submit" class="bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 px-6 rounded-lg text-sm transition">Guardar configuración</button>
                     </form>
-                </div>
-
-                <div class="adm-card p-6 max-w-2xl mt-6">
-                    <h2 class="text-lg font-semibold text-brandDark mb-1">Imágenes del sitio</h2>
-                    <p class="text-xs text-gray-400 mb-5">La portada del inicio y las fotos de los carruseles "Entregas el mismo día" y "Ocasiones". Cada cambio se ve reflejado de inmediato.</p>
-                    <div id="lista-imagenes-sitio" class="space-y-5"></div>
                 </div>
 
             </section>
@@ -1033,7 +1117,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // =======================================================================
     const TITULOS_VISTA = {
         dashboard: 'Dashboard', catalogo: 'Catálogo', pedidos: 'Pedidos', clientes: 'Clientes',
-        finanzas: 'Finanzas', envios: 'Envíos', cupones: 'Cupones', equipo: 'Equipo', configuracion: 'Configuración'
+        finanzas: 'Finanzas', envios: 'Envíos', cupones: 'Cupones', 'inicio-web': 'Página de inicio', equipo: 'Equipo', configuracion: 'Configuración'
     };
     function cambiarVista(vista) {
         vistaActiva = vista;
@@ -1059,7 +1143,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     });
 
     async function cargarTodoElPanel() {
-        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones()]);
+        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones(), cargarCarruseles()]);
         if (usuarioActual && usuarioActual.rol === 'admin') {
             await Promise.all([cargarUsuarios(), cargarConfiguracion()]);
         }
@@ -2033,67 +2117,6 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // =======================================================================
     // CONFIGURACIÓN
     // =======================================================================
-    const IMAGENES_SITIO = [
-        { clave: 'imagen_hero', etiqueta: 'Portada del inicio' },
-        { clave: 'carrusel_categoria_flores', etiqueta: 'Carrusel "Entregas el mismo día": Flores' },
-        { clave: 'carrusel_categoria_globos', etiqueta: 'Carrusel "Entregas el mismo día": Globos' },
-        { clave: 'carrusel_categoria_regalos', etiqueta: 'Carrusel "Entregas el mismo día": Regalos' },
-        { clave: 'carrusel_categoria_plantas', etiqueta: 'Carrusel "Entregas el mismo día": Plantas' },
-        { clave: 'carrusel_categoria_joyeria', etiqueta: 'Carrusel "Entregas el mismo día": Joyería' },
-        { clave: 'carrusel_categoria_premium', etiqueta: 'Carrusel "Entregas el mismo día": Línea Premium' },
-        { clave: 'carrusel_categoria_desde249', etiqueta: 'Carrusel "Entregas el mismo día": Desde $249' },
-        { clave: 'carrusel_ocasion_cumpleanos', etiqueta: 'Carrusel "Ocasiones": Cumpleaños' },
-        { clave: 'carrusel_ocasion_amor', etiqueta: 'Carrusel "Ocasiones": Amor y Aniversario' },
-        { clave: 'carrusel_ocasion_condolencias', etiqueta: 'Carrusel "Ocasiones": Condolencias' },
-        { clave: 'carrusel_ocasion_gracias', etiqueta: 'Carrusel "Ocasiones": Gracias' },
-        { clave: 'carrusel_ocasion_bride', etiqueta: 'Carrusel "Ocasiones": Bride to be' },
-        { clave: 'carrusel_ocasion_mejorate', etiqueta: 'Carrusel "Ocasiones": Mejórate pronto' }
-    ];
-
-    function renderListaImagenesSitio() {
-        document.getElementById('lista-imagenes-sitio').innerHTML = IMAGENES_SITIO.map(img => `
-            <div id="img-site-${img.clave}" class="flex items-center gap-4">
-                <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
-                <div>
-                    <p class="text-sm font-medium text-brandDark mb-1">${img.etiqueta}</p>
-                    <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
-                        <span class="texto-subir-site">Cambiar imagen</span>
-                        <input type="file" accept="image/*" class="hidden archivo-site-imagen">
-                    </label>
-                </div>
-            </div>
-        `).join('');
-
-        // El listener se conecta hasta aquí (después de crear los elementos),
-        // ya que antes de esto el contenedor todavía estaba vacío.
-        document.querySelectorAll('.archivo-site-imagen').forEach(input => {
-            input.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const bloque = e.target.closest('[id^="img-site-"]');
-                const clave = bloque.id.replace('img-site-', '');
-                const textoEl = bloque.querySelector('.texto-subir-site');
-                const original = textoEl.innerText;
-                textoEl.innerText = 'Subiendo...';
-                try {
-                    const url = await subirArchivoImagen(file);
-                    await jsonOError(await fetch('/api/admin/configuracion', {
-                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ [clave]: url })
-                    }));
-                    bloque.querySelector('.img-site-preview').src = url;
-                    bloque.querySelector('.img-site-preview').style.opacity = '1';
-                    mostrarToast('Imagen actualizada.');
-                } catch (error) {
-                    mostrarToast(error.message || 'No se pudo subir la imagen.', 'error');
-                } finally {
-                    textoEl.innerText = original;
-                    e.target.value = '';
-                }
-            });
-        });
-    }
-
     async function cargarConfiguracion() {
         try {
             const cfg = await jsonOError(await fetch('/api/admin/configuracion'));
@@ -2106,18 +2129,226 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             document.getElementById('cfg_tiktok_url').value = cfg.tiktok_url || '';
             document.getElementById('cfg_twitter_url').value = cfg.twitter_url || '';
 
-            renderListaImagenesSitio();
-            IMAGENES_SITIO.forEach(img => {
-                const bloque = document.getElementById('img-site-' + img.clave);
-                if (!bloque) return;
-                const preview = bloque.querySelector('.img-site-preview');
-                preview.src = cfg[img.clave] || '';
-                preview.style.opacity = cfg[img.clave] ? '1' : '.15';
-            });
+            const previewHero = document.getElementById('ib-preview-hero');
+            if (previewHero) {
+                previewHero.src = cfg.imagen_hero || '';
+                previewHero.style.opacity = cfg.imagen_hero ? '1' : '.15';
+            }
         } catch (error) {
             console.error('Error cargando configuración', error);
         }
     }
+
+    const archivoHero = document.getElementById('ib-archivo-hero');
+    if (archivoHero) {
+        archivoHero.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const textoEl = document.getElementById('ib-texto-hero');
+            const original = textoEl.innerText;
+            textoEl.innerText = 'Subiendo...';
+            try {
+                const url = await subirArchivoImagen(file);
+                await jsonOError(await fetch('/api/admin/configuracion', {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imagen_hero: url })
+                }));
+                document.getElementById('ib-preview-hero').src = url;
+                document.getElementById('ib-preview-hero').style.opacity = '1';
+                mostrarToast('Portada actualizada.');
+            } catch (error) {
+                mostrarToast(error.message || 'No se pudo subir la imagen.', 'error');
+            } finally {
+                textoEl.innerText = original;
+                e.target.value = '';
+            }
+        });
+    }
+
+    // =======================================================================
+    // PÁGINA DE INICIO: carruseles "Entregas el mismo día" y "Ocasiones"
+    // =======================================================================
+    let carruselesTodos = [];
+    let carruselImagenPendiente = '';
+
+    async function cargarCarruseles() {
+        try {
+            carruselesTodos = await jsonOError(await fetch('/api/admin/carruseles'));
+            renderListaCarrusel('categorias');
+            renderListaCarrusel('ocasiones');
+        } catch (error) {
+            console.error('Error cargando el contenido del inicio', error);
+        }
+    }
+
+    function renderListaCarrusel(tipo) {
+        const cont = document.getElementById('lista-carrusel-' + tipo);
+        if (!cont) return;
+        const items = carruselesTodos.filter(c => c.carrusel === tipo).sort((a, b) => a.orden - b.orden);
+        cont.innerHTML = items.length ? items.map((item, i) => `
+            <div class="py-3 flex items-center gap-3">
+                <img src="${escaparHtmlAdmin(item.imagen_url)}" class="w-14 h-14 object-cover rounded-lg border border-gray-200 bg-gray-50 shrink-0">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-brandDark truncate">${escaparHtmlAdmin(item.titulo)}</p>
+                    <p class="text-[11px] text-gray-400 truncate">${escaparHtmlAdmin(item.enlace)}</p>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" onclick="moverTarjetaCarrusel(${item.id}, '${tipo}', -1)" ${i === 0 ? 'disabled' : ''} class="p-1.5 rounded hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed" title="Subir">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                    </button>
+                    <button type="button" onclick="moverTarjetaCarrusel(${item.id}, '${tipo}', 1)" ${i === items.length - 1 ? 'disabled' : ''} class="p-1.5 rounded hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed" title="Bajar">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <label class="adm-switch mx-1" title="${item.activo ? 'Desactivar' : 'Activar'}">
+                        <input type="checkbox" ${item.activo ? 'checked' : ''} onchange="toggleActivoCarrusel(${item.id}, this.checked)">
+                        <span class="adm-switch-track"></span>
+                    </label>
+                    <button type="button" onclick='abrirFormCarrusel("${tipo}", ${JSON.stringify(item).replace(/'/g, "&#39;")})' class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold uppercase px-1">Editar</button>
+                    <button type="button" onclick="eliminarTarjetaCarrusel(${item.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase px-1">Borrar</button>
+                </div>
+            </div>
+        `).join('') : '<p class="text-center py-8 text-gray-400 text-sm">Todavía no hay tarjetas aquí -- agrega la primera con el botón de arriba.</p>';
+    }
+
+    function abrirFormCarrusel(tipo, item) {
+        document.getElementById('form-carrusel').reset();
+        document.getElementById('carrusel_id').value = item?.id || '';
+        document.getElementById('carrusel_tipo').value = tipo;
+        document.getElementById('carrusel_titulo').value = item?.titulo || '';
+        document.getElementById('carrusel_imagen_url').value = item?.imagen_url || '';
+        carruselImagenPendiente = item?.imagen_url || '';
+        const preview = document.getElementById('carrusel_preview');
+        preview.src = item?.imagen_url || '';
+        preview.style.opacity = item?.imagen_url ? '1' : '.15';
+
+        // En "Ocasiones" las tarjetas no muestran texto encima de la foto
+        // (así se ve mejor con puras fotos) -- el título ahí solo ayuda a
+        // identificar la tarjeta en esta lista y como texto alternativo.
+        document.getElementById('carrusel_titulo_ayuda').innerText = tipo === 'categorias'
+            ? 'Este texto se muestra encima de la foto.'
+            : 'Aquí no se ve sobre la foto -- solo es para identificarla en esta lista.';
+
+        const selectEnlace = document.getElementById('carrusel_enlace_tipo');
+        const opciones = [...selectEnlace.options].map(o => o.value);
+        if (item?.enlace && opciones.includes(item.enlace)) selectEnlace.value = item.enlace;
+        else selectEnlace.value = 'personalizado';
+        document.getElementById('carrusel_enlace').value = item?.enlace || '';
+
+        document.getElementById('titulo-modal-carrusel').innerText = item ? 'Editar tarjeta' : 'Nueva tarjeta';
+        const modal = document.getElementById('modal-carrusel');
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+    }
+    window.abrirFormCarrusel = abrirFormCarrusel;
+
+    function cerrarFormCarrusel() {
+        const modal = document.getElementById('modal-carrusel');
+        modal.classList.add('hidden'); modal.classList.remove('flex');
+    }
+    window.cerrarFormCarrusel = cerrarFormCarrusel;
+
+    document.getElementById('carrusel_enlace_tipo').addEventListener('change', (e) => {
+        if (e.target.value !== 'personalizado') document.getElementById('carrusel_enlace').value = e.target.value;
+    });
+
+    document.getElementById('carrusel_archivo').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const textoEl = document.getElementById('carrusel_texto_subir');
+        const original = textoEl.innerText;
+        textoEl.innerText = 'Subiendo...';
+        try {
+            const url = await subirArchivoImagen(file);
+            carruselImagenPendiente = url;
+            document.getElementById('carrusel_imagen_url').value = url;
+            const preview = document.getElementById('carrusel_preview');
+            preview.src = url; preview.style.opacity = '1';
+        } catch (error) {
+            mostrarToast(error.message || 'No se pudo subir la imagen.', 'error');
+        } finally {
+            textoEl.innerText = original;
+            e.target.value = '';
+        }
+    });
+
+    document.getElementById('form-carrusel').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('carrusel_id').value;
+        const tipo = document.getElementById('carrusel_tipo').value;
+        const titulo = document.getElementById('carrusel_titulo').value.trim();
+        const imagen_url = carruselImagenPendiente || document.getElementById('carrusel_imagen_url').value.trim();
+        const enlace = document.getElementById('carrusel_enlace').value.trim();
+        if (!titulo || !imagen_url || !enlace) {
+            mostrarToast('Completa título, imagen y enlace.', 'error');
+            return;
+        }
+        try {
+            if (id) {
+                await jsonOError(await fetch(`/api/admin/carruseles/${id}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ titulo, imagen_url, enlace })
+                }));
+            } else {
+                await jsonOError(await fetch('/api/admin/carruseles', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ carrusel: tipo, titulo, imagen_url, enlace })
+                }));
+            }
+            mostrarToast('Tarjeta guardada.');
+            cerrarFormCarrusel();
+            await cargarCarruseles();
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+        }
+    });
+
+    async function toggleActivoCarrusel(id, activo) {
+        try {
+            await jsonOError(await fetch(`/api/admin/carruseles/${id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ activo })
+            }));
+            const item = carruselesTodos.find(c => c.id === id);
+            if (item) item.activo = activo;
+            mostrarToast(activo ? 'Tarjeta activada.' : 'Tarjeta desactivada.');
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+            cargarCarruseles();
+        }
+    }
+    window.toggleActivoCarrusel = toggleActivoCarrusel;
+
+    async function moverTarjetaCarrusel(id, tipo, direccion) {
+        const items = carruselesTodos.filter(c => c.carrusel === tipo).sort((a, b) => a.orden - b.orden);
+        const idx = items.findIndex(c => c.id === id);
+        const destino = idx + direccion;
+        if (destino < 0 || destino >= items.length) return;
+        [items[idx], items[destino]] = [items[destino], items[idx]];
+        renderListaCarrusel(tipo); // respuesta visual inmediata mientras se guarda
+        try {
+            await jsonOError(await fetch('/api/admin/carruseles/reordenar', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: items.map(c => c.id) })
+            }));
+            await cargarCarruseles();
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+            cargarCarruseles();
+        }
+    }
+    window.moverTarjetaCarrusel = moverTarjetaCarrusel;
+
+    async function eliminarTarjetaCarrusel(id) {
+        const ok = await pedirConfirmacionAdmin('Eliminar tarjeta', '¿Borrar esta tarjeta del carrusel? No se puede deshacer.');
+        if (!ok) return;
+        try {
+            await jsonOError(await fetch(`/api/admin/carruseles/${id}`, { method: 'DELETE' }));
+            mostrarToast('Tarjeta eliminada.');
+            await cargarCarruseles();
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+        }
+    }
+    window.eliminarTarjetaCarrusel = eliminarTarjetaCarrusel;
 
     document.getElementById('form-configuracion').addEventListener('submit', async (e) => {
         e.preventDefault();
