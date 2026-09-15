@@ -677,7 +677,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             <section id="vista-configuracion" class="hidden">
                 <div class="adm-card p-6 max-w-2xl">
                     <h2 class="text-lg font-semibold text-brandDark mb-1">Configuración de la tienda</h2>
-                    <p class="text-xs text-gray-400 mb-5">Estos datos quedan guardados aquí de forma centralizada. Aún no están conectados a las páginas públicas del sitio -- lo dejamos listo para conectar cuando lo necesites.</p>
+                    <p class="text-xs text-gray-400 mb-5">Estos datos ya están conectados a las páginas públicas del sitio (WhatsApp, imágenes, redes sociales).</p>
                     <form id="form-configuracion" class="space-y-4">
                         <div>
                             <label class="adm-label">WhatsApp de atención (con código de país, ej. 528331234567)</label>
@@ -695,9 +695,80 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             <label class="adm-label">Mensaje del pie de página</label>
                             <textarea id="cfg_mensaje_footer" rows="3" class="adm-input"></textarea>
                         </div>
+
+                        <div class="border-t border-gray-100 pt-4 mt-2">
+                            <p class="text-sm font-semibold text-brandDark mb-3">Redes sociales <span class="text-xs font-normal text-gray-400">(deja en blanco la que no uses -- su ícono no se mostrará)</span></p>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="adm-label">Instagram (link completo)</label>
+                                    <input type="text" id="cfg_instagram_url" placeholder="https://instagram.com/reservafloral" class="adm-input">
+                                </div>
+                                <div>
+                                    <label class="adm-label">Facebook (link completo)</label>
+                                    <input type="text" id="cfg_facebook_url" placeholder="https://facebook.com/reservafloral" class="adm-input">
+                                </div>
+                                <div>
+                                    <label class="adm-label">TikTok (link completo)</label>
+                                    <input type="text" id="cfg_tiktok_url" placeholder="https://tiktok.com/@reservafloral" class="adm-input">
+                                </div>
+                                <div>
+                                    <label class="adm-label">X / Twitter (link completo)</label>
+                                    <input type="text" id="cfg_twitter_url" placeholder="https://x.com/reservafloral" class="adm-input">
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 px-6 rounded-lg text-sm transition">Guardar configuración</button>
                     </form>
                 </div>
+
+                <div class="adm-card p-6 max-w-2xl mt-6">
+                    <h2 class="text-lg font-semibold text-brandDark mb-1">Imágenes del sitio</h2>
+                    <p class="text-xs text-gray-400 mb-5">La portada del inicio y las 3 fotos de "Explora por categoría". Cada cambio se ve reflejado de inmediato.</p>
+                    <div class="space-y-5">
+                        <div id="img-site-imagen_hero" class="flex items-center gap-4">
+                            <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="">
+                            <div>
+                                <p class="text-sm font-medium text-brandDark mb-1">Portada del inicio</p>
+                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
+                                    <span class="texto-subir-site">Cambiar imagen</span>
+                                    <input type="file" accept="image/*" class="hidden archivo-site-imagen">
+                                </label>
+                            </div>
+                        </div>
+                        <div id="img-site-imagen_categoria_flores_y_plantas" class="flex items-center gap-4">
+                            <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="">
+                            <div>
+                                <p class="text-sm font-medium text-brandDark mb-1">Categoría: Flores y plantas</p>
+                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
+                                    <span class="texto-subir-site">Cambiar imagen</span>
+                                    <input type="file" accept="image/*" class="hidden archivo-site-imagen">
+                                </label>
+                            </div>
+                        </div>
+                        <div id="img-site-imagen_categoria_globos" class="flex items-center gap-4">
+                            <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="">
+                            <div>
+                                <p class="text-sm font-medium text-brandDark mb-1">Categoría: Globos</p>
+                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
+                                    <span class="texto-subir-site">Cambiar imagen</span>
+                                    <input type="file" accept="image/*" class="hidden archivo-site-imagen">
+                                </label>
+                            </div>
+                        </div>
+                        <div id="img-site-imagen_categoria_regalos" class="flex items-center gap-4">
+                            <img class="img-site-preview w-24 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="">
+                            <div>
+                                <p class="text-sm font-medium text-brandDark mb-1">Categoría: Regalos</p>
+                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
+                                    <span class="texto-subir-site">Cambiar imagen</span>
+                                    <input type="file" accept="image/*" class="hidden archivo-site-imagen">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </section>
 
         </main>
@@ -2003,6 +2074,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // =======================================================================
     // CONFIGURACIÓN
     // =======================================================================
+    const IMAGENES_SITIO = ['imagen_hero', 'imagen_categoria_flores_y_plantas', 'imagen_categoria_globos', 'imagen_categoria_regalos'];
+
     async function cargarConfiguracion() {
         try {
             const cfg = await jsonOError(await fetch('/api/admin/configuracion'));
@@ -2010,10 +2083,53 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             document.getElementById('cfg_horario_atencion').value = cfg.horario_atencion || '';
             document.getElementById('cfg_tiempo_entrega').value = cfg.tiempo_entrega || '';
             document.getElementById('cfg_mensaje_footer').value = cfg.mensaje_footer || '';
+            document.getElementById('cfg_instagram_url').value = cfg.instagram_url || '';
+            document.getElementById('cfg_facebook_url').value = cfg.facebook_url || '';
+            document.getElementById('cfg_tiktok_url').value = cfg.tiktok_url || '';
+            document.getElementById('cfg_twitter_url').value = cfg.twitter_url || '';
+
+            IMAGENES_SITIO.forEach(clave => {
+                const bloque = document.getElementById('img-site-' + clave);
+                if (!bloque) return;
+                const preview = bloque.querySelector('.img-site-preview');
+                preview.src = cfg[clave] || '';
+                preview.style.opacity = cfg[clave] ? '1' : '.15';
+            });
         } catch (error) {
             console.error('Error cargando configuración', error);
         }
     }
+
+    // Subir cualquiera de las 4 imágenes del sitio: al elegir el archivo, se
+    // sube y se guarda de inmediato como esa clave de configuración (no hace
+    // falta darle "Guardar configuración" para estas).
+    document.querySelectorAll('.archivo-site-imagen').forEach(input => {
+        input.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const bloque = e.target.closest('[id^="img-site-"]');
+            const clave = bloque.id.replace('img-site-', '');
+            const textoEl = bloque.querySelector('.texto-subir-site');
+            const original = textoEl.innerText;
+            textoEl.innerText = 'Subiendo...';
+            try {
+                const url = await subirArchivoImagen(file);
+                await jsonOError(await fetch('/api/admin/configuracion', {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [clave]: url })
+                }));
+                bloque.querySelector('.img-site-preview').src = url;
+                bloque.querySelector('.img-site-preview').style.opacity = '1';
+                mostrarToast('Imagen actualizada.');
+            } catch (error) {
+                mostrarToast(error.message || 'No se pudo subir la imagen.', 'error');
+            } finally {
+                textoEl.innerText = original;
+                e.target.value = '';
+            }
+        });
+    });
+
     document.getElementById('form-configuracion').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
@@ -2023,7 +2139,11 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     whatsapp_numero: document.getElementById('cfg_whatsapp_numero').value,
                     horario_atencion: document.getElementById('cfg_horario_atencion').value,
                     tiempo_entrega: document.getElementById('cfg_tiempo_entrega').value,
-                    mensaje_footer: document.getElementById('cfg_mensaje_footer').value
+                    mensaje_footer: document.getElementById('cfg_mensaje_footer').value,
+                    instagram_url: document.getElementById('cfg_instagram_url').value,
+                    facebook_url: document.getElementById('cfg_facebook_url').value,
+                    tiktok_url: document.getElementById('cfg_tiktok_url').value,
+                    twitter_url: document.getElementById('cfg_twitter_url').value
                 })
             }));
             mostrarToast('Configuración guardada.');
