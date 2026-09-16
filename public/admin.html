@@ -274,11 +274,6 @@
                                         <label class="adm-label">Categoría</label>
                                         <select id="categoria" required class="adm-input">
                                             <option value="" disabled selected>Selecciona...</option>
-                                            <option value="Cumpleaños">Cumpleaños</option>
-                                            <option value="Ocasiones">Ocasiones</option>
-                                            <option value="Flores y plantas">Flores y plantas</option>
-                                            <option value="Globos">Globos</option>
-                                            <option value="Regalos">Regalos</option>
                                         </select>
                                     </div>
                                     <div>
@@ -322,6 +317,7 @@
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                     Imágenes
                                 </p>
+                                <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">Usar un link (URL) es más seguro que "Subir desde tu computadora" -- lo que subas como archivo puede perderse si Railway reinicia el servidor sin tener un Volume conectado.</p>
                                 <div class="flex gap-3 items-start">
                                     <div id="preview-imagen-principal" class="w-16 h-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-300 shrink-0 overflow-hidden">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -636,15 +632,22 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
 
             <!-- ============ PÁGINA DE INICIO ============ -->
             <section id="vista-inicio-web" class="hidden">
+                <div class="adm-card p-6 max-w-2xl mb-6 border-l-4 border-amber-400 bg-amber-50">
+                    <p class="text-xs text-amber-800"><strong>Importante:</strong> las imágenes que subes como archivo se guardan en el disco del servidor, el cual Railway reinicia en cada despliegue -- por eso desaparecían. Usa la opción "Poner un link" con una imagen ya alojada en otro lugar (por ejemplo, una que subas a <a href="https://imgur.com" target="_blank" rel="noopener" class="underline font-semibold">imgur.com</a>) para que sobreviva a los despliegues. Si prefieres seguir subiendo archivos directo, pide que se conecte un "Volume" de Railway a la carpeta de subidas -- así tampoco se perderían.</p>
+                </div>
                 <div class="adm-card p-6 max-w-2xl mb-6">
                     <h2 class="text-lg font-semibold text-brandDark mb-1">Portada</h2>
                     <p class="text-xs text-gray-400 mb-4">La foto grande hasta arriba de la página de inicio.</p>
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-4 mb-3">
                         <img id="ib-preview-hero" class="w-28 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
                         <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
-                            <span id="ib-texto-hero">Cambiar imagen</span>
+                            <span id="ib-texto-hero">Subir un archivo</span>
                             <input type="file" accept="image/*" id="ib-archivo-hero" class="hidden">
                         </label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="ib-link-hero" placeholder="https://..." class="adm-input text-sm flex-1">
+                        <button type="button" onclick="guardarImagenPorLinkRF('ib-link-hero', 'imagen_hero', 'ib-preview-hero')" class="shrink-0 bg-gray-100 hover:bg-gray-200 text-brandDark text-xs font-semibold px-4 py-2.5 rounded-lg transition">Poner un link</button>
                     </div>
                 </div>
 
@@ -739,10 +742,16 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             <label class="adm-label">Imagen</label>
                             <div class="flex items-center gap-3 mt-1">
                                 <img id="carrusel_preview" class="w-20 h-20 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
-                                <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
-                                    <span id="carrusel_texto_subir">Subir imagen</span>
-                                    <input type="file" accept="image/*" id="carrusel_archivo" class="hidden">
-                                </label>
+                                <div class="flex-1 space-y-2">
+                                    <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline block">
+                                        <span id="carrusel_texto_subir">Subir un archivo</span>
+                                        <input type="file" accept="image/*" id="carrusel_archivo" class="hidden">
+                                    </label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" id="carrusel_link_imagen" placeholder="O pega un link: https://..." class="adm-input text-xs flex-1 py-1.5">
+                                        <button type="button" onclick="usarLinkImagenCarruselRF()" class="shrink-0 bg-gray-100 hover:bg-gray-200 text-brandDark text-[11px] font-semibold px-3 py-1.5 rounded-lg transition">Usar</button>
+                                    </div>
+                                </div>
                             </div>
                             <input type="hidden" id="carrusel_imagen_url">
                         </div>
@@ -942,40 +951,11 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         'Cancelado': 'bg-gray-100 text-gray-500'
     };
 
-    const TAXONOMIA = {
-        "Cumpleaños": {
-            "Flores y Plantas": ["Todas las flores", "Rosas", "Gerberas", "Tulipanes", "Orquídeas", "Combinados", "Premium", "Plantas"],
-            "Globos": ["Todos los globos", "Globos Personalizados", "Combos con globo"],
-            "Regalos": ["Joyería", "Peluches", "Belleza y Fragancias", "Velas", "Diarios y Agendas"],
-            "Para quién": ["Para Ella", "Para Él", "Para Mamá", "Para Papá", "Para Niños"]
-        },
-        "Ocasiones": {
-            "Celebraciones": ["Amor/Aniversario", "Cumpleaños", "Gracias", "Nacimiento", "Graduación", "Logros", "Felicitaciones", "Solo porque sí"],
-            "Condolencias": ["Servicios Funerarios", "Consuelo en Casa"],
-            "Momentos Difíciles": ["Mejórate pronto", "Perdón"]
-        },
-        "Flores y plantas": {
-            "Flores": ["Combinados", "Gerberas", "Girasoles", "Lilys y Stargazer", "Orquídeas", "Rosas", "Tulipanes y Cala Lilies"],
-            "Por presentación": ["Ramos", "Jarrón", "Cajas", "Coronas Funerarias", "Canastas"],
-            "Premium": ["Flores premium"],
-            "Condolencias": ["Servicios Funerarios", "Consuelo en Casa"],
-            "Plantas": ["Mini plantas", "Plantas medianas", "Plantas con regalos"]
-        },
-        "Globos": {
-            "Por ocasión": ["Cumpleaños", "Graduación", "Nacimiento", "Just Because", "Mejórate Pronto"],
-            "Por Tipo": ["Metálicos", "Esfera", "Burbuja", "Ramilletes", "Combos"],
-            "Para quién": ["Para ella", "Para Él"]
-        },
-        "Regalos": {
-            "Para quién": ["Para Ella", "Para Él", "Para Mamá", "Para Papá"],
-            "Otros Regalos": ["Diarios y Agendas", "Certificados"],
-            "Joyería": ["Collares", "Pulseras", "Aretes", "Sets", "Combos"],
-            "Peluches": ["Osos", "Otros Peluches", "Combos de peluches"],
-            "Belleza y Fragancias": ["Mascarillas", "Cremas", "Sets de Belleza", "Perfumes", "Combos"],
-            "Velas": ["Velas y Aromas"],
-            "Regalos Corporativos": ["Personalizados", "Flores y Plantas", "Cajas de Regalo"]
-        }
-    };
+    // La taxonomía para clasificar productos (categoría > subcategoría > tipo)
+    // se llena en vivo desde el mismo "Menú del sitio" -- ver
+    // cargarCategoriasDisponibles() más abajo. Empieza vacía y se puebla
+    // apenas carga el panel, antes de que se pueda editar ningún producto.
+    let TAXONOMIA = {};
 
     function escaparHtmlAdmin(str) {
         return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2210,6 +2190,42 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 e.target.value = '';
             }
         });
+
+    // Guardar una imagen a partir de un link externo (en vez de subir un
+    // archivo) -- útil porque un link a otra parte no se pierde cuando
+    // Railway reinicia el disco del servidor en cada despliegue.
+    async function guardarImagenPorLinkRF(idInput, claveConfig, idPreview) {
+        const input = document.getElementById(idInput);
+        const url = input.value.trim();
+        if (!url) { mostrarToast('Pega un link primero.', 'error'); return; }
+        if (!/^https?:\/\//i.test(url)) { mostrarToast('El link debe empezar con http:// o https://', 'error'); return; }
+        try {
+            await jsonOError(await fetch('/api/admin/configuracion', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [claveConfig]: url })
+            }));
+            const preview = document.getElementById(idPreview);
+            preview.src = url; preview.style.opacity = '1';
+            input.value = '';
+            mostrarToast('Imagen actualizada.');
+        } catch (error) {
+            mostrarToast(error.message || 'No se pudo guardar el link.', 'error');
+        }
+    }
+    window.guardarImagenPorLinkRF = guardarImagenPorLinkRF;
+
+    function usarLinkImagenCarruselRF() {
+        const input = document.getElementById('carrusel_link_imagen');
+        const url = input.value.trim();
+        if (!url) { mostrarToast('Pega un link primero.', 'error'); return; }
+        if (!/^https?:\/\//i.test(url)) { mostrarToast('El link debe empezar con http:// o https://', 'error'); return; }
+        carruselImagenPendiente = url;
+        document.getElementById('carrusel_imagen_url').value = url;
+        const preview = document.getElementById('carrusel_preview');
+        preview.src = url; preview.style.opacity = '1';
+        input.value = '';
+    }
+    window.usarLinkImagenCarruselRF = usarLinkImagenCarruselRF;
     }
 
     // =======================================================================
@@ -2225,6 +2241,20 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     async function cargarCategoriasDisponibles() {
         try {
             const taxonomia = await jsonOError(await fetch('/api/admin/categorias-disponibles'));
+            TAXONOMIA = taxonomia;
+
+            // Selector de categoría del formulario de producto -- se llena
+            // aquí en vez de venir fijo en el código, así que si agregas una
+            // pestaña nueva en "Menú del sitio" aparece aquí también solo.
+            const selCategoriaProducto = document.getElementById('categoria');
+            if (selCategoriaProducto) {
+                const valorPrevio = selCategoriaProducto.value;
+                selCategoriaProducto.innerHTML = '<option value="" disabled>Selecciona...</option>' +
+                    Object.keys(taxonomia).map(c => `<option value="${escaparHtmlAdmin(c)}">${escaparHtmlAdmin(c)}</option>`).join('');
+                if (valorPrevio && Object.keys(taxonomia).includes(valorPrevio)) selCategoriaProducto.value = valorPrevio;
+                else selCategoriaProducto.selectedIndex = 0;
+            }
+
             const partes = [];
             for (const [categoria, subcategorias] of Object.entries(taxonomia)) {
                 partes.push(`<optgroup label="${escaparHtmlAdmin(categoria)}">`);

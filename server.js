@@ -437,7 +437,10 @@ async function inicializarDB() {
   // muestra de siempre. El enlace de cada una ya usa el formato que sí
   // filtra el catálogo (antes usaban rutas que no hacían nada).
   const carruselesExistentes = await pool.query("SELECT COUNT(*)::int AS n FROM carruseles_inicio");
-  const carruselesConBusquedaVieja = await pool.query("SELECT COUNT(*)::int AS n FROM carruseles_inicio WHERE enlace LIKE '%buscar=%'");
+  const migracionCarruselesHecha = await pool.query("SELECT 1 FROM configuracion WHERE clave = 'migracion_carruseles_v2'");
+  const carruselesConBusquedaVieja = migracionCarruselesHecha.rowCount > 0
+    ? { rows: [{ n: 0 }] } // ya se corrigió antes -- no se vuelve a revisar, para no borrar por error un enlace que el negocio haya puesto a propósito con "buscar="
+    : await pool.query("SELECT COUNT(*)::int AS n FROM carruseles_inicio WHERE enlace LIKE '%buscar=%'");
   if (carruselesConBusquedaVieja.rows[0].n > 0) {
     // Quedaron guardados enlaces de una versión anterior que buscaban por
     // palabra en vez de filtrar de verdad -- se corrigen solos, una vez.
@@ -475,6 +478,10 @@ async function inicializarDB() {
     // verdad -- se limpian para no dejar configuración huérfana.
     await pool.query(`DELETE FROM configuracion WHERE clave LIKE 'carrusel_categoria_%' OR clave LIKE 'carrusel_ocasion_%'`);
   }
+  // Bandera de "ya se revisó esto" -- para que la limpieza de arriba nunca
+  // se repita sola más adelante, incluso si el negocio llega a guardar a
+  // propósito un enlace que contenga "buscar=".
+  await pool.query(`INSERT INTO configuracion (clave, valor) VALUES ('migracion_carruseles_v2', '1') ON CONFLICT (clave) DO NOTHING`);
 
 
 
@@ -484,7 +491,10 @@ async function inicializarDB() {
   // más abajo en este archivo). Así, un enlace del menú y la clasificación real
   // de un producto son la misma cosa -- no una búsqueda por palabra.
   const menuExistente = await pool.query('SELECT COUNT(*)::int AS n FROM menu_navegacion');
-  const menuConBusquedaVieja = await pool.query("SELECT COUNT(*)::int AS n FROM menu_navegacion WHERE enlace LIKE '%buscar=%'");
+  const migracionMenuHecha = await pool.query("SELECT 1 FROM configuracion WHERE clave = 'migracion_menu_v2'");
+  const menuConBusquedaVieja = migracionMenuHecha.rowCount > 0
+    ? { rows: [{ n: 0 }] } // ya se corrigió antes -- no se vuelve a revisar
+    : await pool.query("SELECT COUNT(*)::int AS n FROM menu_navegacion WHERE enlace LIKE '%buscar=%'");
   if (menuConBusquedaVieja.rows[0].n > 0) {
     // Igual que arriba: se corrige solo, una vez, si quedó algo de una
     // versión anterior que usaba búsqueda por palabra en vez de un filtro real.
@@ -521,6 +531,7 @@ async function inicializarDB() {
       await crearPestaña(categoria, categoria, orden++, columnas);
     }
   }
+  await pool.query(`INSERT INTO configuracion (clave, valor) VALUES ('migracion_menu_v2', '1') ON CONFLICT (clave) DO NOTHING`);
 
   console.log('Base de datos lista.');
 }
@@ -2351,7 +2362,35 @@ app.delete('/api/admin/menu-navegacion/:id', requireAuth, async (req, res) => {
 // llenar el menú desplegable de "a dónde lleva" en el editor de tarjetas y
 // del menú, y se mantiene solo con lo que de verdad existe en tus productos.
 app.get('/api/admin/categorias-disponibles', requireAuth, async (req, res) => {
-  res.json(TAXONOMIA_CATALOGO);
+  // Esta taxonomía (para clasificar productos) se arma en vivo desde el
+  // mismo "Menú del sitio" -- así, si agregas una pestaña, columna o enlace
+  // nuevo ahí, aparece aquí también de inmediato, sin tocar código. La
+  // pestaña "Inicio" se excluye porque no es una clasificación real.
+  try {
+    const filas = (await pool.query('SELECT * FROM menu_navegacion WHERE activo=true ORDER BY orden ASC, id ASC')).rows;
+    const porId = {};
+    filas.forEach(f => { porId[f.id] = { ...f, hijos: [] }; });
+    const raiz = [];
+    filas.forEach(f => {
+      if (f.padre_id === null) raiz.push(porId[f.id]);
+      else if (porId[f.padre_id]) porId[f.padre_id].hijos.push(porId[f.id]);
+    });
+
+    const taxonomia = {};
+    raiz.forEach(tab => {
+      if (tab.titulo === 'Inicio') return;
+      taxonomia[tab.titulo] = {};
+      tab.hijos.forEach(columna => {
+        taxonomia[tab.titulo][columna.titulo] = columna.hijos.map(h => h.titulo);
+      });
+    });
+    res.json(taxonomia);
+  } catch (error) {
+    console.error('GET /api/admin/categorias-disponibles:', error);
+    // Si algo falla, al menos se ofrece la taxonomía base para no dejar los
+    // formularios sin ninguna opción.
+    res.json(TAXONOMIA_CATALOGO);
+  }
 });
 
 // ---------------------------------------------------------------------------
