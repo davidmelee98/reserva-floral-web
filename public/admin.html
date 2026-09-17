@@ -651,6 +651,22 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     </div>
                 </div>
 
+                <div class="adm-card p-6 max-w-2xl mb-6">
+                    <h2 class="text-lg font-semibold text-brandDark mb-1">Imagen de "Categoría no disponible"</h2>
+                    <p class="text-xs text-gray-400 mb-4">Aparece cuando alguien entra a una categoría que, por ahora, no tiene productos disponibles en su ciudad.</p>
+                    <div class="flex items-center gap-4 mb-3">
+                        <img id="ib-preview-no-disponible" class="w-28 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
+                        <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
+                            <span id="ib-texto-no-disponible">Subir un archivo</span>
+                            <input type="file" accept="image/*" id="ib-archivo-no-disponible" class="hidden">
+                        </label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="ib-link-no-disponible" placeholder="https://..." class="adm-input text-sm flex-1">
+                        <button type="button" onclick="guardarImagenPorLinkRF('ib-link-no-disponible', 'imagen_categoria_no_disponible', 'ib-preview-no-disponible')" class="shrink-0 bg-gray-100 hover:bg-gray-200 text-brandDark text-xs font-semibold px-4 py-2.5 rounded-lg transition">Poner un link</button>
+                    </div>
+                </div>
+
                 <div class="adm-card p-6 mb-6">
                     <div class="flex items-start justify-between mb-1">
                         <div>
@@ -2161,28 +2177,37 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 previewHero.src = cfg.imagen_hero || '';
                 previewHero.style.opacity = cfg.imagen_hero ? '1' : '.15';
             }
+            const previewNoDisponible = document.getElementById('ib-preview-no-disponible');
+            if (previewNoDisponible) {
+                previewNoDisponible.src = cfg.imagen_categoria_no_disponible || '';
+                previewNoDisponible.style.opacity = cfg.imagen_categoria_no_disponible ? '1' : '.15';
+            }
         } catch (error) {
             console.error('Error cargando configuración', error);
         }
     }
 
-    const archivoHero = document.getElementById('ib-archivo-hero');
-    if (archivoHero) {
-        archivoHero.addEventListener('change', async (e) => {
+    // Conecta cualquier campo de "subir archivo -> guardar como config" --
+    // reutilizable para la portada, la imagen de categoría no disponible, y
+    // cualquier otra imagen suelta que se agregue después.
+    function conectarSubidaImagenConfig(idArchivo, idTexto, claveConfig, idPreview, mensajeExito) {
+        const input = document.getElementById(idArchivo);
+        if (!input) return;
+        input.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const textoEl = document.getElementById('ib-texto-hero');
+            const textoEl = document.getElementById(idTexto);
             const original = textoEl.innerText;
             textoEl.innerText = 'Subiendo...';
             try {
                 const url = await subirArchivoImagen(file);
                 await jsonOError(await fetch('/api/admin/configuracion', {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ imagen_hero: url })
+                    body: JSON.stringify({ [claveConfig]: url })
                 }));
-                document.getElementById('ib-preview-hero').src = url;
-                document.getElementById('ib-preview-hero').style.opacity = '1';
-                mostrarToast('Portada actualizada.');
+                document.getElementById(idPreview).src = url;
+                document.getElementById(idPreview).style.opacity = '1';
+                mostrarToast(mensajeExito);
             } catch (error) {
                 mostrarToast(error.message || 'No se pudo subir la imagen.', 'error');
             } finally {
@@ -2190,6 +2215,9 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 e.target.value = '';
             }
         });
+    }
+    conectarSubidaImagenConfig('ib-archivo-hero', 'ib-texto-hero', 'imagen_hero', 'ib-preview-hero', 'Portada actualizada.');
+    conectarSubidaImagenConfig('ib-archivo-no-disponible', 'ib-texto-no-disponible', 'imagen_categoria_no_disponible', 'ib-preview-no-disponible', 'Imagen actualizada.');
 
     // Guardar una imagen a partir de un link externo (en vez de subir un
     // archivo) -- útil porque un link a otra parte no se pierde cuando
@@ -2226,7 +2254,6 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         input.value = '';
     }
     window.usarLinkImagenCarruselRF = usarLinkImagenCarruselRF;
-    }
 
     // =======================================================================
     // PÁGINA DE INICIO: carruseles "Entregas el mismo día" y "Ocasiones"

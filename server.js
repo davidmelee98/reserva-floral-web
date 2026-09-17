@@ -2260,8 +2260,37 @@ function construirArbolMenu(filas) {
 
 // Taxonomía pública (categoría > subcategoría > tipo): la usa el front para
 // reconocer las rutas tipo /estado/ciudad/categoria/subcategoria/tipo.
-app.get('/api/taxonomia', (req, res) => {
-  res.json(TAXONOMIA_CATALOGO);
+// Arma la taxonomía (categoría > subcategoría > tipo) en vivo desde el
+// "Menú del sitio" -- una sola función que usan tanto el endpoint público
+// (para resolver las rutas bonitas) como el del panel (para los
+// desplegables de clasificar productos), así nunca quedan desincronizados.
+async function construirTaxonomiaDesdeMenu() {
+  const filas = (await pool.query('SELECT * FROM menu_navegacion WHERE activo=true ORDER BY orden ASC, id ASC')).rows;
+  const porId = {};
+  filas.forEach(f => { porId[f.id] = { ...f, hijos: [] }; });
+  const raiz = [];
+  filas.forEach(f => {
+    if (f.padre_id === null) raiz.push(porId[f.id]);
+    else if (porId[f.padre_id]) porId[f.padre_id].hijos.push(porId[f.id]);
+  });
+  const taxonomia = {};
+  raiz.forEach(tab => {
+    if (tab.titulo === 'Inicio') return;
+    taxonomia[tab.titulo] = {};
+    tab.hijos.forEach(columna => {
+      taxonomia[tab.titulo][columna.titulo] = columna.hijos.map(h => h.titulo);
+    });
+  });
+  return taxonomia;
+}
+
+app.get('/api/taxonomia', async (req, res) => {
+  try {
+    res.json(await construirTaxonomiaDesdeMenu());
+  } catch (error) {
+    console.error('GET /api/taxonomia:', error);
+    res.json(TAXONOMIA_CATALOGO);
+  }
 });
 
 app.get('/api/menu-navegacion', async (req, res) => {
@@ -2364,27 +2393,9 @@ app.delete('/api/admin/menu-navegacion/:id', requireAuth, async (req, res) => {
 app.get('/api/admin/categorias-disponibles', requireAuth, async (req, res) => {
   // Esta taxonomía (para clasificar productos) se arma en vivo desde el
   // mismo "Menú del sitio" -- así, si agregas una pestaña, columna o enlace
-  // nuevo ahí, aparece aquí también de inmediato, sin tocar código. La
-  // pestaña "Inicio" se excluye porque no es una clasificación real.
+  // nuevo ahí, aparece aquí también de inmediato, sin tocar código.
   try {
-    const filas = (await pool.query('SELECT * FROM menu_navegacion WHERE activo=true ORDER BY orden ASC, id ASC')).rows;
-    const porId = {};
-    filas.forEach(f => { porId[f.id] = { ...f, hijos: [] }; });
-    const raiz = [];
-    filas.forEach(f => {
-      if (f.padre_id === null) raiz.push(porId[f.id]);
-      else if (porId[f.padre_id]) porId[f.padre_id].hijos.push(porId[f.id]);
-    });
-
-    const taxonomia = {};
-    raiz.forEach(tab => {
-      if (tab.titulo === 'Inicio') return;
-      taxonomia[tab.titulo] = {};
-      tab.hijos.forEach(columna => {
-        taxonomia[tab.titulo][columna.titulo] = columna.hijos.map(h => h.titulo);
-      });
-    });
-    res.json(taxonomia);
+    res.json(await construirTaxonomiaDesdeMenu());
   } catch (error) {
     console.error('GET /api/admin/categorias-disponibles:', error);
     // Si algo falla, al menos se ofrece la taxonomía base para no dejar los
@@ -2478,7 +2489,7 @@ app.get('/api/configuracion-publica', async (req, res) => {
   try {
     const resultado = await pool.query(
       `SELECT clave, valor FROM configuracion WHERE clave = ANY($1::text[])`,
-      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer', 'imagen_hero', 'instagram_url', 'facebook_url', 'tiktok_url', 'twitter_url']]
+      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer', 'imagen_hero', 'imagen_categoria_no_disponible', 'instagram_url', 'facebook_url', 'tiktok_url', 'twitter_url']]
     );
     const config = {};
     for (const fila of resultado.rows) config[fila.clave] = fila.valor;

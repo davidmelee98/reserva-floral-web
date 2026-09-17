@@ -696,10 +696,24 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
              carrusel de tendencias del inicio -- con todos los productos que
              de verdad coinciden. -->
         <div id="rf-vista-categoria" class="hidden">
-            <h1 id="rf-categoria-titulo" class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-2"></h1>
-            <p id="rf-categoria-descripcion" class="text-sm text-gray-500 mb-6"></p>
-            <p id="rf-categoria-contador" class="text-xs text-gray-400 mb-4"></p>
+            <div id="rf-categoria-encabezado">
+                <h1 id="rf-categoria-titulo" class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-2"></h1>
+                <p id="rf-categoria-descripcion" class="text-sm text-gray-500 mb-6"></p>
+                <p id="rf-categoria-contador" class="text-xs text-gray-400 mb-4"></p>
+            </div>
             <div id="rf-grid-categoria" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"></div>
+
+            <!-- Se muestra en vez de la cuadrícula cuando, para la ciudad
+                 elegida, no hay ni un solo producto de esa categoría. -->
+            <div id="rf-categoria-no-disponible" class="hidden flex-col sm:flex-row items-center gap-8 py-8">
+                <img id="rf-no-disponible-imagen" src="" alt="Categoría no disponible" class="w-full sm:w-80 rounded-xl object-cover" style="max-height:320px;">
+                <div class="text-center sm:text-left">
+                    <h1 class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-2">Categoría no disponible</h1>
+                    <p id="rf-no-disponible-subtitulo" class="text-lg text-brandDark font-medium mb-3"></p>
+                    <p class="text-sm text-gray-500 mb-6">Encuentra los regalos disponibles ahí.</p>
+                    <button type="button" onclick="irARegalosDeLaCiudadRF()" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-7 py-3 rounded-full transition">Ver regalos</button>
+                </div>
+            </div>
         </div>
 
         <div id="rf-inicio-trending">
@@ -1135,13 +1149,32 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
         window.buscarEnCatalogo = buscarEnCatalogo;
 
-        async function cargarInventario(filtroCategoria = null, filtroSubcategoria = null, filtroSubsubcategoria = null) {
+        // Encuentra el "nombre" interno de la zona (el que se guarda en el
+        // campo "cobertura" de cada producto) a partir de la ciudad guardada
+        // (que ahí se guarda como su nombre para mostrar, ej. "Ciudad Madero").
+        function obtenerZonaActualNombreRF() {
+            let guardado = null;
+            try { guardado = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null'); } catch (_) {}
+            if (!guardado?.ciudad) return null;
+            const zona = zonasDisponiblesRF.find(z => z.etiqueta === guardado.ciudad);
+            return zona ? zona.nombre : null;
+        }
+
+        // Un producto sin cobertura definida se entiende disponible en
+        // cualquier ciudad; si sí trae cobertura, solo cuenta si la zona
+        // actual está en esa lista.
+        function productoDisponibleEnZonaRF(producto, zonaNombre) {
+            const lista = String(producto.cobertura || '').split(',').map(s => s.trim()).filter(Boolean);
+            return lista.length === 0 || (!!zonaNombre && lista.includes(zonaNombre));
+        }
+
+        async function cargarInventario(filtroCategoria = null, filtroSubcategoria = null, filtroSubsubcategoria = null, soloPorCiudad = false) {
             try {
                 const respuesta = await fetch('/api/catalogo');
                 todosLosArreglos = await respuesta.json();
                 let arreglos = todosLosArreglos;
 
-                const hayFiltro = !!(filtroCategoria || filtroSubcategoria || filtroSubsubcategoria);
+                const hayFiltro = !!(filtroCategoria || filtroSubcategoria || filtroSubsubcategoria || soloPorCiudad);
                 // Las secciones del inicio (portada, tendencias, carruseles) solo
                 // se ven cuando NO hay un filtro de categoría activo. Con filtro,
                 // se ve la cuadrícula de categoría, con todos los productos que
@@ -1152,23 +1185,44 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 document.getElementById('rf-vista-categoria')?.classList.toggle('hidden', !hayFiltro);
 
                 if (hayFiltro) {
+                    if (zonasDisponiblesRF.length === 0) await cargarZonasDisponiblesRF();
+                    const zonaNombre = obtenerZonaActualNombreRF();
+                    let datosUbicacion = null;
+                    try { datosUbicacion = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null'); } catch (_) {}
+
                     if (filtroCategoria) arreglos = arreglos.filter(a => a.categoria === filtroCategoria);
                     if (filtroSubcategoria) arreglos = arreglos.filter(a => a.subcategoria === filtroSubcategoria);
                     if (filtroSubsubcategoria) arreglos = arreglos.filter(a => a.subsubcategoria === filtroSubsubcategoria);
+                    // El filtro por ciudad se aplica siempre que ya sepamos cuál
+                    // es (para no ofrecer algo que no se puede entregar ahí).
+                    if (datosUbicacion?.ciudad) arreglos = arreglos.filter(a => productoDisponibleEnZonaRF(a, zonaNombre));
 
-                    const partesTitulo = [filtroSubsubcategoria, filtroSubcategoria, filtroCategoria].filter(Boolean);
                     const tituloEl = document.getElementById('rf-categoria-titulo');
-                    if (tituloEl) tituloEl.innerText = partesTitulo[0] || 'Colección';
                     const descripcionEl = document.getElementById('rf-categoria-descripcion');
-                    if (descripcionEl) {
-                        let datosUbicacion = null;
-                        try { datosUbicacion = JSON.parse(localStorage.getItem('rf_ubicacion_entrega') || 'null'); } catch (_) {}
-                        if (datosUbicacion?.estado && datosUbicacion?.ciudad) {
-                            descripcionEl.innerText = `Entrega a domicilio en ${datosUbicacion.ciudad}, ${datosUbicacion.estado}.`;
-                        } else {
-                            descripcionEl.innerText = 'Elige tu ciudad para conocer tiempos y costo de entrega.';
+
+                    if (soloPorCiudad) {
+                        if (tituloEl) tituloEl.innerText = datosUbicacion?.ciudad ? `Regalos disponibles en ${datosUbicacion.ciudad}` : 'Todos los regalos';
+                        if (descripcionEl) descripcionEl.innerText = datosUbicacion?.ciudad ? `Entrega a domicilio en ${datosUbicacion.ciudad}, ${datosUbicacion.estado}.` : '';
+                    } else {
+                        const partesTitulo = [filtroSubsubcategoria, filtroSubcategoria, filtroCategoria].filter(Boolean);
+                        if (tituloEl) tituloEl.innerText = partesTitulo[0] || 'Colección';
+                        if (descripcionEl) {
+                            descripcionEl.innerText = datosUbicacion?.estado && datosUbicacion?.ciudad
+                                ? `Entrega a domicilio en ${datosUbicacion.ciudad}, ${datosUbicacion.estado}.`
+                                : 'Elige tu ciudad para conocer tiempos y costo de entrega.';
                         }
                     }
+
+                    // "Categoría no disponible": solo tiene sentido mostrarlo
+                    // cuando SÍ hay un filtro de categoría (no en "Ver regalos",
+                    // que ya de por sí muestra todo lo que hay en la ciudad) y
+                    // ya sabemos la ciudad (si no, no hay nada que ofrecer en su lugar).
+                    if (arreglos.length === 0 && !soloPorCiudad && datosUbicacion?.ciudad) {
+                        mostrarCategoriaNoDisponibleRF(datosUbicacion.ciudad);
+                        return;
+                    }
+                    document.getElementById('rf-categoria-no-disponible')?.classList.add('hidden');
+                    document.getElementById('rf-grid-categoria')?.classList.remove('hidden');
                     renderGridCategoriaRF(arreglos);
                     return;
                 }
@@ -1246,6 +1300,33 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             });
             actualizarUI();
         }
+
+        // Se muestra en vez de la cuadrícula cuando la categoría elegida no
+        // tiene ni un solo producto disponible para la ciudad actual.
+        async function mostrarCategoriaNoDisponibleRF(ciudad) {
+            document.getElementById('rf-categoria-encabezado')?.classList.add('hidden');
+            document.getElementById('rf-grid-categoria')?.classList.add('hidden');
+            const bloque = document.getElementById('rf-categoria-no-disponible');
+            bloque.classList.remove('hidden');
+            bloque.classList.add('flex');
+            document.getElementById('rf-no-disponible-subtitulo').innerText = `Pero sí tenemos el regalo ideal en ${ciudad}`;
+            try {
+                const cfg = await (await fetch('/api/configuracion-publica')).json();
+                document.getElementById('rf-no-disponible-imagen').src = cfg.imagen_categoria_no_disponible
+                    || 'https://images.unsplash.com/photo-1587556930799-8dca6fad6d41?q=80&w=600&auto=format&fit=crop';
+            } catch (_) {}
+        }
+
+        // El botón "Ver regalos" de este bloque -- y el de la tarjeta de
+        // ubicación del inicio -- llevan a todo lo disponible en la ciudad
+        // actual, sin ningún filtro de categoría.
+        function irARegalosDeLaCiudadRF() {
+            document.getElementById('rf-categoria-no-disponible')?.classList.add('hidden');
+            document.getElementById('rf-categoria-encabezado')?.classList.remove('hidden');
+            cargarInventario(null, null, null, true);
+            document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
+        }
+        window.irARegalosDeLaCiudadRF = irARegalosDeLaCiudadRF;
 
         function abrirProducto(dataStr, urlImagen) {
             const productoActual = JSON.parse(decodeURIComponent(dataStr));
@@ -1986,8 +2067,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
         }
         function irAlCatalogoDesdeSelectorHome() {
-            const target=document.getElementById('seccion-catalogo');
-            if (target) target.scrollIntoView({ behavior: 'smooth' });
+            irARegalosDeLaCiudadRF();
         }
         async function inicializarSelectorHomeRF() {
             // Limpia datos de versiones anteriores para que la primera carga de esta versión
@@ -2602,7 +2682,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
 
             renderBreadcrumbCategoriaRF(breadcrumb);
-            cargarInventario(categoria, subcategoria, subsubcategoria);
+            if (categoria) {
+                cargarInventario(categoria, subcategoria, subsubcategoria);
+            } else {
+                // Solo trae estado/ciudad (ej. desde "Ver regalos"): se
+                // muestra todo lo disponible en esa ciudad, sin categoría.
+                cargarInventario(null, null, null, true);
+            }
             document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
             return true;
         }
@@ -3320,6 +3406,56 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         window.construirRutaDesdeEnlaceRF = construirRutaDesdeEnlaceRF;
         window.leerUbicacionActualRF = leerUbicacionActualRF;
 
+        // --- Ocultar del menú lo que no tenga producto en la ciudad actual --
+        // Solo se activa una vez que hay estado/ciudad elegidos; antes de eso,
+        // se ve el menú completo, como siempre.
+        function estaDisponibleRF(enlace, claves) {
+            if (!claves) return true;
+            if (!enlace || !enlace.startsWith('/?')) return true;
+            const params = new URLSearchParams(enlace.slice(2));
+            const categoria = params.get('categoria');
+            if (!categoria) return true;
+            let clave = categoria;
+            if (params.get('subcategoria')) clave += '||' + params.get('subcategoria');
+            if (params.get('subsubcategoria')) clave += '||' + params.get('subsubcategoria');
+            return claves.has(clave);
+        }
+        function filtrarTabsPorDisponibilidadRF(tabs, claves) {
+            if (!claves) return tabs;
+            return tabs.map(tab => {
+                const columnas = (tab.hijos || []).map(columna => {
+                    const hijosFiltrados = (columna.hijos || []).filter(link => estaDisponibleRF(link.enlace, claves));
+                    return { ...columna, hijos: hijosFiltrados };
+                }).filter(columna => estaDisponibleRF(columna.enlace, claves) || columna.hijos.length > 0);
+                return { ...tab, hijos: columnas };
+            }).filter(tab => tab.titulo === 'Inicio' || estaDisponibleRF(tab.enlace, claves) || tab.hijos.length > 0);
+        }
+        async function obtenerClavesDisponiblesMenuRF() {
+            const ubicacion = leerUbicacionActualRF();
+            if (!ubicacion) return null; // sin ciudad elegida, no se filtra nada
+            try {
+                const [productos, zonas] = await Promise.all([
+                    fetch('/api/catalogo').then(r => r.json()),
+                    fetch('/api/zonas').then(r => r.json())
+                ]);
+                const zona = zonas.find(z => z.etiqueta === ubicacion.ciudad);
+                const zonaNombre = zona ? zona.nombre : null;
+                const claves = new Set();
+                productos.forEach(p => {
+                    const lista = String(p.cobertura || '').split(',').map(s => s.trim()).filter(Boolean);
+                    const disponible = lista.length === 0 || (zonaNombre && lista.includes(zonaNombre));
+                    if (!disponible) return;
+                    if (p.categoria) claves.add(p.categoria);
+                    if (p.categoria && p.subcategoria) claves.add(p.categoria + '||' + p.subcategoria);
+                    if (p.categoria && p.subcategoria && p.subsubcategoria) claves.add(p.categoria + '||' + p.subcategoria + '||' + p.subsubcategoria);
+                });
+                return claves;
+            } catch (error) {
+                console.error('No se pudo calcular la disponibilidad por ciudad', error);
+                return null;
+            }
+        }
+
         function pintarMenuDesktop(tabs) {
             const cont = document.getElementById('rf-menu-navegacion-desktop');
             if (!cont) return;
@@ -3393,9 +3529,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             abrirModalUbicacion(() => { window.location.href = construirRutaDesdeEnlaceRF(semantico); });
         }, true);
 
-        fetch('/api/menu-navegacion').then(r => r.json()).then(tabs => {
-            pintarMenuDesktop(tabs);
-            if (window.actualizarArbolMenuMovilRF) window.actualizarArbolMenuMovilRF(construirArbolMovilRF(tabs));
+        fetch('/api/menu-navegacion').then(r => r.json()).then(async tabs => {
+            const claves = await obtenerClavesDisponiblesMenuRF();
+            const tabsFiltrados = filtrarTabsPorDisponibilidadRF(tabs, claves);
+            pintarMenuDesktop(tabsFiltrados);
+            if (window.actualizarArbolMenuMovilRF) window.actualizarArbolMenuMovilRF(construirArbolMovilRF(tabsFiltrados));
         }).catch(error => console.error('No se pudo cargar el menú de navegación', error));
     })();
 </script>

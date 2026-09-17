@@ -780,6 +780,56 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         window.construirRutaDesdeEnlaceRF = construirRutaDesdeEnlaceRF;
         window.leerUbicacionActualRF = leerUbicacionActualRF;
 
+        // --- Ocultar del menú lo que no tenga producto en la ciudad actual --
+        // Solo se activa una vez que hay estado/ciudad elegidos; antes de eso,
+        // se ve el menú completo, como siempre.
+        function estaDisponibleRF(enlace, claves) {
+            if (!claves) return true;
+            if (!enlace || !enlace.startsWith('/?')) return true;
+            const params = new URLSearchParams(enlace.slice(2));
+            const categoria = params.get('categoria');
+            if (!categoria) return true;
+            let clave = categoria;
+            if (params.get('subcategoria')) clave += '||' + params.get('subcategoria');
+            if (params.get('subsubcategoria')) clave += '||' + params.get('subsubcategoria');
+            return claves.has(clave);
+        }
+        function filtrarTabsPorDisponibilidadRF(tabs, claves) {
+            if (!claves) return tabs;
+            return tabs.map(tab => {
+                const columnas = (tab.hijos || []).map(columna => {
+                    const hijosFiltrados = (columna.hijos || []).filter(link => estaDisponibleRF(link.enlace, claves));
+                    return { ...columna, hijos: hijosFiltrados };
+                }).filter(columna => estaDisponibleRF(columna.enlace, claves) || columna.hijos.length > 0);
+                return { ...tab, hijos: columnas };
+            }).filter(tab => tab.titulo === 'Inicio' || estaDisponibleRF(tab.enlace, claves) || tab.hijos.length > 0);
+        }
+        async function obtenerClavesDisponiblesMenuRF() {
+            const ubicacion = leerUbicacionActualRF();
+            if (!ubicacion) return null; // sin ciudad elegida, no se filtra nada
+            try {
+                const [productos, zonas] = await Promise.all([
+                    fetch('/api/catalogo').then(r => r.json()),
+                    fetch('/api/zonas').then(r => r.json())
+                ]);
+                const zona = zonas.find(z => z.etiqueta === ubicacion.ciudad);
+                const zonaNombre = zona ? zona.nombre : null;
+                const claves = new Set();
+                productos.forEach(p => {
+                    const lista = String(p.cobertura || '').split(',').map(s => s.trim()).filter(Boolean);
+                    const disponible = lista.length === 0 || (zonaNombre && lista.includes(zonaNombre));
+                    if (!disponible) return;
+                    if (p.categoria) claves.add(p.categoria);
+                    if (p.categoria && p.subcategoria) claves.add(p.categoria + '||' + p.subcategoria);
+                    if (p.categoria && p.subcategoria && p.subsubcategoria) claves.add(p.categoria + '||' + p.subcategoria + '||' + p.subsubcategoria);
+                });
+                return claves;
+            } catch (error) {
+                console.error('No se pudo calcular la disponibilidad por ciudad', error);
+                return null;
+            }
+        }
+
         function pintarMenuDesktop(tabs) {
             const cont = document.getElementById('rf-menu-navegacion-desktop');
             if (!cont) return;
@@ -853,9 +903,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             abrirModalUbicacion(() => { window.location.href = construirRutaDesdeEnlaceRF(semantico); });
         }, true);
 
-        fetch('/api/menu-navegacion').then(r => r.json()).then(tabs => {
-            pintarMenuDesktop(tabs);
-            if (window.actualizarArbolMenuMovilRF) window.actualizarArbolMenuMovilRF(construirArbolMovilRF(tabs));
+        fetch('/api/menu-navegacion').then(r => r.json()).then(async tabs => {
+            const claves = await obtenerClavesDisponiblesMenuRF();
+            const tabsFiltrados = filtrarTabsPorDisponibilidadRF(tabs, claves);
+            pintarMenuDesktop(tabsFiltrados);
+            if (window.actualizarArbolMenuMovilRF) window.actualizarArbolMenuMovilRF(construirArbolMovilRF(tabsFiltrados));
         }).catch(error => console.error('No se pudo cargar el menú de navegación', error));
     })();
 </script>
