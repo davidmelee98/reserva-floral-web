@@ -24,15 +24,16 @@
     </script>
     <style>
         body{ -webkit-font-smoothing:antialiased; }
-        .adm-card{ background:#fff; border:1px solid #ececec; border-radius:16px; }
-        .adm-input{ width:100%; border:1px solid #dcdcdc; border-radius:10px; padding:.55rem .75rem; font-size:.875rem; outline:none; transition:border-color .15s ease, box-shadow .15s ease; background:#fff; }
-        .adm-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.12); }
+        .adm-card{ background:#fff; border:1px solid #eef0f2; border-radius:16px; box-shadow:0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.03); }
+        .adm-input{ width:100%; border:1px solid #e2e4e9; border-radius:10px; padding:.55rem .75rem; font-size:.875rem; outline:none; transition:border-color .15s ease, box-shadow .15s ease; background:#fff; }
+        .adm-input:focus{ border-color:#c2185b; box-shadow:0 0 0 4px rgba(194,24,91,.10); }
+        .adm-input:disabled{ background:#f7f7f8; color:#a3a3a3; cursor:not-allowed; }
         .adm-input.is-invalid{ border-color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.10); }
         .adm-label{ display:block; font-size:.72rem; font-weight:600; color:#6b6b6b; margin-bottom:.3rem; letter-spacing:.01em; }
         .adm-section-title{ font-size:.75rem; font-weight:700; color:#c2185b; text-transform:uppercase; letter-spacing:.06em; display:flex; align-items:center; gap:.4rem; }
-        .adm-chip{ display:inline-flex; align-items:center; gap:.3rem; border:1px solid #dcdcdc; border-radius:999px; padding:.32rem .7rem; font-size:.75rem; color:#4b4b4b; cursor:pointer; user-select:none; transition:all .12s ease; background:#fff; }
-        .adm-chip:hover{ border-color:#c2185b; }
-        .adm-chip.is-active{ background:#c2185b; border-color:#c2185b; color:#fff; }
+        .adm-chip{ display:inline-flex; align-items:center; gap:.3rem; border:1px solid #e2e4e9; border-radius:999px; padding:.32rem .7rem; font-size:.75rem; color:#4b4b4b; cursor:pointer; user-select:none; transition:all .12s ease; background:#fff; }
+        .adm-chip:hover{ border-color:#c2185b; color:#c2185b; }
+        .adm-chip.is-active{ background:#c2185b; border-color:#c2185b; color:#fff; box-shadow:0 2px 6px rgba(194,24,91,.28); }
         .adm-chip.is-legacy{ border-style:dashed; border-color:#f0b1c8; }
         .adm-switch{ position:relative; display:inline-block; width:38px; height:22px; flex:0 0 auto; }
         .adm-switch input{ opacity:0; width:0; height:0; }
@@ -40,7 +41,8 @@
         .adm-switch-track::before{ content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .15s ease; box-shadow:0 1px 3px rgba(0,0,0,.25); }
         .adm-switch input:checked + .adm-switch-track{ background:#22c55e; }
         .adm-switch input:checked + .adm-switch-track::before{ transform:translateX(16px); }
-        .adm-badge{ display:inline-flex; align-items:center; gap:.3rem; font-size:.68rem; font-weight:700; padding:.18rem .55rem; border-radius:999px; letter-spacing:.02em; }
+        .adm-badge{ display:inline-flex; align-items:center; gap:.32rem; font-size:.68rem; font-weight:700; padding:.2rem .6rem; border-radius:999px; letter-spacing:.02em; }
+        .adm-badge::before{ content:''; width:5px; height:5px; border-radius:999px; background:currentColor; }
         .adm-toast{ min-width:260px; max-width:360px; box-shadow:0 12px 28px rgba(0,0,0,.18); }
         .adm-fade-in{ animation: admFadeIn .18s ease both; }
         @keyframes admFadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
@@ -49,12 +51,17 @@
         ::-webkit-scrollbar{ width:7px; height:7px; }
         ::-webkit-scrollbar-thumb{ background:#e2c2d0; border-radius:999px; }
 
-        .adm-nav-item{ display:flex; align-items:center; gap:.7rem; padding:.6rem .9rem; border-radius:10px; font-size:.84rem; font-weight:500; color:#6b6b6b; cursor:pointer; transition:all .12s ease; }
+        .adm-nav-item{ display:flex; align-items:center; gap:.7rem; padding:.6rem .9rem; border-radius:10px; font-size:.84rem; font-weight:500; color:#6b6b6b; cursor:pointer; transition:all .12s ease; position:relative; }
         .adm-nav-item:hover{ background:#fdf1f6; color:#c2185b; }
-        .adm-nav-item.is-active{ background:#c2185b; color:#fff; font-weight:600; }
+        .adm-nav-item.is-active{ background:linear-gradient(135deg,#c2185b,#d81b60); color:#fff; font-weight:600; box-shadow:0 4px 10px rgba(194,24,91,.28); }
         .adm-nav-item svg{ width:18px; height:18px; flex:0 0 auto; }
         .adm-sidebar{ width:236px; }
         @media (max-width: 1023px){ .adm-sidebar{ width:100%; } }
+
+        /* Tarjeta de vista previa en vivo del producto, en Catálogo */
+        .adm-preview-card{ border-radius:14px; overflow:hidden; border:1px solid #eef0f2; background:#fff; transition:box-shadow .15s ease; }
+        .adm-preview-image{ aspect-ratio:1/1; background:#f7f7f8; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .adm-preview-image img{ width:100%; height:100%; object-fit:cover; }
     </style>
 </head>
 <body class="bg-brandGray font-sans text-brandDark min-h-screen">
@@ -213,10 +220,30 @@
             <!-- ============ DASHBOARD ============ -->
             <section id="vista-dashboard">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Pedidos hoy</p><p id="dash-pedidos-hoy" class="text-2xl font-bold text-brandDark mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Pedidos pendientes</p><p id="dash-pedidos-pendientes" class="text-2xl font-bold text-amber-500 mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Ingresos de hoy</p><p id="dash-ingresos-hoy" class="text-2xl font-bold text-green-600 mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Ingresos del mes</p><p id="dash-ingresos-mes" class="text-2xl font-bold text-brandDark mt-1">—</p></div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-pink-50 text-brandFuchsia flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Pedidos hoy</p><p id="dash-pedidos-hoy" class="text-xl font-bold text-brandDark">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Pedidos pendientes</p><p id="dash-pedidos-pendientes" class="text-xl font-bold text-amber-500">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m9-8a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Ingresos de hoy</p><p id="dash-ingresos-hoy" class="text-xl font-bold text-green-600">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gray-100 text-brandDark flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Ingresos del mes</p><p id="dash-ingresos-mes" class="text-xl font-bold text-brandDark">—</p></div>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -243,10 +270,30 @@
             <!-- ============ CATÁLOGO ============ -->
             <section id="vista-catalogo" class="hidden">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Total de productos</p><p id="stat-total" class="text-2xl font-bold text-brandDark mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Disponibles</p><p id="stat-disponibles" class="text-2xl font-bold text-green-600 mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Agotados / pausados</p><p id="stat-agotados" class="text-2xl font-bold text-red-500 mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Categorías activas</p><p id="stat-categorias" class="text-2xl font-bold text-brandDark mt-1">—</p></div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gray-100 text-brandDark flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Total de productos</p><p id="stat-total" class="text-xl font-bold text-brandDark">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Disponibles</p><p id="stat-disponibles" class="text-xl font-bold text-green-600">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Agotados / pausados</p><p id="stat-agotados" class="text-xl font-bold text-red-500">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-pink-50 text-brandFuchsia flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 10.5V5a2 2 0 012-2z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Categorías activas</p><p id="stat-categorias" class="text-xl font-bold text-brandDark">—</p></div>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -258,6 +305,22 @@
 
                         <form id="form-arreglo" class="space-y-5" novalidate>
                             <input type="hidden" id="producto_id">
+
+                            <!-- Vista previa en vivo: así se va a ver la tarjeta del
+                                 producto en la tienda, actualizándose mientras escribes. -->
+                            <div class="adm-preview-card">
+                                <div class="adm-preview-image">
+                                    <img id="preview-vivo-imagen" class="hidden" alt="Vista previa">
+                                    <svg id="preview-vivo-icono" class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                </div>
+                                <div class="p-3">
+                                    <p id="preview-vivo-nombre" class="text-sm font-medium text-brandDark leading-tight truncate">Así se verá tu producto</p>
+                                    <div class="flex items-center justify-between mt-1">
+                                        <span id="preview-vivo-precio" class="text-sm font-bold text-gray-900">$0.00</span>
+                                        <span id="preview-vivo-categoria" class="adm-badge bg-gray-100 text-gray-400">Sin categoría</span>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="space-y-3">
                                 <p class="adm-section-title">
@@ -441,10 +504,30 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             <!-- ============ PEDIDOS ============ -->
             <section id="vista-pedidos" class="hidden">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Pedidos totales</p><p id="stat-pedidos-total" class="text-2xl font-bold text-brandDark mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Pendientes</p><p id="stat-pedidos-pendientes" class="text-2xl font-bold text-amber-500 mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">En camino / preparación</p><p id="stat-pedidos-proceso" class="text-2xl font-bold text-blue-500 mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Ventas entregadas</p><p id="stat-pedidos-ventas" class="text-2xl font-bold text-green-600 mt-1">—</p></div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gray-100 text-brandDark flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Pedidos totales</p><p id="stat-pedidos-total" class="text-xl font-bold text-brandDark">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Pendientes</p><p id="stat-pedidos-pendientes" class="text-xl font-bold text-amber-500">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.001" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">En camino / preparación</p><p id="stat-pedidos-proceso" class="text-xl font-bold text-blue-500">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Ventas entregadas</p><p id="stat-pedidos-ventas" class="text-xl font-bold text-green-600">—</p></div>
+                    </div>
                 </div>
                 <div class="adm-card overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
@@ -479,10 +562,30 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             <!-- ============ CLIENTES ============ -->
             <section id="vista-clientes" class="hidden">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Clientes únicos</p><p id="stat-clientes-total" class="text-2xl font-bold text-brandDark mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Clientes recurrentes</p><p id="stat-clientes-recurrentes" class="text-2xl font-bold text-blue-500 mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Gasto promedio</p><p id="stat-clientes-promedio" class="text-2xl font-bold text-green-600 mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Mejor cliente</p><p id="stat-clientes-top" class="text-base font-bold text-brandDark mt-1.5 truncate">—</p></div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gray-100 text-brandDark flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm6 3.13a4 4 0 00-3-3.87" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Clientes únicos</p><p id="stat-clientes-total" class="text-xl font-bold text-brandDark">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3-3m-3 3l3 3m-3 6h8a4 4 0 004-4v-1" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Clientes recurrentes</p><p id="stat-clientes-recurrentes" class="text-xl font-bold text-blue-500">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m9-8a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Gasto promedio</p><p id="stat-clientes-promedio" class="text-xl font-bold text-green-600">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-pink-50 text-brandFuchsia flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Mejor cliente</p><p id="stat-clientes-top" class="text-sm font-bold text-brandDark truncate">—</p></div>
+                    </div>
                 </div>
                 <div class="adm-card overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
@@ -521,10 +624,30 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     </select>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Ingresos del periodo</p><p id="fin-ingresos" class="text-2xl font-bold text-green-600 mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Pedidos del periodo</p><p id="fin-pedidos" class="text-2xl font-bold text-brandDark mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Ticket promedio</p><p id="fin-ticket" class="text-2xl font-bold text-brandDark mt-1">—</p></div>
-                    <div class="adm-card p-4"><p class="text-[11px] text-gray-500 font-medium">Cancelados</p><p id="fin-cancelados" class="text-2xl font-bold text-red-500 mt-1">—</p></div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m9-8a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Ingresos del periodo</p><p id="fin-ingresos" class="text-xl font-bold text-green-600">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gray-100 text-brandDark flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Pedidos del periodo</p><p id="fin-pedidos" class="text-xl font-bold text-brandDark">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-pink-50 text-brandFuchsia flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3M3.75 6h16.5a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-9a1.5 1.5 0 011.5-1.5z" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Ticket promedio</p><p id="fin-ticket" class="text-xl font-bold text-brandDark">—</p></div>
+                    </div>
+                    <div class="adm-card p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        </div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Cancelados</p><p id="fin-cancelados" class="text-xl font-bold text-red-500">—</p></div>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="adm-card p-5 lg:col-span-2">
@@ -551,17 +674,16 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         <form id="form-zona" class="space-y-4">
                             <input type="hidden" id="zona_id">
                             <div>
-                                <label class="adm-label">Nombre interno (sin espacios raros, se guarda tal cual)</label>
-                                <input type="text" id="zona_nombre" required class="adm-input" placeholder="Ej. Victoria">
-                            </div>
-                            <div>
-                                <label class="adm-label">Cómo se muestra</label>
-                                <input type="text" id="zona_etiqueta" required class="adm-input" placeholder="Ej. Cd. Victoria">
-                            </div>
-                            <div>
                                 <label class="adm-label">Estado</label>
-                                <input type="text" id="zona_estado" required class="adm-input" placeholder="Ej. Tamaulipas">
-                                <p class="text-[11px] text-gray-400 mt-1">Así se agrupan las ciudades por estado en el selector de ubicación del sitio.</p>
+                                <select id="zona_estado" required class="adm-input">
+                                    <option value="" disabled selected>Selecciona un estado...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="adm-label">Ciudad / Municipio</label>
+                                <select id="zona_etiqueta" required disabled class="adm-input">
+                                    <option value="" disabled selected>Primero elige un estado</option>
+                                </select>
                             </div>
                             <div class="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2.5 bg-gray-50">
                                 <p class="text-xs font-semibold text-brandDark">Zona activa</p>
@@ -574,9 +696,12 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         </form>
                     </div>
                     <div class="adm-card overflow-hidden lg:col-span-2">
-                        <div class="px-6 py-4 border-b border-gray-100">
-                            <h2 class="text-lg font-semibold text-brandDark">Zonas de cobertura</h2>
-                            <p class="text-xs text-gray-400 mt-0.5">Estas zonas son las que aparecen para elegir en el selector de ubicación de la tienda -- lo que agregues, edites o desactives aquí se refleja ahí directamente.</p>
+                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+                            <div>
+                                <h2 class="text-lg font-semibold text-brandDark">Zonas de cobertura</h2>
+                                <p class="text-xs text-gray-400 mt-0.5">Lo que agregues, edites o desactives aquí se refleja directamente en el selector de ubicación de la tienda y en qué categorías se ven según la ciudad.</p>
+                            </div>
+                            <input type="text" id="buscador-zonas" placeholder="Buscar ciudad o estado..." class="adm-input text-sm w-48 shrink-0">
                         </div>
                         <div id="lista-zonas" class="divide-y divide-gray-100"></div>
                     </div>
@@ -1186,7 +1311,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     });
 
     async function cargarTodoElPanel() {
-        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones(), cargarCarruseles(), cargarMenuSitio(), cargarCategoriasDisponibles()]);
+        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones(), cargarCarruseles(), cargarMenuSitio(), cargarCategoriasDisponibles(), cargarEstadosMunicipios()]);
         if (usuarioActual && usuarioActual.rol === 'admin') {
             await Promise.all([cargarUsuarios(), cargarConfiguracion()]);
         }
@@ -1295,6 +1420,35 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         cont.innerHTML = `<img src="${escaparHtmlAdmin(url)}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<span class=\\'text-red-400 text-[9px] px-1 text-center\\'>No carga</span>'">`;
     }
     document.getElementById('imagen_url').addEventListener('input', actualizarPreviewPrincipal);
+
+    // Vista previa en vivo (arriba del formulario): se actualiza con cada
+    // tecla, para que se sienta como estar viendo la tarjeta real mientras
+    // se registra el producto.
+    function actualizarPreviewVivo() {
+        const nombre = document.getElementById('nombre').value.trim();
+        const precio = Number(document.getElementById('precio').value) || 0;
+        const categoria = document.getElementById('categoria').value;
+        const url = document.getElementById('imagen_url').value.trim();
+
+        document.getElementById('preview-vivo-nombre').innerText = nombre || 'Así se verá tu producto';
+        document.getElementById('preview-vivo-precio').innerText = '$' + formatearPrecioAdmin(precio);
+        const badgeCategoria = document.getElementById('preview-vivo-categoria');
+        badgeCategoria.innerText = categoria || 'Sin categoría';
+        badgeCategoria.className = 'adm-badge ' + (categoria ? 'bg-pink-50 text-brandFuchsia' : 'bg-gray-100 text-gray-400');
+
+        const img = document.getElementById('preview-vivo-imagen');
+        const icono = document.getElementById('preview-vivo-icono');
+        if (url) {
+            img.src = url; img.classList.remove('hidden'); icono.classList.add('hidden');
+            img.onerror = () => { img.classList.add('hidden'); icono.classList.remove('hidden'); };
+        } else {
+            img.classList.add('hidden'); icono.classList.remove('hidden');
+        }
+    }
+    ['nombre', 'precio', 'categoria', 'imagen_url'].forEach(id => {
+        document.getElementById(id).addEventListener('input', actualizarPreviewVivo);
+        document.getElementById(id).addEventListener('change', actualizarPreviewVivo);
+    });
 
     function actualizarPreviewGaleria() {
         const urls = document.getElementById('imagenes').value.split(',').map(s => s.trim()).filter(Boolean);
@@ -1525,6 +1679,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         construirChipsCobertura(p.cobertura || '');
         actualizarPreviewPrincipal();
         actualizarPreviewGaleria();
+        actualizarPreviewVivo();
         marcarError('nombre', false); marcarError('precio', false);
     }
     function prepararEdicion(id) {
@@ -1589,6 +1744,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         construirChipsCobertura('');
         actualizarPreviewPrincipal();
         actualizarPreviewGaleria();
+        actualizarPreviewVivo();
         marcarError('nombre', false); marcarError('precio', false);
     }
     window.limpiarFormulario = limpiarFormulario;
@@ -1882,6 +2038,38 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // =======================================================================
     // ENVÍOS / ZONAS DE COBERTURA
     // =======================================================================
+    let estadosMunicipiosData = {};
+    async function cargarEstadosMunicipios() {
+        try {
+            estadosMunicipiosData = await jsonOError(await fetch('/api/admin/estados-municipios'));
+            const selEstado = document.getElementById('zona_estado');
+            selEstado.innerHTML = '<option value="" disabled selected>Selecciona un estado...</option>' +
+                Object.keys(estadosMunicipiosData).sort().map(e => `<option value="${escaparHtmlAdmin(e)}">${escaparHtmlAdmin(e)}</option>`).join('');
+        } catch (error) {
+            console.error('Error cargando estados y municipios', error);
+        }
+    }
+    function poblarCiudadesZona(estado, ciudadPreseleccionada) {
+        const selCiudad = document.getElementById('zona_etiqueta');
+        const municipios = estadosMunicipiosData[estado] || [];
+        if (!estado || municipios.length === 0) {
+            selCiudad.innerHTML = '<option value="" disabled selected>Primero elige un estado</option>';
+            selCiudad.disabled = true;
+            return;
+        }
+        selCiudad.disabled = false;
+        selCiudad.innerHTML = '<option value="" disabled selected>Selecciona una ciudad...</option>' +
+            municipios.map(m => `<option value="${escaparHtmlAdmin(m)}">${escaparHtmlAdmin(m)}</option>`).join('');
+        if (ciudadPreseleccionada && municipios.includes(ciudadPreseleccionada)) selCiudad.value = ciudadPreseleccionada;
+    }
+    document.getElementById('zona_estado').addEventListener('change', (e) => poblarCiudadesZona(e.target.value));
+
+    let filtroZonasTexto = '';
+    document.getElementById('buscador-zonas').addEventListener('input', (e) => {
+        filtroZonasTexto = e.target.value.trim().toLowerCase();
+        renderListaZonas();
+    });
+
     async function cargarZonas() {
         try {
             zonas = await jsonOError(await fetch('/api/admin/zonas'));
@@ -1893,11 +2081,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     }
     function renderListaZonas() {
         const cont = document.getElementById('lista-zonas');
-        cont.innerHTML = zonas.length ? zonas.map(z => `
+        const filtradas = filtroZonasTexto
+            ? zonas.filter(z => z.etiqueta.toLowerCase().includes(filtroZonasTexto) || (z.estado || '').toLowerCase().includes(filtroZonasTexto))
+            : zonas;
+        cont.innerHTML = filtradas.length ? filtradas.map(z => `
             <div class="px-6 py-3 flex items-center justify-between gap-3">
                 <div>
                     <p class="text-sm font-medium text-brandDark">${escaparHtmlAdmin(z.etiqueta)} ${z.estado ? `<span class="adm-badge bg-gray-100 text-gray-500">${escaparHtmlAdmin(z.estado)}</span>` : '<span class="adm-badge bg-amber-50 text-amber-600">Sin estado</span>'}</p>
-                    <p class="text-[11px] text-gray-400">clave interna: ${escaparHtmlAdmin(z.nombre)}</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <label class="adm-switch" title="${z.activa ? 'Desactivar' : 'Activar'}">
@@ -1907,17 +2097,17 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     <button onclick="editarZona(${z.id})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold uppercase">Editar</button>
                     <button onclick="eliminarZona(${z.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase">Eliminar</button>
                 </div>
-            </div>`).join('') : '<p class="text-center py-10 text-gray-500 text-sm">Aún no hay zonas configuradas.</p>';
+            </div>`).join('') : `<p class="text-center py-10 text-gray-500 text-sm">${filtroZonasTexto ? 'Ninguna zona coincide con tu búsqueda.' : 'Aún no hay zonas configuradas.'}</p>`;
     }
     document.getElementById('form-zona').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('zona_id').value;
         const body = {
-            nombre: document.getElementById('zona_nombre').value,
             etiqueta: document.getElementById('zona_etiqueta').value,
             estado: document.getElementById('zona_estado').value,
             activa: document.getElementById('zona_activa').checked
         };
+        if (!body.estado || !body.etiqueta) { mostrarToast('Elige el estado y la ciudad.', 'error'); return; }
         try {
             if (id) {
                 await jsonOError(await fetch(`/api/admin/zonas/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
@@ -1935,10 +2125,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const z = zonas.find(x => x.id === id);
         if (!z) return;
         document.getElementById('zona_id').value = z.id;
-        document.getElementById('zona_nombre').value = z.nombre;
-        document.getElementById('zona_nombre').disabled = true;
-        document.getElementById('zona_etiqueta').value = z.etiqueta;
         document.getElementById('zona_estado').value = z.estado || '';
+        poblarCiudadesZona(z.estado || '', z.etiqueta);
         document.getElementById('zona_activa').checked = z.activa;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1946,7 +2134,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     function limpiarFormularioZona() {
         document.getElementById('form-zona').reset();
         document.getElementById('zona_id').value = '';
-        document.getElementById('zona_nombre').disabled = false;
+        document.getElementById('zona_etiqueta').innerHTML = '<option value="" disabled selected>Primero elige un estado</option>';
+        document.getElementById('zona_etiqueta').disabled = true;
         document.getElementById('zona_activa').checked = true;
     }
     window.limpiarFormularioZona = limpiarFormularioZona;
