@@ -548,6 +548,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 ::-webkit-scrollbar{ width:7px; height:7px; }
 ::-webkit-scrollbar-thumb{ background:#e2c2d0; border-radius:999px; }
 #seccion-catalogo{ scroll-margin-top: 84px; }
+#rf-barra-envio-compacta{ scroll-margin-top: 64px; }
+@media (min-width: 768px) {
+    #rf-barra-envio-compacta{ scroll-margin-top: 132px; }
+}
 </style>
 </head>
 <body class="bg-white font-sans text-brandDark antialiased">
@@ -641,17 +645,19 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     <!-- Barra compacta de "Enviar a" -- se ve mientras se navega por una
          categoría (donde no está la tarjeta grande de portada). Deja
          cambiar la ciudad o la fecha sin salir de donde estás. -->
-    <div id="rf-barra-envio-compacta" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        <div class="flex flex-wrap items-center gap-3">
-            <span class="text-sm font-medium text-brandDark shrink-0">Enviar a:</span>
-            <button type="button" onclick="abrirModalSoloUbicacionRF()" class="flex items-center gap-2 border border-gray-300 hover:border-brandFuchsia rounded-full px-4 py-2 text-sm text-brandDark transition">
-                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h11l3 4v5h-2m-14 0H2v-6l2-3zm0 0h9m5 9a2 2 0 100-4 2 2 0 000 4zM7 21a2 2 0 100-4 2 2 0 000 4z"/></svg>
-                <span id="rf-barra-ciudad-texto">Elige tu ciudad</span>
-            </button>
-            <button type="button" onclick="abrirModalSoloFechaRF()" class="flex items-center gap-2 border border-gray-300 hover:border-brandFuchsia rounded-full px-4 py-2 text-sm text-brandDark transition">
-                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
-                <span id="rf-barra-fecha-texto">Fecha de entrega</span>
-            </button>
+    <div id="rf-barra-envio-compacta" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+        <div class="flex items-center gap-2 sm:gap-3">
+            <span class="hidden sm:inline text-sm font-medium text-brandDark shrink-0">Enviar a:</span>
+            <div class="grid grid-cols-2 sm:flex gap-2 sm:gap-3 flex-1 sm:flex-initial min-w-0">
+                <button type="button" onclick="abrirModalSoloUbicacionRF()" class="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 border border-gray-300 hover:border-brandFuchsia rounded-full px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-brandDark transition min-w-0">
+                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h11l3 4v5h-2m-14 0H2v-6l2-3zm0 0h9m5 9a2 2 0 100-4 2 2 0 000 4zM7 21a2 2 0 100-4 2 2 0 000 4z"/></svg>
+                    <span id="rf-barra-ciudad-texto" class="truncate">Elige tu ciudad</span>
+                </button>
+                <button type="button" onclick="abrirModalSoloFechaRF()" class="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 border border-gray-300 hover:border-brandFuchsia rounded-full px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-brandDark transition min-w-0">
+                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    <span id="rf-barra-fecha-texto" class="truncate">Fecha de entrega</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -708,7 +714,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     <!-- Hero Banner con Buscador (solo se ve en el inicio, no en una categoría) -->
     <div id="rf-inicio-hero" class="relative mb-10 sm:mb-16 md:mb-8">
         <div class="h-[200px] sm:h-[240px] md:h-[280px] w-full relative">
-            <img id="hero-imagen" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1563241527-3004b7be0ffd?q=80&w=1920&auto=format&fit=crop" alt="Persona con flores">
+            <img id="hero-imagen" class="w-full h-full object-cover bg-gray-100" alt="Persona con flores">
             <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
                 <h1 class="text-3xl sm:text-4xl md:text-6xl text-white font-serif tracking-wide shadow-sm">Solo envía...</h1>
             </div>
@@ -1161,6 +1167,25 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         // Busca por nombre (y categoría) dentro del catálogo ya cargado -- si
         // todavía no se ha cargado nada, lo trae primero.
+        // El header (y en escritorio también el menú) son fijos/sticky, así
+        // que un scrollIntoView normal deja el destino tapado detrás de
+        // ellos -- por eso cada elemento clave ya trae su propio
+        // scroll-margin-top en el CSS. Además, el menú de categorías carga
+        // aparte (async) y a veces termina de crecer justo después del
+        // primer scroll, lo que en celular se sentía como "aterrizar a la
+        // mitad de la página" -- por eso se repite una vez más tras un
+        // instante, ya con todo asentado.
+        function scrollSuaveConReintentoRF(idElemento) {
+            const el = document.getElementById(idElemento);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth' });
+            setTimeout(() => { el.scrollIntoView({ behavior: 'smooth' }); }, 400);
+        }
+        function scrollARaizCategoriaRF() {
+            const barra = document.getElementById('rf-barra-envio-compacta');
+            scrollSuaveConReintentoRF(barra && !barra.classList.contains('hidden') ? 'rf-barra-envio-compacta' : 'seccion-catalogo');
+        }
+
         async function buscarEnCatalogo(textoBusqueda) {
             const texto = quitarAcentosRF(textoBusqueda || '').trim().toLowerCase();
             if (!texto) return;
@@ -1210,7 +1235,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             actualizarUI();
             if (typeof actualizarFlechasFavoritosRF === 'function') actualizarFlechasFavoritosRF();
             document.getElementById('barra-busqueda-movil').classList.add('hidden');
-            document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
+            scrollSuaveConReintentoRF('seccion-catalogo');
         }
         window.buscarEnCatalogo = buscarEnCatalogo;
 
@@ -1390,11 +1415,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         // El botón "Ver regalos" de este bloque -- y el de la tarjeta de
         // ubicación del inicio -- llevan a todo lo disponible en la ciudad
         // actual, sin ningún filtro de categoría.
-        function irARegalosDeLaCiudadRF() {
+        async function irARegalosDeLaCiudadRF() {
             document.getElementById('rf-categoria-no-disponible')?.classList.add('hidden');
             document.getElementById('rf-categoria-encabezado')?.classList.remove('hidden');
-            cargarInventario(null, null, null, true);
-            document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
+            await cargarInventario(null, null, null, true);
+            scrollARaizCategoriaRF();
         }
         window.irARegalosDeLaCiudadRF = irARegalosDeLaCiudadRF;
 
@@ -2879,13 +2904,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
             renderBreadcrumbCategoriaRF(breadcrumb);
             if (categoria) {
-                cargarInventario(categoria, subcategoria, subsubcategoria);
+                await cargarInventario(categoria, subcategoria, subsubcategoria);
             } else {
                 // Solo trae estado/ciudad (ej. desde "Ver regalos"): se
                 // muestra todo lo disponible en esa ciudad, sin categoría.
-                cargarInventario(null, null, null, true);
+                await cargarInventario(null, null, null, true);
             }
-            document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
+            scrollARaizCategoriaRF();
             return true;
         }
 
@@ -2903,7 +2928,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 return;
             }
 
-            const irConEstaUbicacion = () => {
+            const irConEstaUbicacion = async () => {
                 let guardado = null;
                 try { guardado = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
                 if (guardado?.estado && guardado?.ciudad) {
@@ -2911,10 +2936,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     if (subcategoria) partes.push(slugRutaRF(subcategoria));
                     if (subsubcategoria) partes.push(slugRutaRF(subsubcategoria));
                     window.history.replaceState({}, '', '/' + partes.join('/'));
-                    resolverRutaCategoriaRF();
+                    await resolverRutaCategoriaRF();
                 } else {
-                    cargarInventario(categoria, subcategoria, subsubcategoria);
-                    document.getElementById('seccion-catalogo')?.scrollIntoView({ behavior: 'smooth' });
+                    await cargarInventario(categoria, subcategoria, subsubcategoria);
+                    scrollARaizCategoriaRF();
                 }
             };
 
@@ -3445,7 +3470,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
             // Imagen de portada -- si el negocio ya subió la suya desde el
             // panel, se usa esa; si no, se queda con la de muestra de siempre.
-            if (cfg.imagen_hero) document.getElementById('hero-imagen').src = cfg.imagen_hero;
+            document.getElementById('hero-imagen').src = cfg.imagen_hero || 'https://images.unsplash.com/photo-1563241527-3004b7be0ffd?q=80&w=1920&auto=format&fit=crop';
         }).catch(() => {});
 
         // Carruseles del inicio: las tarjetas (imagen, título y a dónde
