@@ -407,20 +407,39 @@
                                 </div>
                             </div>
 
-                            <div class="space-y-3 border-t border-b border-gray-100 py-4 -mx-6 px-6 bg-gray-50/60">
+                            <div class="space-y-4 border-t border-b border-gray-100 py-4 -mx-6 px-6 bg-gray-50/60">
                                 <p class="adm-section-title">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 10.5V5a2 2 0 012-2z" /></svg>
-                                    Variantes y cobertura
+                                    Tamaños y variantes
                                 </p>
+
+                                <!-- Tamaños / cantidades: cada uno con su propio precio. El
+                                     cliente los ve como botones para elegir en la tienda, y el
+                                     precio del producto cambia según cuál elija. -->
                                 <div>
-                                    <label class="adm-label">Variante personalizada</label>
-                                    <input type="text" id="variante_personalizada" placeholder="Ej. Color: Rosa, Rojo, Blanco | Tamaño: Mediano, Grande" class="adm-input">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label class="adm-label !mb-0">Tamaños o cantidades (cada uno con su precio)</label>
+                                        <button type="button" onclick="agregarFilaTamano()" class="text-[11px] font-semibold text-brandFuchsia hover:underline">+ Agregar tamaño</button>
+                                    </div>
+                                    <p class="text-[10px] text-gray-400 mb-2">Si agregas más de uno, el cliente elige en la tienda y ese precio es el que se cobra. Si no agregas ninguno, se usa el "Precio base" de arriba.</p>
+                                    <input type="hidden" id="tamanos">
+                                    <div id="lista-tamanos" class="space-y-2"></div>
                                 </div>
-                                <div>
-                                    <label class="adm-label">Cantidades / tamaños (nombre:precio)</label>
-                                    <input type="text" id="tamanos" placeholder="12 rosas:720, 24 rosas:1200" class="adm-input">
+
+                                <!-- Variantes: grupos de opciones (Color, Listón, etc.) que el
+                                     cliente elige antes de agregar al carrito -- sin cambiar el
+                                     precio, solo para anotar su preferencia en el pedido. -->
+                                <div class="border-t border-gray-200 pt-3">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label class="adm-label !mb-0">Variantes u opciones a elegir (no cambian el precio)</label>
+                                        <button type="button" onclick="agregarGrupoVariante()" class="text-[11px] font-semibold text-brandFuchsia hover:underline">+ Agregar grupo</button>
+                                    </div>
+                                    <p class="text-[10px] text-gray-400 mb-2">Ej. un grupo llamado "Color" con las opciones Rosa, Rojo y Blanco.</p>
+                                    <input type="hidden" id="variante_personalizada">
+                                    <div id="lista-variantes" class="space-y-3"></div>
                                 </div>
-                                <div>
+
+                                <div class="border-t border-gray-200 pt-3">
                                     <label class="adm-label">Ciudades de cobertura</label>
                                     <div id="chips-cobertura" class="flex flex-wrap gap-2"></div>
                                     <p class="text-[10px] text-gray-400 mt-1.5">¿Falta una ciudad? Agrégala desde <button type="button" onclick="cambiarVista('envios')" class="text-brandFuchsia font-semibold hover:underline">Envíos</button>.</p>
@@ -1460,6 +1479,142 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     }
     document.getElementById('imagenes').addEventListener('input', actualizarPreviewGaleria);
 
+    // =======================================================================
+    // TAMAÑOS / CANTIDADES -- lista de {nombre, precio}, se guarda como JSON
+    // en el campo oculto "tamanos". Reemplaza el viejo campo de texto tipo
+    // "12 rosas:720, 24 rosas:1200", donde era fácil equivocarse de formato.
+    // =======================================================================
+    function sincronizarTamanos() {
+        const filas = [...document.querySelectorAll('#lista-tamanos [data-fila-tamano]')];
+        const datos = filas.map(fila => ({
+            nombre: fila.querySelector('[data-tamano-nombre]').value.trim(),
+            precio: Number(fila.querySelector('[data-tamano-precio]').value) || 0
+        })).filter(t => t.nombre);
+        document.getElementById('tamanos').value = datos.length ? JSON.stringify(datos) : '';
+        actualizarPreviewVivo();
+    }
+
+    function agregarFilaTamano(nombre = '', precio = '') {
+        const cont = document.getElementById('lista-tamanos');
+        const fila = document.createElement('div');
+        fila.dataset.filaTamano = '1';
+        fila.className = 'flex items-center gap-2';
+        fila.innerHTML = `
+            <input type="text" data-tamano-nombre placeholder="Ej. 12 rosas" class="adm-input flex-1" value="${escaparHtmlAdmin(nombre)}">
+            <div class="relative w-28 shrink-0">
+                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input type="number" data-tamano-precio min="0" step="0.01" placeholder="0.00" class="adm-input !pl-5" value="${precio}">
+            </div>
+            <button type="button" data-quitar-tamano title="Quitar" class="shrink-0 text-gray-400 hover:text-red-500 p-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        `;
+        fila.querySelectorAll('input').forEach(input => input.addEventListener('input', sincronizarTamanos));
+        fila.querySelector('[data-quitar-tamano]').addEventListener('click', () => { fila.remove(); sincronizarTamanos(); });
+        cont.appendChild(fila);
+        return fila;
+    }
+    window.agregarFilaTamano = agregarFilaTamano;
+
+    function cargarTamanosEnFormulario(valorGuardado) {
+        document.getElementById('lista-tamanos').innerHTML = '';
+        const raw = String(valorGuardado || '').trim();
+        if (!raw) { document.getElementById('tamanos').value = ''; return; }
+        let lista = [];
+        try {
+            const parseado = JSON.parse(raw);
+            if (Array.isArray(parseado)) lista = parseado.map(t => ({ nombre: String(t.nombre || ''), precio: Number(t.precio) || 0 }));
+        } catch (_) {
+            // Formato viejo: "12 rosas:720, 24 rosas:1200"
+            lista = raw.split(',').map(par => {
+                const [nombre, precio] = par.split(':').map(s => (s || '').trim());
+                return { nombre: nombre || '', precio: Number(precio) || 0 };
+            }).filter(t => t.nombre);
+        }
+        lista.forEach(t => agregarFilaTamano(t.nombre, t.precio));
+        sincronizarTamanos();
+    }
+
+    // =======================================================================
+    // VARIANTES / OPCIONES -- lista de grupos {nombre, opciones:[...]}, se
+    // guarda como JSON en el campo oculto "variante_personalizada".
+    // Reemplaza el viejo campo de texto tipo "Color: Rosa, Rojo | Tamaño:
+    // Mediano, Grande".
+    // =======================================================================
+    function sincronizarVariantes() {
+        const grupos = [...document.querySelectorAll('#lista-variantes [data-grupo-variante]')];
+        const datos = grupos.map(grupo => ({
+            nombre: grupo.querySelector('[data-grupo-nombre]').value.trim(),
+            opciones: [...grupo.querySelectorAll('[data-chip-opcion]')].map(c => c.dataset.valor)
+        })).filter(g => g.nombre && g.opciones.length);
+        document.getElementById('variante_personalizada').value = datos.length ? JSON.stringify(datos) : '';
+        actualizarPreviewVivo();
+    }
+
+    function crearChipOpcion(contenedorChips, valor) {
+        const chip = document.createElement('span');
+        chip.dataset.chipOpcion = '1';
+        chip.dataset.valor = valor;
+        chip.className = 'adm-chip is-active !cursor-default';
+        chip.innerHTML = `${escaparHtmlAdmin(valor)} <button type="button" class="ml-1 hover:opacity-70">&times;</button>`;
+        chip.querySelector('button').addEventListener('click', () => { chip.remove(); sincronizarVariantes(); });
+        contenedorChips.appendChild(chip);
+    }
+
+    function agregarGrupoVariante(nombre = '', opciones = []) {
+        const cont = document.getElementById('lista-variantes');
+        const grupo = document.createElement('div');
+        grupo.dataset.grupoVariante = '1';
+        grupo.className = 'border border-gray-200 rounded-lg p-3 bg-white space-y-2';
+        grupo.innerHTML = `
+            <div class="flex items-center gap-2">
+                <input type="text" data-grupo-nombre placeholder="Nombre del grupo, ej. Color" class="adm-input flex-1 !text-sm" value="${escaparHtmlAdmin(nombre)}">
+                <button type="button" data-quitar-grupo title="Quitar grupo" class="shrink-0 text-gray-400 hover:text-red-500 p-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div data-chips-opciones class="flex flex-wrap gap-1.5"></div>
+            <input type="text" data-nueva-opcion placeholder="Escribe una opción y presiona Enter (ej. Rosa)" class="adm-input !text-xs !py-1.5">
+        `;
+        const chipsWrap = grupo.querySelector('[data-chips-opciones]');
+        opciones.forEach(op => crearChipOpcion(chipsWrap, op));
+        grupo.querySelector('[data-grupo-nombre]').addEventListener('input', sincronizarVariantes);
+        grupo.querySelector('[data-quitar-grupo]').addEventListener('click', () => { grupo.remove(); sincronizarVariantes(); });
+        const inputNueva = grupo.querySelector('[data-nueva-opcion]');
+        inputNueva.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const valor = inputNueva.value.trim();
+            if (!valor) return;
+            crearChipOpcion(chipsWrap, valor);
+            inputNueva.value = '';
+            sincronizarVariantes();
+        });
+        cont.appendChild(grupo);
+        return grupo;
+    }
+    window.agregarGrupoVariante = agregarGrupoVariante;
+
+    function cargarVariantesEnFormulario(valorGuardado) {
+        document.getElementById('lista-variantes').innerHTML = '';
+        const raw = String(valorGuardado || '').trim();
+        if (!raw) { document.getElementById('variante_personalizada').value = ''; return; }
+        let grupos = [];
+        try {
+            const parseado = JSON.parse(raw);
+            if (Array.isArray(parseado)) grupos = parseado.map(g => ({ nombre: String(g.nombre || ''), opciones: Array.isArray(g.opciones) ? g.opciones.map(String) : [] }));
+        } catch (_) {
+            // Formato viejo: "Color: Rosa, Rojo | Tamaño: Mediano, Grande"
+            grupos = raw.split('|').map(bloque => {
+                const pos = bloque.indexOf(':');
+                if (pos === -1) return { nombre: 'Opciones', opciones: bloque.split(',').map(s => s.trim()).filter(Boolean) };
+                return { nombre: bloque.slice(0, pos).trim() || 'Opciones', opciones: bloque.slice(pos + 1).split(',').map(s => s.trim()).filter(Boolean) };
+            }).filter(g => g.opciones.length);
+        }
+        grupos.forEach(g => agregarGrupoVariante(g.nombre, g.opciones));
+        sincronizarVariantes();
+    }
+
     async function subirArchivoImagen(file) {
         const formData = new FormData();
         formData.append('imagen', file);
@@ -1672,8 +1827,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById('disponible').checked = p.disponible !== false;
         document.getElementById('imagen_url').value = p.imagen_url || '';
         document.getElementById('imagenes').value = p.imagenes || '';
-        document.getElementById('variante_personalizada').value = p.variante_personalizada || '';
-        document.getElementById('tamanos').value = p.tamanos || '';
+        cargarVariantesEnFormulario(p.variante_personalizada || '');
+        cargarTamanosEnFormulario(p.tamanos || '');
         document.getElementById('descripcion').value = p.descripcion || '';
         document.getElementById('especificaciones').value = p.especificaciones || '';
         construirChipsCobertura(p.cobertura || '');
@@ -1742,6 +1897,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById('disponible').checked = true;
         poblarTaxonomia('');
         construirChipsCobertura('');
+        cargarTamanosEnFormulario('');
+        cargarVariantesEnFormulario('');
         actualizarPreviewPrincipal();
         actualizarPreviewGaleria();
         actualizarPreviewVivo();
