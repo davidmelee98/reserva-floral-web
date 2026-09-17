@@ -638,6 +638,73 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         </div>
     </nav>
 
+    <!-- Barra compacta de "Enviar a" -- se ve mientras se navega por una
+         categoría (donde no está la tarjeta grande de portada). Deja
+         cambiar la ciudad o la fecha sin salir de donde estás. -->
+    <div id="rf-barra-envio-compacta" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div class="flex flex-wrap items-center gap-3">
+            <span class="text-sm font-medium text-brandDark shrink-0">Enviar a:</span>
+            <button type="button" onclick="abrirModalSoloUbicacionRF()" class="flex items-center gap-2 border border-gray-300 hover:border-brandFuchsia rounded-full px-4 py-2 text-sm text-brandDark transition">
+                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h11l3 4v5h-2m-14 0H2v-6l2-3zm0 0h9m5 9a2 2 0 100-4 2 2 0 000 4zM7 21a2 2 0 100-4 2 2 0 000 4z"/></svg>
+                <span id="rf-barra-ciudad-texto">Elige tu ciudad</span>
+            </button>
+            <button type="button" onclick="abrirModalSoloFechaRF()" class="flex items-center gap-2 border border-gray-300 hover:border-brandFuchsia rounded-full px-4 py-2 text-sm text-brandDark transition">
+                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <span id="rf-barra-fecha-texto">Fecha de entrega</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal chico: solo estado + ciudad (para cambiarla desde la barra de arriba) -->
+    <div id="rf-modal-solo-ubicacion" class="hidden fixed inset-0 z-[200] items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative">
+            <button type="button" onclick="cerrarModalSoloUbicacionRF()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h3 class="text-lg font-semibold text-brandDark text-center mb-1">¿A dónde quieres enviar?</h3>
+            <p class="text-xs text-gray-500 text-center mb-5">Los regalos, precios y opciones de envío podrían variar según la ciudad de entrega.</p>
+            <div class="space-y-3 mb-5">
+                <div>
+                    <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Estado</label>
+                    <select id="rf-solo-ubicacion-estado" class="adm-input w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Ciudad</label>
+                    <select id="rf-solo-ubicacion-ciudad" class="adm-input w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
+                </div>
+            </div>
+            <button type="button" onclick="confirmarSoloUbicacionRF()" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full transition">Confirmar</button>
+        </div>
+    </div>
+
+    <!-- Modal chico: solo fecha (para cambiarla desde la barra de arriba) -->
+    <div id="rf-modal-solo-fecha" class="hidden fixed inset-0 z-[200] items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative">
+            <button type="button" onclick="cerrarModalSoloFechaRF()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h3 class="text-lg font-semibold text-brandDark text-center mb-5">¿Cuándo lo entregamos?</h3>
+            <div class="space-y-1 mb-5">
+                <label class="flex items-center justify-between px-3 py-3 border-b border-gray-100 cursor-pointer">
+                    <span class="text-sm text-brandDark">Hoy</span>
+                    <input type="radio" name="rf-solo-fecha-tipo" value="hoy" class="accent-brandFuchsia w-4 h-4">
+                </label>
+                <label class="flex items-center justify-between px-3 py-3 border-b border-gray-100 cursor-pointer">
+                    <span class="text-sm text-brandDark">Mañana</span>
+                    <input type="radio" name="rf-solo-fecha-tipo" value="manana" class="accent-brandFuchsia w-4 h-4">
+                </label>
+                <label class="flex items-center justify-between px-3 py-3 cursor-pointer">
+                    <span class="text-sm text-brandDark">Otro día</span>
+                    <input type="radio" name="rf-solo-fecha-tipo" value="otro" class="accent-brandFuchsia w-4 h-4">
+                </label>
+                <div id="rf-solo-fecha-otro-wrap" class="hidden pt-2 px-3">
+                    <input type="date" id="rf-solo-fecha-otro-input" class="adm-input w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <button type="button" onclick="confirmarSoloFechaRF()" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full transition">Confirmar</button>
+        </div>
+    </div>
+
     <!-- Hero Banner con Buscador (solo se ve en el inicio, no en una categoría) -->
     <div id="rf-inicio-hero" class="relative mb-10 sm:mb-16 md:mb-8">
         <div class="h-[200px] sm:h-[240px] md:h-[280px] w-full relative">
@@ -705,14 +772,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
             <!-- Se muestra en vez de la cuadrícula cuando, para la ciudad
                  elegida, no hay ni un solo producto de esa categoría. -->
-            <div id="rf-categoria-no-disponible" class="hidden flex-col sm:flex-row items-center gap-8 py-8">
-                <img id="rf-no-disponible-imagen" src="" alt="Categoría no disponible" class="w-full sm:w-80 rounded-xl object-cover" style="max-height:320px;">
-                <div class="text-center sm:text-left">
-                    <h1 class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-2">Categoría no disponible</h1>
-                    <p id="rf-no-disponible-subtitulo" class="text-lg text-brandDark font-medium mb-3"></p>
-                    <p class="text-sm text-gray-500 mb-6">Encuentra los regalos disponibles ahí.</p>
-                    <button type="button" onclick="irARegalosDeLaCiudadRF()" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-7 py-3 rounded-full transition">Ver regalos</button>
-                </div>
+            <div id="rf-categoria-no-disponible" class="hidden flex-col items-center text-center gap-2 py-12 sm:py-16 max-w-xl mx-auto">
+                <img id="rf-no-disponible-imagen" src="" alt="Categoría no disponible" class="w-64 sm:w-96 rounded-xl object-cover mb-6" style="max-height:420px;">
+                <h1 class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-2">Categoría no disponible</h1>
+                <p id="rf-no-disponible-subtitulo" class="text-lg text-brandDark font-medium mb-3"></p>
+                <p class="text-sm text-gray-500 mb-6">Encuentra los regalos disponibles ahí.</p>
+                <button type="button" onclick="irARegalosDeLaCiudadRF()" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-7 py-3 rounded-full transition">Ver regalos</button>
             </div>
         </div>
 
@@ -1168,6 +1233,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             return lista.length === 0 || (!!zonaNombre && lista.includes(zonaNombre));
         }
 
+        let rfUltimoFiltroCategoria = { categoria: null, subcategoria: null, subsubcategoria: null, soloPorCiudad: false };
+
         async function cargarInventario(filtroCategoria = null, filtroSubcategoria = null, filtroSubsubcategoria = null, soloPorCiudad = false) {
             try {
                 const respuesta = await fetch('/api/catalogo');
@@ -1175,6 +1242,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 let arreglos = todosLosArreglos;
 
                 const hayFiltro = !!(filtroCategoria || filtroSubcategoria || filtroSubsubcategoria || soloPorCiudad);
+                if (hayFiltro) rfUltimoFiltroCategoria = { categoria: filtroCategoria, subcategoria: filtroSubcategoria, subsubcategoria: filtroSubsubcategoria, soloPorCiudad };
                 // Las secciones del inicio (portada, tendencias, carruseles) solo
                 // se ven cuando NO hay un filtro de categoría activo. Con filtro,
                 // se ve la cuadrícula de categoría, con todos los productos que
@@ -1183,6 +1251,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 document.getElementById('rf-inicio-trending')?.classList.toggle('hidden', hayFiltro);
                 document.getElementById('rf-inicio-carruseles')?.classList.toggle('hidden', hayFiltro);
                 document.getElementById('rf-vista-categoria')?.classList.toggle('hidden', !hayFiltro);
+                document.getElementById('rf-barra-envio-compacta')?.classList.toggle('hidden', !hayFiltro);
+                if (hayFiltro) actualizarBarraEnvioCompactaRF();
 
                 if (hayFiltro) {
                     if (zonasDisponiblesRF.length === 0) await cargarZonasDisponiblesRF();
@@ -2380,6 +2450,132 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             document.body.style.overflow = document.body.classList.contains('rf-product-open') ? 'hidden' : 'auto';
             if (accion) setTimeout(accion, 0);
         }
+
+        // =====================================================================
+        // Barra compacta "Enviar a" + sus dos ventanas chicas (solo ubicación,
+        // solo fecha) -- para cambiar cualquiera de las dos sin salir de la
+        // categoría que se está viendo.
+        // =====================================================================
+        function slugRutaBarraRF(texto) {
+            return String(texto ?? '')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+
+        function actualizarBarraEnvioCompactaRF() {
+            let guardado = null;
+            try { guardado = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+            const textoCiudad = document.getElementById('rf-barra-ciudad-texto');
+            const textoFecha = document.getElementById('rf-barra-fecha-texto');
+            if (textoCiudad) textoCiudad.innerText = guardado?.ciudad || 'Elige tu ciudad';
+            if (textoFecha) textoFecha.innerText = guardado?.fecha ? formatearFechaProductoRF(guardado.fecha) : 'Fecha de entrega';
+        }
+
+        // Después de cambiar la ciudad hace falta volver a calcular todo lo que
+        // depende de ella (el menú filtrado, la disponibilidad, el breadcrumb),
+        // así que la forma más segura es navegar a la ruta ya actualizada --
+        // igual que si el cliente hubiera hecho clic ahí directamente.
+        function irARutaTrasNuevaUbicacionRF(estado, ciudad) {
+            const f = rfUltimoFiltroCategoria;
+            const base = [slugRutaBarraRF(estado), slugRutaBarraRF(ciudad)];
+            if (!f.soloPorCiudad && f.categoria) {
+                base.push(slugRutaBarraRF(f.categoria));
+                if (f.subcategoria) base.push(slugRutaBarraRF(f.subcategoria));
+                if (f.subsubcategoria) base.push(slugRutaBarraRF(f.subsubcategoria));
+            }
+            window.location.href = '/' + base.join('/');
+        }
+
+        async function abrirModalSoloUbicacionRF() {
+            if (zonasDisponiblesRF.length === 0) await cargarZonasDisponiblesRF();
+            let guardado = null;
+            try { guardado = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+
+            const selEstado = document.getElementById('rf-solo-ubicacion-estado');
+            const selCiudad = document.getElementById('rf-solo-ubicacion-ciudad');
+            selEstado.innerHTML = estadosDisponiblesRF().map(e => `<option value="${e.replace(/"/g,'&quot;')}">${e}</option>`).join('');
+            if (guardado?.estado) selEstado.value = guardado.estado;
+
+            function poblarCiudades() {
+                const ciudades = zonasDisponiblesRF.filter(z => z.estado === selEstado.value);
+                selCiudad.innerHTML = ciudades.map(z => `<option value="${z.etiqueta.replace(/"/g,'&quot;')}">${z.etiqueta}</option>`).join('');
+                if (guardado?.ciudad && ciudades.some(z => z.etiqueta === guardado.ciudad)) selCiudad.value = guardado.ciudad;
+            }
+            poblarCiudades();
+            selEstado.onchange = poblarCiudades;
+
+            const modal = document.getElementById('rf-modal-solo-ubicacion');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+        window.abrirModalSoloUbicacionRF = abrirModalSoloUbicacionRF;
+
+        function cerrarModalSoloUbicacionRF() {
+            const modal = document.getElementById('rf-modal-solo-ubicacion');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+        window.cerrarModalSoloUbicacionRF = cerrarModalSoloUbicacionRF;
+
+        function confirmarSoloUbicacionRF() {
+            const estado = document.getElementById('rf-solo-ubicacion-estado').value;
+            const ciudad = document.getElementById('rf-solo-ubicacion-ciudad').value;
+            if (!estado || !ciudad) return;
+            let guardado = null;
+            try { guardado = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+            localStorage.setItem(RF_UBICACION_KEY, JSON.stringify({
+                estado, ciudad, fecha: guardado?.fecha || '', tipoFecha: guardado?.tipoFecha || '',
+                actualizadoEn: new Date().toISOString()
+            }));
+            cerrarModalSoloUbicacionRF();
+            irARutaTrasNuevaUbicacionRF(estado, ciudad);
+        }
+        window.confirmarSoloUbicacionRF = confirmarSoloUbicacionRF;
+
+        function abrirModalSoloFechaRF() {
+            let guardado = null;
+            try { guardado = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+            const radios = document.getElementsByName('rf-solo-fecha-tipo');
+            radios.forEach(r => { r.checked = (r.value === (guardado?.tipoFecha || 'manana')); });
+            const wrapOtro = document.getElementById('rf-solo-fecha-otro-wrap');
+            wrapOtro.classList.toggle('hidden', guardado?.tipoFecha !== 'otro');
+            document.getElementById('rf-solo-fecha-otro-input').value = guardado?.tipoFecha === 'otro' ? (guardado.fecha || '') : '';
+            radios.forEach(r => r.onchange = () => wrapOtro.classList.toggle('hidden', r.value !== 'otro' || !r.checked));
+
+            const modal = document.getElementById('rf-modal-solo-fecha');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+        window.abrirModalSoloFechaRF = abrirModalSoloFechaRF;
+
+        function cerrarModalSoloFechaRF() {
+            const modal = document.getElementById('rf-modal-solo-fecha');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+        window.cerrarModalSoloFechaRF = cerrarModalSoloFechaRF;
+
+        function confirmarSoloFechaRF() {
+            const seleccionado = [...document.getElementsByName('rf-solo-fecha-tipo')].find(r => r.checked);
+            const tipoFecha = seleccionado ? seleccionado.value : '';
+            if (!tipoFecha) return;
+            let fecha = '';
+            if (tipoFecha === 'hoy') fecha = new Date().toISOString().slice(0, 10);
+            else if (tipoFecha === 'manana') { const d = new Date(); d.setDate(d.getDate() + 1); fecha = d.toISOString().slice(0, 10); }
+            else fecha = document.getElementById('rf-solo-fecha-otro-input').value;
+            if (!fecha) return;
+
+            let guardado = null;
+            try { guardado = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+            localStorage.setItem(RF_UBICACION_KEY, JSON.stringify({
+                estado: guardado?.estado || '', ciudad: guardado?.ciudad || '', fecha, tipoFecha,
+                actualizadoEn: new Date().toISOString()
+            }));
+            actualizarUbicacionProductoRF();
+            actualizarBarraEnvioCompactaRF();
+            cerrarModalSoloFechaRF();
+            // La fecha no cambia qué hay disponible, así que no hace falta
+            // recargar nada más -- solo se actualiza el texto de la barra.
+        }
+        window.confirmarSoloFechaRF = confirmarSoloFechaRF;
 
         function solicitarUbicacionAntesDeCategoria(accion) {
             if (ubicacionRFCompleta()) {
