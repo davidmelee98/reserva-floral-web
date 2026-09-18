@@ -353,6 +353,48 @@ async function inicializarDB() {
       activo BOOLEAN DEFAULT true,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- Un mismo producto puede pertenecer a varias clasificaciones a la vez
+    -- (ej. por tipo de flor Y por presentación Y por ocasión) -- antes solo
+    -- se guardaba una sola combinación categoría/subcategoría/tipo en
+    -- arreglos_florales, lo cual era insuficiente.
+    CREATE TABLE IF NOT EXISTS producto_categorias (
+      id SERIAL PRIMARY KEY,
+      producto_id INTEGER NOT NULL REFERENCES arreglos_florales(id) ON DELETE CASCADE,
+      categoria VARCHAR(100) NOT NULL,
+      subcategoria VARCHAR(100),
+      subsubcategoria VARCHAR(100)
+    );
+    CREATE INDEX IF NOT EXISTS idx_producto_categorias_producto ON producto_categorias(producto_id);
+
+    -- Combos/paquetes: un producto que en realidad agrupa otros productos
+    -- del catálogo (ej. "Ramo + Peluche + Chocolates").
+    CREATE TABLE IF NOT EXISTS producto_combo_items (
+      id SERIAL PRIMARY KEY,
+      producto_id INTEGER NOT NULL REFERENCES arreglos_florales(id) ON DELETE CASCADE,
+      componente_id INTEGER NOT NULL REFERENCES arreglos_florales(id) ON DELETE CASCADE,
+      cantidad INTEGER NOT NULL DEFAULT 1
+    );
+
+    -- Notas internas de un pedido (para el equipo, nunca las ve el cliente).
+    CREATE TABLE IF NOT EXISTS pedido_notas (
+      id SERIAL PRIMARY KEY,
+      orden_id INTEGER NOT NULL REFERENCES ordenes(id) ON DELETE CASCADE,
+      autor VARCHAR(150),
+      nota TEXT NOT NULL,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Bitácora de acciones del panel: quién hizo qué y cuándo.
+    CREATE TABLE IF NOT EXISTS bitacora_admin (
+      id SERIAL PRIMARY KEY,
+      usuario_id INTEGER REFERENCES usuarios_admin(id) ON DELETE SET NULL,
+      usuario_nombre VARCHAR(150),
+      accion VARCHAR(100) NOT NULL,
+      detalle TEXT,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_bitacora_fecha ON bitacora_admin(creado_en DESC);
   `);
 
   // Limpieza de tablas huérfanas: durante el desarrollo del menú por
@@ -376,6 +418,7 @@ async function inicializarDB() {
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS variante_personalizada TEXT',
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 1',
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS disponible BOOLEAN DEFAULT true',
+    'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS es_combo BOOLEAN DEFAULT false',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS dedicatoria TEXT',
     "ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS carrito JSONB NOT NULL DEFAULT '[]'::jsonb",
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS destinatario_telefono VARCHAR(20)',
@@ -578,6 +621,19 @@ function requireAuth(req, res, next) {
 function requireAdmin(req, res, next) {
   if (req.session && req.session.usuarioId && req.session.rol === 'admin') return next();
   res.status(403).json({ error: 'Esta acción requiere permisos de administrador.' });
+}
+
+// Bitácora: registra quién hizo qué desde el panel. Nunca debe tumbar la
+// acción principal si falla -- por eso siempre atrapa su propio error.
+async function registrarBitacora(req, accion, detalle) {
+  try {
+    await pool.query(
+      'INSERT INTO bitacora_admin (usuario_id, usuario_nombre, accion, detalle) VALUES ($1,$2,$3,$4)',
+      [req.session?.usuarioId || null, req.session?.nombre || 'Alguien', accion, detalle || null]
+    );
+  } catch (error) {
+    console.error('No se pudo registrar en la bitácora:', error?.message || error);
+  }
 }
 
 function usuarioPublico(row) {
@@ -1324,6 +1380,52 @@ app.get('/api/health', async (req, res) => {
 });
 
 // API: Obtener catálogo disponible (pública, la usa la tienda).
+// Agrega a cada producto su lista de clasificaciones (categoría/subcategoría/
+// tipo) -- puede tener varias a la vez -- y, si es un combo, sus componentes.
+async function adjuntarClasificaciones(productos) {
+  if (productos.length === 0) return productos;
+  const ids = productos.map(p => p.id);
+  const clasifRows = (await pool.query('SELECT * FROM producto_categorias WHERE producto_id = ANY($1)', [ids])).rows;
+  const comboRows = (await pool.query(`
+    SELECT pci.producto_id, pci.cantidad, a.id AS componente_id, a.nombre, a.precio, a.imagen_url
+    FROM producto_combo_items pci JOIN arreglos_florales a ON a.id = pci.componente_id
+    WHERE pci.producto_id = ANY($1)
+  `, [ids])).rows;
+  const clasifPorProducto = {}; const comboPorProducto = {};
+  clasifRows.forEach(c => { (clasifPorProducto[c.producto_id] ||= []).push({ categoria: c.categoria, subcategoria: c.subcategoria, subsubcategoria: c.subsubcategoria }); });
+  comboRows.forEach(c => { (comboPorProducto[c.producto_id] ||= []).push({ id: c.componente_id, nombre: c.nombre, precio: c.precio, imagen_url: c.imagen_url, cantidad: c.cantidad }); });
+  return productos.map(p => ({
+    ...p,
+    clasificaciones: clasifPorProducto[p.id] || (p.categoria ? [{ categoria: p.categoria, subcategoria: p.subcategoria, subsubcategoria: p.subsubcategoria }] : []),
+    combo_items: comboPorProducto[p.id] || []
+  }));
+}
+
+// Reemplaza las clasificaciones de un producto por la lista dada. La
+// primera también se guarda en las columnas categoria/subcategoria/
+// subsubcategoria de siempre, para no romper nada que todavía las lea
+// directo (tarjetas, filtros simples, etc.).
+async function sincronizarClasificacionesProducto(productoId, clasificaciones) {
+  const lista = (Array.isArray(clasificaciones) ? clasificaciones : [])
+    .map(c => ({ categoria: String(c.categoria || '').trim(), subcategoria: String(c.subcategoria || '').trim() || null, subsubcategoria: String(c.subsubcategoria || '').trim() || null }))
+    .filter(c => c.categoria);
+  await pool.query('DELETE FROM producto_categorias WHERE producto_id = $1', [productoId]);
+  for (const c of lista) {
+    await pool.query('INSERT INTO producto_categorias (producto_id, categoria, subcategoria, subsubcategoria) VALUES ($1,$2,$3,$4)', [productoId, c.categoria, c.subcategoria, c.subsubcategoria]);
+  }
+  return lista[0] || { categoria: null, subcategoria: null, subsubcategoria: null };
+}
+
+async function sincronizarComboProducto(productoId, comboItems) {
+  const lista = (Array.isArray(comboItems) ? comboItems : [])
+    .map(c => ({ componente_id: Number(c.id || c.componente_id), cantidad: Math.max(1, Number(c.cantidad) || 1) }))
+    .filter(c => Number.isInteger(c.componente_id) && c.componente_id > 0);
+  await pool.query('DELETE FROM producto_combo_items WHERE producto_id = $1', [productoId]);
+  for (const c of lista) {
+    await pool.query('INSERT INTO producto_combo_items (producto_id, componente_id, cantidad) VALUES ($1,$2,$3)', [productoId, c.componente_id, c.cantidad]);
+  }
+}
+
 app.get('/api/catalogo', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -1332,7 +1434,7 @@ app.get('/api/catalogo', async (req, res) => {
       WHERE COALESCE(disponible, true) = true
       ORDER BY id DESC
     `);
-    res.json(result.rows);
+    res.json(await adjuntarClasificaciones(result.rows));
   } catch (error) {
     console.error('GET /api/catalogo:', error);
     res.status(500).json({ error: 'Error del servidor al cargar el catálogo.' });
@@ -1343,7 +1445,7 @@ app.get('/api/catalogo', async (req, res) => {
 app.get('/api/admin/catalogo', requireAuth, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM arreglos_florales ORDER BY id DESC');
-    res.json(result.rows);
+    res.json(await adjuntarClasificaciones(result.rows));
   } catch (error) {
     console.error('GET /api/admin/catalogo:', error);
     res.status(500).json({ error: 'Error del servidor al cargar el catálogo.' });
@@ -1359,7 +1461,8 @@ app.get('/api/catalogo/:id', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM arreglos_florales WHERE id = $1 AND COALESCE(disponible, true) = true', [id]);
     if (result.rowCount === 0) return res.status(404).json({ error: 'Producto no encontrado.' });
-    res.json(result.rows[0]);
+    const [conClasificaciones] = await adjuntarClasificaciones(result.rows);
+    res.json(conClasificaciones);
   } catch (error) {
     console.error('GET /api/catalogo/:id:', error);
     res.status(500).json({ error: 'Error del servidor al cargar el producto.' });
@@ -1371,20 +1474,29 @@ app.post('/api/catalogo', requireAuth, async (req, res) => {
   if (!productoValido(req.body)) {
     return res.status(400).json({ error: 'Nombre y precio válido son obligatorios.' });
   }
+  if (!Array.isArray(req.body.clasificaciones) || req.body.clasificaciones.filter(c => c?.categoria).length === 0) {
+    return res.status(400).json({ error: 'Elige al menos una clasificación (categoría) para el producto.' });
+  }
 
   const p = normalizarProducto(req.body);
+  const primera = req.body.clasificaciones.find(c => c?.categoria) || {};
   try {
     const result = await pool.query(`
       INSERT INTO arreglos_florales
         (nombre, descripcion, especificaciones, precio, imagen_url, imagenes, categoria, subcategoria, subsubcategoria,
-         variante_personalizada, opcion_foto, tamanos, cobertura, stock, disponible)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+         variante_personalizada, opcion_foto, tamanos, cobertura, stock, disponible, es_combo)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       RETURNING *
-    `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, p.categoria,
-        p.subcategoria, p.subsubcategoria, p.variante_personalizada, p.opcion_foto, p.tamanos, p.cobertura,
-        p.stock, p.disponible]);
+    `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, primera.categoria,
+        primera.subcategoria || null, primera.subsubcategoria || null, p.variante_personalizada, p.opcion_foto, p.tamanos, p.cobertura,
+        p.stock, p.disponible, !!req.body.es_combo]);
 
-    res.status(201).json(result.rows[0]);
+    await sincronizarClasificacionesProducto(result.rows[0].id, req.body.clasificaciones);
+    if (req.body.es_combo) await sincronizarComboProducto(result.rows[0].id, req.body.combo_items);
+    await registrarBitacora(req, 'Creó un producto', result.rows[0].nombre);
+
+    const [conClasificaciones] = await adjuntarClasificaciones([result.rows[0]]);
+    res.status(201).json(conClasificaciones);
   } catch (error) {
     console.error('POST /api/catalogo:', error);
     res.status(500).json({ error: 'Error al insertar el producto.' });
@@ -1396,6 +1508,9 @@ app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
   if (!productoValido(req.body)) {
     return res.status(400).json({ error: 'Nombre y precio válido son obligatorios.' });
   }
+  if (!Array.isArray(req.body.clasificaciones) || req.body.clasificaciones.filter(c => c?.categoria).length === 0) {
+    return res.status(400).json({ error: 'Elige al menos una clasificación (categoría) para el producto.' });
+  }
 
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
@@ -1403,23 +1518,30 @@ app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
   }
 
   const p = normalizarProducto(req.body);
+  const primera = req.body.clasificaciones.find(c => c?.categoria) || {};
   try {
     const result = await pool.query(`
       UPDATE arreglos_florales
       SET nombre=$1, descripcion=$2, especificaciones=$3, precio=$4, imagen_url=$5, imagenes=$6,
           categoria=$7, subcategoria=$8, subsubcategoria=$9, variante_personalizada=$10,
-          opcion_foto=$11, tamanos=$12, cobertura=$13, stock=$14, disponible=$15
-      WHERE id=$16
+          opcion_foto=$11, tamanos=$12, cobertura=$13, stock=$14, disponible=$15, es_combo=$16
+      WHERE id=$17
       RETURNING *
-    `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, p.categoria,
-        p.subcategoria, p.subsubcategoria, p.variante_personalizada, p.opcion_foto, p.tamanos,
-        p.cobertura, p.stock, p.disponible, id]);
+    `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, primera.categoria,
+        primera.subcategoria || null, primera.subsubcategoria || null, p.variante_personalizada, p.opcion_foto, p.tamanos,
+        p.cobertura, p.stock, p.disponible, !!req.body.es_combo, id]);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Producto no encontrado.' });
     }
 
-    res.json(result.rows[0]);
+    await sincronizarClasificacionesProducto(id, req.body.clasificaciones);
+    if (req.body.es_combo) await sincronizarComboProducto(id, req.body.combo_items);
+    else await pool.query('DELETE FROM producto_combo_items WHERE producto_id = $1', [id]);
+    await registrarBitacora(req, 'Editó un producto', result.rows[0].nombre);
+
+    const [conClasificaciones] = await adjuntarClasificaciones([result.rows[0]]);
+    res.json(conClasificaciones);
   } catch (error) {
     console.error('PUT /api/catalogo/:id:', error);
     res.status(500).json({ error: 'Error al actualizar el producto.' });
@@ -1538,6 +1660,37 @@ async function enviarCorreoPagoConfirmado(orden) {
     });
   } catch (error) {
     console.error('No se pudo enviar el correo de pago confirmado:', error?.message || error);
+  }
+}
+
+// Le avisa al cliente cuando el negocio cambia el estado de su pedido (ej. a
+// "En camino" o "Entregado") -- antes, cambiar el estado desde el panel no
+// le llegaba absolutamente nada al cliente.
+const MENSAJES_ESTADO_CORREO = {
+  'En preparación': { asunto: 'Ya estamos preparando tu pedido', titulo: '🌸 Tu pedido está en preparación', texto: 'Nuestro equipo ya está armando tu pedido con mucho cuidado.' },
+  'En camino': { asunto: '¡Tu pedido va en camino!', titulo: '🚚 Tu pedido va en camino', texto: 'Tu pedido salió y está en camino a la dirección de entrega.' },
+  'Entregado': { asunto: 'Tu pedido fue entregado', titulo: '✓ Tu pedido fue entregado', texto: 'Confirmamos que tu pedido ya fue entregado. ¡Gracias por tu compra!' },
+  'Cancelado': { asunto: 'Tu pedido fue cancelado', titulo: 'Tu pedido fue cancelado', texto: 'Tu pedido fue cancelado. Si tienes dudas, contáctanos y con gusto te ayudamos.' }
+};
+async function enviarCorreoEstadoActualizado(orden, estadoNuevo) {
+  const mensaje = MENSAJES_ESTADO_CORREO[estadoNuevo];
+  if (!mensaje || !resendClient || !orden.email_contacto) return;
+  try {
+    const cuerpo = `
+      <h2 style="font-size:16px;margin:0 0 8px;">${mensaje.titulo}</h2>
+      <p style="font-size:13px;color:#666;margin:0 0 16px;">${mensaje.texto}</p>
+      <p style="font-size:13px;margin:4px 0;"><strong>Pedido:</strong> #${orden.id}</p>
+      <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
+      <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${orden.direccion_entrega || ''}</p>
+    `;
+    await resendClient.emails.send({
+      from: CORREO_REMITENTE,
+      to: orden.email_contacto,
+      subject: `${mensaje.asunto} — Pedido #${orden.id}`,
+      html: plantillaBaseCorreo(mensaje.titulo, cuerpo)
+    });
+  } catch (error) {
+    console.error('No se pudo enviar el correo de estado actualizado:', error?.message || error);
   }
 }
 
@@ -1914,10 +2067,59 @@ app.patch('/api/admin/ordenes/:id/estado', requireAuth, async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Pedido no encontrado.' });
     }
+    await enviarCorreoEstadoActualizado(result.rows[0], estado);
+    await registrarBitacora(req, 'Cambió el estado de un pedido', `Pedido #${id} → ${estado}`);
     res.json(result.rows[0]);
   } catch (error) {
     console.error('PATCH /api/admin/ordenes/:id/estado:', error);
     res.status(500).json({ error: 'Error al actualizar el pedido.' });
+  }
+});
+
+// Notas internas de un pedido -- nunca las ve el cliente, son para que el
+// equipo se deje avisos entre sí (ej. "cliente pidió cambiar la hora").
+app.get('/api/admin/ordenes/:id/notas', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM pedido_notas WHERE orden_id = $1 ORDER BY creado_en ASC', [req.params.id]);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/admin/ordenes/:id/notas:', error);
+    res.status(500).json({ error: 'No se pudieron cargar las notas.' });
+  }
+});
+app.post('/api/admin/ordenes/:id/notas', requireAuth, async (req, res) => {
+  const nota = String(req.body?.nota || '').trim();
+  if (!nota) return res.status(400).json({ error: 'Escribe algo para la nota.' });
+  try {
+    const resultado = await pool.query(
+      'INSERT INTO pedido_notas (orden_id, autor, nota) VALUES ($1,$2,$3) RETURNING *',
+      [req.params.id, req.session?.nombre || 'Alguien del equipo', nota]
+    );
+    res.status(201).json(resultado.rows[0]);
+  } catch (error) {
+    console.error('POST /api/admin/ordenes/:id/notas:', error);
+    res.status(500).json({ error: 'No se pudo guardar la nota.' });
+  }
+});
+app.delete('/api/admin/ordenes/notas/:notaId', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query('DELETE FROM pedido_notas WHERE id=$1', [req.params.notaId]);
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'Nota no encontrada.' });
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/ordenes/notas/:notaId:', error);
+    res.status(500).json({ error: 'No se pudo borrar la nota.' });
+  }
+});
+
+// Bitácora del panel: quién hizo qué. Solo un administrador puede verla.
+app.get('/api/admin/bitacora', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT * FROM bitacora_admin ORDER BY creado_en DESC LIMIT 200');
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/admin/bitacora:', error);
+    res.status(500).json({ error: 'No se pudo cargar la bitácora.' });
   }
 });
 
@@ -2063,6 +2265,25 @@ app.get('/api/admin/clientes', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('GET /api/admin/clientes:', error);
     res.status(500).json({ error: 'No se pudo cargar la lista de clientes.' });
+  }
+});
+
+// Recordatorios que los clientes se guardaron (ej. cumpleaños, aniversarios)
+// -- antes el negocio no tenía forma de verlos para poder contactar a
+// tiempo. Se muestran ordenados por qué tan pronto se cumplen.
+app.get('/api/admin/recordatorios', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT r.id, r.titulo, r.fecha, r.repetir_anual, r.notas,
+             (c.nombre || ' ' || c.apellido) AS cliente_nombre, c.email AS cliente_email, c.telefono AS cliente_telefono
+      FROM recordatorios_cliente r
+      JOIN clientes_cuenta c ON c.id = r.cliente_cuenta_id
+      ORDER BY r.fecha ASC
+    `);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/admin/recordatorios:', error);
+    res.status(500).json({ error: 'No se pudieron cargar los recordatorios.' });
   }
 });
 

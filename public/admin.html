@@ -332,26 +332,15 @@
                                     <input type="text" id="nombre" required class="adm-input">
                                     <p class="hidden text-[11px] text-red-600 mt-1" data-error-for="nombre">Escribe un nombre para el arreglo.</p>
                                 </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="adm-label">Categoría</label>
-                                        <select id="categoria" required class="adm-input">
-                                            <option value="" disabled selected>Selecciona...</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="adm-label">Subcategoría</label>
-                                        <select id="subcategoria" required disabled class="adm-input">
-                                            <option value="">Elige categoría</option>
-                                        </select>
-                                    </div>
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="adm-label !mb-0">Clasificación (categoría, subcategoría y tipo)</label>
+                                    <button type="button" onclick="agregarFilaClasificacion()" class="text-[11px] font-semibold text-brandFuchsia hover:underline">+ Agregar clasificación</button>
                                 </div>
-                                <div>
-                                    <label class="adm-label">Tipo / subcategoría final</label>
-                                    <select id="subsubcategoria" disabled class="adm-input">
-                                        <option value="">Elige subcategoría</option>
-                                    </select>
-                                </div>
+                                <p class="text-[10px] text-gray-400 mb-2">Un mismo producto puede pertenecer a varias a la vez -- ej. "Flores y plantas → Por presentación → Ramos" Y "Cumpleaños → Flores y Plantas → Rosas". Así aparece en todos los lugares donde debería.</p>
+                                <div id="lista-clasificaciones" class="space-y-2"></div>
+                                <p class="hidden text-[11px] text-red-600 mt-1" data-error-for="clasificaciones">Agrega al menos una clasificación completa (categoría, subcategoría y tipo).</p>
+                            </div>
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
                                         <label class="adm-label">Precio base ($ MXN)</label>
@@ -443,6 +432,23 @@
                                     <label class="adm-label">Ciudades de cobertura</label>
                                     <div id="chips-cobertura" class="flex flex-wrap gap-2"></div>
                                     <p class="text-[10px] text-gray-400 mt-1.5">¿Falta una ciudad? Agrégala desde <button type="button" onclick="cambiarVista('envios')" class="text-brandFuchsia font-semibold hover:underline">Envíos</button>.</p>
+                                </div>
+
+                                <!-- Combo: este producto en realidad junta otros productos que
+                                     ya existen en el catálogo (ej. "Ramo + Peluche + Chocolates"). -->
+                                <div class="border-t border-gray-200 pt-3">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="es_combo" class="w-4 h-4 accent-brandFuchsia">
+                                        <span class="text-xs font-semibold text-brandDark">Este producto es un combo (junta otros productos del catálogo)</span>
+                                    </label>
+                                    <div id="bloque-combo" class="hidden mt-2 space-y-2">
+                                        <p class="text-[10px] text-gray-400">Busca y agrega los productos que forman este combo. El precio del combo lo sigues poniendo tú arriba -- esto es solo para saber qué incluye.</p>
+                                        <div class="relative">
+                                            <input type="text" id="buscador-combo" placeholder="Busca un producto por nombre..." class="adm-input !text-sm">
+                                            <div id="resultados-combo" class="hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+                                        </div>
+                                        <div id="lista-combo-items" class="space-y-1.5"></div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1386,23 +1392,79 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // =======================================================================
     // CATÁLOGO
     // =======================================================================
-    function poblarTaxonomia(categoria, subcategoriaSeleccionada = '', tipoSeleccionado = '') {
-        const sub = document.getElementById('subcategoria');
-        const tipo = document.getElementById('subsubcategoria');
+    // =======================================================================
+    // CLASIFICACIÓN -- un producto puede pertenecer a varias categorías a la
+    // vez (ej. "Flores y plantas → Por presentación → Ramos" Y "Cumpleaños →
+    // Flores y Plantas → Rosas"). Antes solo se podía elegir una sola
+    // combinación, lo cual era insuficiente para cómo se navega el catálogo.
+    // =======================================================================
+    function construirOpcionesCategoriaHtml(seleccionada) {
+        return '<option value="" disabled ' + (!seleccionada ? 'selected' : '') + '>Categoría...</option>' +
+            Object.keys(TAXONOMIA).map(c => `<option value="${c.replace(/"/g,'&quot;')}" ${c === seleccionada ? 'selected' : ''}>${c}</option>`).join('');
+    }
+    function poblarSelectSubcategoriaFila(fila, categoria, subSeleccionada) {
+        const selSub = fila.querySelector('[data-clasif-subcategoria]');
         const grupos = TAXONOMIA[categoria] || {};
         const nombres = Object.keys(grupos);
-        sub.innerHTML = '<option value="">Selecciona...</option>' + nombres.map(x => `<option value="${x.replace(/"/g,'&quot;')}">${x}</option>`).join('');
-        sub.disabled = nombres.length === 0;
-        sub.value = nombres.includes(subcategoriaSeleccionada) ? subcategoriaSeleccionada : '';
-        const tipos = grupos[sub.value] || [];
-        tipo.innerHTML = '<option value="">Selecciona...</option>' + tipos.map(x => `<option value="${x.replace(/"/g,'&quot;')}">${x}</option>`).join('');
-        tipo.disabled = tipos.length === 0;
-        tipo.value = tipos.includes(tipoSeleccionado) ? tipoSeleccionado : '';
+        selSub.innerHTML = '<option value="">Subcategoría...</option>' + nombres.map(x => `<option value="${x.replace(/"/g,'&quot;')}">${x}</option>`).join('');
+        selSub.disabled = nombres.length === 0;
+        selSub.value = nombres.includes(subSeleccionada) ? subSeleccionada : '';
     }
-    document.getElementById('categoria').addEventListener('change', () => poblarTaxonomia(document.getElementById('categoria').value));
-    document.getElementById('subcategoria').addEventListener('change', () => {
-        poblarTaxonomia(document.getElementById('categoria').value, document.getElementById('subcategoria').value);
-    });
+    function poblarSelectTipoFila(fila, categoria, subcategoria, tipoSeleccionado) {
+        const selTipo = fila.querySelector('[data-clasif-tipo]');
+        const tipos = (TAXONOMIA[categoria] || {})[subcategoria] || [];
+        selTipo.innerHTML = '<option value="">Tipo...</option>' + tipos.map(x => `<option value="${x.replace(/"/g,'&quot;')}">${x}</option>`).join('');
+        selTipo.disabled = tipos.length === 0;
+        selTipo.value = tipos.includes(tipoSeleccionado) ? tipoSeleccionado : '';
+    }
+    function agregarFilaClasificacion(categoria = '', subcategoria = '', subsubcategoria = '') {
+        const cont = document.getElementById('lista-clasificaciones');
+        const fila = document.createElement('div');
+        fila.dataset.filaClasificacion = '1';
+        fila.className = 'flex items-center gap-1.5';
+        fila.innerHTML = `
+            <select data-clasif-categoria class="adm-input !text-xs flex-1">${construirOpcionesCategoriaHtml(categoria)}</select>
+            <select data-clasif-subcategoria class="adm-input !text-xs flex-1" ${categoria ? '' : 'disabled'}><option value="">Subcategoría...</option></select>
+            <select data-clasif-tipo class="adm-input !text-xs flex-1" disabled><option value="">Tipo...</option></select>
+            <button type="button" data-quitar-clasificacion title="Quitar" class="shrink-0 text-gray-400 hover:text-red-500 p-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        `;
+        const selCategoria = fila.querySelector('[data-clasif-categoria]');
+        const selSub = fila.querySelector('[data-clasif-subcategoria]');
+        selCategoria.addEventListener('change', () => { poblarSelectSubcategoriaFila(fila, selCategoria.value, ''); poblarSelectTipoFila(fila, selCategoria.value, '', ''); marcarError('clasificaciones', false); actualizarPreviewVivo(); });
+        selSub.addEventListener('change', () => { poblarSelectTipoFila(fila, selCategoria.value, selSub.value, ''); actualizarPreviewVivo(); });
+        fila.querySelector('[data-clasif-tipo]').addEventListener('change', actualizarPreviewVivo);
+        fila.querySelector('[data-quitar-clasificacion]').addEventListener('click', () => {
+            if (document.querySelectorAll('#lista-clasificaciones [data-fila-clasificacion]').length <= 1) { mostrarToast('Debe quedar al menos una clasificación.', 'error'); return; }
+            fila.remove();
+            actualizarPreviewVivo();
+        });
+        cont.appendChild(fila);
+        if (categoria) poblarSelectSubcategoriaFila(fila, categoria, subcategoria);
+        if (categoria && subcategoria) poblarSelectTipoFila(fila, categoria, subcategoria, subsubcategoria);
+        return fila;
+    }
+    window.agregarFilaClasificacion = agregarFilaClasificacion;
+
+    function obtenerClasificacionesDelFormulario() {
+        return [...document.querySelectorAll('#lista-clasificaciones [data-fila-clasificacion]')]
+            .map(fila => ({
+                categoria: fila.querySelector('[data-clasif-categoria]').value,
+                subcategoria: fila.querySelector('[data-clasif-subcategoria]').value,
+                subsubcategoria: fila.querySelector('[data-clasif-tipo]').value
+            }))
+            .filter(c => c.categoria);
+    }
+
+    function cargarClasificacionesEnFormulario(producto) {
+        document.getElementById('lista-clasificaciones').innerHTML = '';
+        const lista = (Array.isArray(producto?.clasificaciones) && producto.clasificaciones.length)
+            ? producto.clasificaciones
+            : (producto?.categoria ? [{ categoria: producto.categoria, subcategoria: producto.subcategoria, subsubcategoria: producto.subsubcategoria }] : []);
+        if (lista.length === 0) { agregarFilaClasificacion(); return; }
+        lista.forEach(c => agregarFilaClasificacion(c.categoria, c.subcategoria, c.subsubcategoria));
+    }
 
     function construirChipsCobertura(coberturaActualCSV) {
         const cont = document.getElementById('chips-cobertura');
@@ -1446,14 +1508,19 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     function actualizarPreviewVivo() {
         const nombre = document.getElementById('nombre').value.trim();
         const precio = Number(document.getElementById('precio').value) || 0;
-        const categoria = document.getElementById('categoria').value;
+        const clasificaciones = obtenerClasificacionesDelFormulario();
         const url = document.getElementById('imagen_url').value.trim();
 
         document.getElementById('preview-vivo-nombre').innerText = nombre || 'Así se verá tu producto';
         document.getElementById('preview-vivo-precio').innerText = '$' + formatearPrecioAdmin(precio);
         const badgeCategoria = document.getElementById('preview-vivo-categoria');
-        badgeCategoria.innerText = categoria || 'Sin categoría';
-        badgeCategoria.className = 'adm-badge ' + (categoria ? 'bg-pink-50 text-brandFuchsia' : 'bg-gray-100 text-gray-400');
+        if (clasificaciones.length === 0) {
+            badgeCategoria.innerText = 'Sin categoría';
+            badgeCategoria.className = 'adm-badge bg-gray-100 text-gray-400';
+        } else {
+            badgeCategoria.innerText = clasificaciones[0].categoria + (clasificaciones.length > 1 ? ` +${clasificaciones.length - 1}` : '');
+            badgeCategoria.className = 'adm-badge bg-pink-50 text-brandFuchsia';
+        }
 
         const img = document.getElementById('preview-vivo-imagen');
         const icono = document.getElementById('preview-vivo-icono');
@@ -1464,7 +1531,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             img.classList.add('hidden'); icono.classList.remove('hidden');
         }
     }
-    ['nombre', 'precio', 'categoria', 'imagen_url'].forEach(id => {
+    ['nombre', 'precio', 'imagen_url'].forEach(id => {
         document.getElementById(id).addEventListener('input', actualizarPreviewVivo);
         document.getElementById(id).addEventListener('change', actualizarPreviewVivo);
     });
@@ -1615,6 +1682,85 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         sincronizarVariantes();
     }
 
+    // =======================================================================
+    // COMBOS -- un producto que en realidad junta otros productos que ya
+    // existen en el catálogo (ej. "Ramo + Peluche + Chocolates").
+    // =======================================================================
+    document.getElementById('es_combo').addEventListener('change', (e) => {
+        document.getElementById('bloque-combo').classList.toggle('hidden', !e.target.checked);
+    });
+
+    function renderComboItems() {
+        const items = [...document.querySelectorAll('#lista-combo-items [data-combo-item]')];
+        document.getElementById('lista-combo-items').innerHTML = items.length ? '' : '<p class="text-[11px] text-gray-400">Todavía no agregas ningún producto a este combo.</p>';
+    }
+
+    function agregarProductoAlCombo(producto) {
+        const cont = document.getElementById('lista-combo-items');
+        if (cont.querySelector(`[data-combo-id="${producto.id}"]`)) { mostrarToast('Ese producto ya está en el combo.', 'error'); return; }
+        if (String(producto.id) === String(document.getElementById('producto_id').value)) { mostrarToast('Un producto no puede ser combo de sí mismo.', 'error'); return; }
+        cont.querySelector('p')?.remove();
+        const fila = document.createElement('div');
+        fila.dataset.comboItem = '1';
+        fila.dataset.comboId = producto.id;
+        fila.className = 'flex items-center gap-2 border border-gray-200 rounded-lg p-2';
+        const img = producto.imagen_url
+            ? `<img src="${escaparHtmlAdmin(producto.imagen_url)}" class="w-9 h-9 object-cover rounded border border-gray-200">`
+            : `<div class="w-9 h-9 rounded border border-gray-200 bg-gray-100"></div>`;
+        fila.innerHTML = `
+            ${img}
+            <span class="flex-1 text-xs text-brandDark truncate">${escaparHtmlAdmin(producto.nombre)}</span>
+            <span class="text-[10px] text-gray-400 shrink-0">cant.</span>
+            <input type="number" data-combo-cantidad min="1" value="1" class="adm-input !text-xs !py-1 w-14 shrink-0">
+            <button type="button" data-quitar-combo class="shrink-0 text-gray-400 hover:text-red-500 p-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        `;
+        fila.querySelector('[data-quitar-combo]').addEventListener('click', () => { fila.remove(); renderComboItems(); });
+        cont.appendChild(fila);
+    }
+
+    document.getElementById('buscador-combo').addEventListener('input', (e) => {
+        const texto = e.target.value.trim().toLowerCase();
+        const resultados = document.getElementById('resultados-combo');
+        if (!texto) { resultados.classList.add('hidden'); resultados.innerHTML = ''; return; }
+        const coincidencias = catalogo.filter(p => p.nombre.toLowerCase().includes(texto)).slice(0, 8);
+        if (coincidencias.length === 0) { resultados.innerHTML = '<p class="text-xs text-gray-400 p-3">Sin resultados.</p>'; resultados.classList.remove('hidden'); return; }
+        resultados.innerHTML = coincidencias.map(p => `
+            <button type="button" data-elegir-combo="${p.id}" class="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left">
+                ${p.imagen_url ? `<img src="${escaparHtmlAdmin(p.imagen_url)}" class="w-7 h-7 object-cover rounded">` : `<div class="w-7 h-7 rounded bg-gray-100"></div>`}
+                <span class="text-xs text-brandDark truncate flex-1">${escaparHtmlAdmin(p.nombre)}</span>
+                <span class="text-[11px] text-gray-400">$${formatearPrecioAdmin(p.precio)}</span>
+            </button>
+        `).join('');
+        resultados.classList.remove('hidden');
+        resultados.querySelectorAll('[data-elegir-combo]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const producto = catalogo.find(p => String(p.id) === btn.dataset.elegirCombo);
+                if (producto) agregarProductoAlCombo(producto);
+                e.target.value = '';
+                resultados.classList.add('hidden');
+                resultados.innerHTML = '';
+            });
+        });
+    });
+
+    function obtenerComboItemsDelFormulario() {
+        return [...document.querySelectorAll('#lista-combo-items [data-combo-item]')].map(fila => ({
+            id: Number(fila.dataset.comboId),
+            cantidad: Math.max(1, Number(fila.querySelector('[data-combo-cantidad]').value) || 1)
+        }));
+    }
+
+    function cargarComboEnFormulario(producto) {
+        document.getElementById('lista-combo-items').innerHTML = '';
+        document.getElementById('es_combo').checked = !!producto?.es_combo;
+        document.getElementById('bloque-combo').classList.toggle('hidden', !producto?.es_combo);
+        (producto?.combo_items || []).forEach(item => agregarProductoAlCombo(item));
+        if (!producto?.combo_items?.length) renderComboItems();
+    }
+
+
     async function subirArchivoImagen(file) {
         const formData = new FormData();
         formData.append('imagen', file);
@@ -1674,6 +1820,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         if (!document.getElementById('nombre').value.trim()) { marcarError('nombre', true); valido = false; } else marcarError('nombre', false);
         const precio = Number(document.getElementById('precio').value);
         if (!Number.isFinite(precio) || precio < 0 || document.getElementById('precio').value === '') { marcarError('precio', true); valido = false; } else marcarError('precio', false);
+        if (obtenerClasificacionesDelFormulario().length === 0) { marcarError('clasificaciones', true); valido = false; } else marcarError('clasificaciones', false);
         return valido;
     }
 
@@ -1683,6 +1830,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             poblarFiltroCategorias();
             renderStatsCatalogo();
             renderTablaCatalogo();
+            // La primera vez que carga el panel, el formulario de "agregar
+            // producto" debe empezar con al menos una fila de clasificación
+            // lista para llenarse -- si ya hay filas (por edición en curso),
+            // no se toca nada.
+            if (document.querySelectorAll('#lista-clasificaciones [data-fila-clasificacion]').length === 0) {
+                agregarFilaClasificacion();
+            }
         } catch (error) {
             console.error('Error cargando el catálogo', error);
             mostrarToast('No se pudo cargar el catálogo.', 'error');
@@ -1691,7 +1845,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     function poblarFiltroCategorias() {
         const select = document.getElementById('filtro-categoria');
         const actual = select.value;
-        const categorias = [...new Set(catalogo.map(p => p.categoria).filter(Boolean))].sort();
+        const categorias = [...new Set(catalogo.flatMap(p => (p.clasificaciones || []).map(c => c.categoria)).filter(Boolean))].sort();
         select.innerHTML = '<option value="">Todas las categorías</option>' + categorias.map(c => `<option value="${escaparHtmlAdmin(c)}">${escaparHtmlAdmin(c)}</option>`).join('');
         if (categorias.includes(actual)) select.value = actual;
     }
@@ -1701,7 +1855,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById('stat-total').innerText = total;
         document.getElementById('stat-disponibles').innerText = disponibles;
         document.getElementById('stat-agotados').innerText = total - disponibles;
-        document.getElementById('stat-categorias').innerText = new Set(catalogo.map(p => p.categoria).filter(Boolean)).size;
+        document.getElementById('stat-categorias').innerText = new Set(catalogo.flatMap(p => (p.clasificaciones || []).map(c => c.categoria)).filter(Boolean)).size;
     }
     function catalogoFiltrado() {
         const texto = document.getElementById('filtro-busqueda').value.trim().toLowerCase();
@@ -1710,7 +1864,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const orden = document.getElementById('filtro-orden').value;
         let lista = catalogo.filter(p => {
             if (texto && !String(p.nombre || '').toLowerCase().includes(texto)) return false;
-            if (cat && p.categoria !== cat) return false;
+            if (cat && !(p.clasificaciones || []).some(c => c.categoria === cat)) return false;
             if (disp === 'disponible' && p.disponible === false) return false;
             if (disp === 'agotado' && p.disponible !== false) return false;
             return true;
@@ -1731,8 +1885,11 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         if (lista.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm">No hay productos que coincidan con el filtro.</td></tr>'; return; }
 
         tbody.innerHTML = lista.map(item => {
-            const catParts = [item.categoria, item.subcategoria, item.subsubcategoria].filter(Boolean);
-            const catString = catParts.length ? catParts.join(' / ') : 'Sin categoría';
+            const clasifs = item.clasificaciones && item.clasificaciones.length ? item.clasificaciones : [{ categoria: item.categoria, subcategoria: item.subcategoria, subsubcategoria: item.subsubcategoria }];
+            const primeraStr = [clasifs[0].categoria, clasifs[0].subcategoria, clasifs[0].subsubcategoria].filter(Boolean).join(' / ');
+            const catString = primeraStr || 'Sin categoría';
+            const masClasificaciones = clasifs.length > 1 ? `<span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded ml-1" title="${clasifs.slice(1).map(c => [c.categoria,c.subcategoria,c.subsubcategoria].filter(Boolean).join(' / ')).join(' · ').replace(/"/g,'&quot;')}">+${clasifs.length - 1}</span>` : '';
+            const comboBadge = item.es_combo ? `<span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded">Combo</span>` : '';
             const variantesBadge = item.tamanos ? `<span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded">Tallas múltiples</span>` : '';
             const customBadge = item.variante_personalizada ? `<span class="text-[10px] bg-pink-50 text-brandFuchsia px-2 py-0.5 rounded">Personalizable</span>` : '';
             const disponible = item.disponible !== false;
@@ -1748,7 +1905,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             <a href="/producto/${item.id}" target="_blank" class="shrink-0">${imgTag}</a>
                             <div class="min-w-0">
                                 <a href="/producto/${item.id}" target="_blank" class="font-medium text-brandDark leading-tight hover:text-brandFuchsia">${escaparHtmlAdmin(item.nombre)}</a>
-                                <p class="text-[11px] text-gray-500 mt-0.5 truncate max-w-[220px]">${escaparHtmlAdmin(catString)}</p>
+                                <p class="text-[11px] text-gray-500 mt-0.5 truncate max-w-[220px]">${escaparHtmlAdmin(catString)}${masClasificaciones}</p>
                                 <p class="text-[11px] mt-0.5"><strong class="text-gray-700">$${formatearPrecioAdmin(item.precio)}</strong></p>
                             </div>
                         </div>
@@ -1764,7 +1921,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         <p class="text-[10px] mt-1 ${stockBajo ? 'text-red-500 font-semibold' : 'text-gray-400'}">Stock: ${Number.isFinite(stock) ? stock : '—'}${stockBajo ? ' · bajo' : ''}</p>
                     </td>
                     <td class="px-6 py-3">
-                        <div class="flex flex-wrap gap-1">${variantesBadge} ${customBadge}</div>
+                        <div class="flex flex-wrap gap-1">${comboBadge} ${variantesBadge} ${customBadge}</div>
                         <p class="text-[10px] text-gray-400 mt-1 truncate max-w-[150px]">${item.cobertura ? item.cobertura.split(',').map(c => (zonas.find(z => z.nombre === c.trim())?.etiqueta || c.trim())).join(', ') : 'Sin zona asignada'}</p>
                     </td>
                     <td class="px-6 py-3 text-right whitespace-nowrap">
@@ -1787,9 +1944,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const coberturaSelec = Array.from(document.querySelectorAll('input[name="cobertura"]:checked')).map(cb => cb.value).join(',');
         const producto = {
             nombre: document.getElementById('nombre').value,
-            categoria: document.getElementById('categoria').value,
-            subcategoria: document.getElementById('subcategoria').value,
-            subsubcategoria: document.getElementById('subsubcategoria').value,
+            clasificaciones: obtenerClasificacionesDelFormulario(),
             descripcion: document.getElementById('descripcion').value,
             especificaciones: document.getElementById('especificaciones').value,
             precio: document.getElementById('precio').value,
@@ -1799,7 +1954,9 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             tamanos: document.getElementById('tamanos').value,
             cobertura: coberturaSelec,
             stock: document.getElementById('stock').value,
-            disponible: document.getElementById('disponible').checked
+            disponible: document.getElementById('disponible').checked,
+            es_combo: document.getElementById('es_combo').checked,
+            combo_items: document.getElementById('es_combo').checked ? obtenerComboItemsDelFormulario() : []
         };
         const url = id ? `/api/catalogo/${id}` : '/api/catalogo';
         const btn = document.getElementById('btn-guardar');
@@ -1820,8 +1977,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     function cargarProductoEnFormulario(p) {
         document.getElementById('producto_id').value = p.id || '';
         document.getElementById('nombre').value = p.nombre || '';
-        document.getElementById('categoria').value = p.categoria || '';
-        poblarTaxonomia(p.categoria || '', p.subcategoria || '', p.subsubcategoria || '');
+        cargarClasificacionesEnFormulario(p);
         document.getElementById('precio').value = p.precio ?? '';
         document.getElementById('stock').value = (p.stock === null || p.stock === undefined) ? 1 : p.stock;
         document.getElementById('disponible').checked = p.disponible !== false;
@@ -1832,6 +1988,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById('descripcion').value = p.descripcion || '';
         document.getElementById('especificaciones').value = p.especificaciones || '';
         construirChipsCobertura(p.cobertura || '');
+        cargarComboEnFormulario(p);
         actualizarPreviewPrincipal();
         actualizarPreviewGaleria();
         actualizarPreviewVivo();
@@ -1895,10 +2052,11 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById('subtitulo-formulario').innerText = 'Completa los datos del arreglo para publicarlo en la tienda.';
         document.getElementById('stock').value = 1;
         document.getElementById('disponible').checked = true;
-        poblarTaxonomia('');
+        cargarClasificacionesEnFormulario(null);
         construirChipsCobertura('');
         cargarTamanosEnFormulario('');
         cargarVariantesEnFormulario('');
+        cargarComboEnFormulario(null);
         actualizarPreviewPrincipal();
         actualizarPreviewGaleria();
         actualizarPreviewVivo();
@@ -2616,17 +2774,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             const taxonomia = await jsonOError(await fetch('/api/admin/categorias-disponibles'));
             TAXONOMIA = taxonomia;
 
-            // Selector de categoría del formulario de producto -- se llena
-            // aquí en vez de venir fijo en el código, así que si agregas una
-            // pestaña nueva en "Menú del sitio" aparece aquí también solo.
-            const selCategoriaProducto = document.getElementById('categoria');
-            if (selCategoriaProducto) {
-                const valorPrevio = selCategoriaProducto.value;
-                selCategoriaProducto.innerHTML = '<option value="" disabled>Selecciona...</option>' +
-                    Object.keys(taxonomia).map(c => `<option value="${escaparHtmlAdmin(c)}">${escaparHtmlAdmin(c)}</option>`).join('');
-                if (valorPrevio && Object.keys(taxonomia).includes(valorPrevio)) selCategoriaProducto.value = valorPrevio;
-                else selCategoriaProducto.selectedIndex = 0;
-            }
+            // Si ya hay filas de clasificación en el formulario (poco común
+            // en este punto, pero por si acaso), se refrescan sus opciones
+            // de categoría con la taxonomía recién cargada.
+            document.querySelectorAll('#lista-clasificaciones [data-clasif-categoria]').forEach(sel => {
+                const actual = sel.value;
+                sel.innerHTML = construirOpcionesCategoriaHtml(actual);
+            });
 
             const partes = [];
             for (const [categoria, subcategorias] of Object.entries(taxonomia)) {
