@@ -300,6 +300,7 @@
                     <div class="adm-card p-6 lg:col-span-1">
                         <div class="flex items-center justify-between mb-1">
                             <h2 id="titulo-formulario" class="text-lg font-semibold text-brandDark">Agregar Nuevo Arreglo</h2>
+                            <a id="link-ver-tienda" href="#" target="_blank" class="hidden text-[11px] font-semibold text-brandFuchsia hover:underline shrink-0">Ver en la tienda ↗</a>
                         </div>
                         <p id="subtitulo-formulario" class="text-xs text-gray-400 mb-4">Completa los datos del arreglo para publicarlo en la tienda.</p>
 
@@ -509,10 +510,21 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             </select>
                         </div>
 
+                        <div id="barra-seleccion-catalogo" class="hidden px-6 py-2.5 border-b border-gray-100 bg-pink-50 flex flex-wrap items-center gap-3">
+                            <span id="conteo-seleccion-catalogo" class="text-xs font-semibold text-brandFuchsia"></span>
+                            <button type="button" onclick="accionEnLoteCatalogo('activar')" class="text-xs font-medium text-brandDark hover:text-brandFuchsia">Activar</button>
+                            <button type="button" onclick="accionEnLoteCatalogo('desactivar')" class="text-xs font-medium text-brandDark hover:text-brandFuchsia">Desactivar</button>
+                            <select id="select-categoria-lote" class="adm-input !w-auto !py-1 text-xs">
+                                <option value="" disabled selected>Agregar categoría a todos...</option>
+                            </select>
+                            <button type="button" onclick="accionEnLoteCatalogo('eliminar')" class="text-xs font-medium text-red-500 hover:text-red-700 ml-auto">Eliminar seleccionados</button>
+                        </div>
+
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
                                     <tr class="bg-white border-b border-gray-100 text-[10px] uppercase tracking-wider text-gray-500">
+                                        <th class="px-4 py-3 w-8"><input type="checkbox" id="check-todos-catalogo" class="w-4 h-4 accent-brandFuchsia"></th>
                                         <th class="px-6 py-3">Producto</th>
                                         <th class="px-6 py-3">Estado</th>
                                         <th class="px-6 py-3">Variantes</th>
@@ -558,6 +570,10 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
                         <h2 class="text-lg font-semibold text-brandDark">Pedidos Recibidos</h2>
                         <div class="flex items-center gap-3">
+                            <div class="flex items-center bg-gray-100 rounded-lg p-0.5 text-xs font-medium">
+                                <button type="button" id="btn-vista-lista-pedidos" onclick="cambiarVistaPedidos('lista')" class="px-3 py-1 rounded-md bg-white shadow-sm text-brandDark">Lista</button>
+                                <button type="button" id="btn-vista-calendario-pedidos" onclick="cambiarVistaPedidos('calendario')" class="px-3 py-1 rounded-md text-gray-500">Calendario</button>
+                            </div>
                             <button type="button" onclick="exportarPedidosCSV()" class="text-xs font-medium text-brandFuchsia hover:underline flex items-center gap-1">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" /></svg>
                                 Exportar CSV
@@ -565,22 +581,39 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             <p id="conteo-pedidos" class="text-xs text-gray-400"></p>
                         </div>
                     </div>
-                    <div class="px-6 py-3 border-b border-gray-100 flex flex-wrap gap-2 bg-gray-50/60">
-                        <div class="relative flex-1 min-w-[180px]">
-                            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 114 10.5a6.5 6.5 0 0113 0z" /></svg>
-                            <input type="text" id="filtro-pedido-busqueda" placeholder="Buscar por cliente o teléfono..." class="adm-input !pl-9">
+                    <div id="bloque-lista-pedidos">
+                        <div class="px-6 py-3 border-b border-gray-100 flex flex-wrap gap-2 bg-gray-50/60">
+                            <div class="relative flex-1 min-w-[180px]">
+                                <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 114 10.5a6.5 6.5 0 0113 0z" /></svg>
+                                <input type="text" id="filtro-pedido-busqueda" placeholder="Buscar por cliente o teléfono..." class="adm-input !pl-9">
+                            </div>
+                            <select id="filtro-pedido-estado" class="adm-input !w-auto text-xs">
+                                <option value="">Todos los estados</option>
+                                <option value="Pendiente">Pendiente</option>
+                                <option value="Confirmado">Confirmado</option>
+                                <option value="En preparación">En preparación</option>
+                                <option value="En camino">En camino</option>
+                                <option value="Entregado">Entregado</option>
+                                <option value="Cancelado">Cancelado</option>
+                            </select>
                         </div>
-                        <select id="filtro-pedido-estado" class="adm-input !w-auto text-xs">
-                            <option value="">Todos los estados</option>
-                            <option value="Pendiente">Pendiente</option>
-                            <option value="Confirmado">Confirmado</option>
-                            <option value="En preparación">En preparación</option>
-                            <option value="En camino">En camino</option>
-                            <option value="Entregado">Entregado</option>
-                            <option value="Cancelado">Cancelado</option>
-                        </select>
+                        <div id="lista-pedidos" class="divide-y divide-gray-100"></div>
                     </div>
-                    <div id="lista-pedidos" class="divide-y divide-gray-100"></div>
+                    <div id="bloque-calendario-pedidos" class="hidden p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <button type="button" onclick="moverMesCalendario(-1)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            <h3 id="titulo-mes-calendario" class="text-sm font-semibold text-brandDark capitalize"></h3>
+                            <button type="button" onclick="moverMesCalendario(1)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-gray-400 uppercase mb-1">
+                            <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
+                        </div>
+                        <div id="grid-calendario-pedidos" class="grid grid-cols-7 gap-1"></div>
+                    </div>
                 </div>
             </section>
 
@@ -637,16 +670,28 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         </table>
                     </div>
                 </div>
+
+                <div class="adm-card overflow-hidden mt-6">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h2 class="text-lg font-semibold text-brandDark">Recordatorios de tus clientes</h2>
+                        <p class="text-xs text-gray-400 mt-0.5">Fechas que tus clientes guardaron para no olvidar (cumpleaños, aniversarios, etc.) -- ideal para contactarlos antes de que se les pase.</p>
+                    </div>
+                    <div id="lista-recordatorios" class="divide-y divide-gray-100"></div>
+                </div>
             </section>
 
             <!-- ============ FINANZAS ============ -->
             <section id="vista-finanzas" class="hidden">
-                <div class="flex justify-end mb-4">
+                <div class="flex justify-end gap-2 mb-4">
                     <select id="finanzas-rango" class="adm-input !w-auto text-xs">
                         <option value="7">Últimos 7 días</option>
                         <option value="30" selected>Últimos 30 días</option>
                         <option value="90">Últimos 90 días</option>
                     </select>
+                    <button type="button" onclick="descargarReporteFinanzas()" class="adm-input !w-auto text-xs font-semibold text-brandFuchsia hover:bg-pink-50 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Descargar reporte
+                    </button>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div class="adm-card p-4 flex items-center gap-3">
@@ -981,6 +1026,14 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         </div>
                         <div id="lista-usuarios" class="divide-y divide-gray-100"></div>
                     </div>
+                </div>
+
+                <div class="adm-card overflow-hidden mt-6">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h2 class="text-lg font-semibold text-brandDark">Bitácora del panel</h2>
+                        <p class="text-xs text-gray-400 mt-0.5">Quién hizo qué desde el panel, más reciente primero.</p>
+                    </div>
+                    <div id="lista-bitacora" class="divide-y divide-gray-100 max-h-96 overflow-y-auto"></div>
                 </div>
             </section>
 
@@ -1336,9 +1389,9 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     });
 
     async function cargarTodoElPanel() {
-        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones(), cargarCarruseles(), cargarMenuSitio(), cargarCategoriasDisponibles(), cargarEstadosMunicipios()]);
+        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones(), cargarCarruseles(), cargarMenuSitio(), cargarCategoriasDisponibles(), cargarEstadosMunicipios(), cargarRecordatorios()]);
         if (usuarioActual && usuarioActual.rol === 'admin') {
-            await Promise.all([cargarUsuarios(), cargarConfiguracion()]);
+            await Promise.all([cargarUsuarios(), cargarConfiguracion(), cargarBitacora()]);
         }
         if (vistaActiva === 'finanzas') cargarFinanzas();
     }
@@ -1877,12 +1930,77 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         else lista.sort((a, b) => b.id - a.id);
         return lista;
     }
+    // =======================================================================
+    // ACCIONES EN LOTE -- seleccionar varios productos con checkboxes y
+    // activarlos/desactivarlos/agregarles una categoría/eliminarlos de un
+    // jalón, en vez de uno por uno.
+    // =======================================================================
+    let seleccionCatalogo = new Set();
+    function actualizarSeleccionCatalogo() {
+        seleccionCatalogo = new Set([...document.querySelectorAll('[data-check-producto]:checked')].map(c => Number(c.dataset.checkProducto)));
+        const barra = document.getElementById('barra-seleccion-catalogo');
+        barra.classList.toggle('hidden', seleccionCatalogo.size === 0);
+        document.getElementById('conteo-seleccion-catalogo').innerText = `${seleccionCatalogo.size} seleccionado${seleccionCatalogo.size === 1 ? '' : 's'}`;
+        const checkTodos = document.getElementById('check-todos-catalogo');
+        const visibles = [...document.querySelectorAll('[data-check-producto]')];
+        checkTodos.checked = visibles.length > 0 && visibles.every(c => c.checked);
+    }
+    window.actualizarSeleccionCatalogo = actualizarSeleccionCatalogo;
+    document.getElementById('check-todos-catalogo').addEventListener('change', (e) => {
+        document.querySelectorAll('[data-check-producto]').forEach(c => { c.checked = e.target.checked; });
+        actualizarSeleccionCatalogo();
+    });
+    document.getElementById('select-categoria-lote').addEventListener('change', async (e) => {
+        const categoria = e.target.value;
+        if (!categoria) return;
+        await accionEnLoteCatalogo('categoria', categoria);
+        e.target.selectedIndex = 0;
+    });
+
+    async function accionEnLoteCatalogo(accion, categoriaNueva) {
+        const ids = [...seleccionCatalogo];
+        if (ids.length === 0) return;
+        if (accion === 'eliminar') {
+            const ok = await pedirConfirmacionAdmin('Eliminar productos', `¿Seguro que quieres eliminar ${ids.length} producto${ids.length === 1 ? '' : 's'}? No se puede deshacer.`);
+            if (!ok) return;
+        }
+        let exitos = 0;
+        for (const id of ids) {
+            const producto = catalogo.find(p => p.id === id);
+            if (!producto) continue;
+            try {
+                if (accion === 'eliminar') {
+                    await jsonOError(await fetch(`/api/catalogo/${id}`, { method: 'DELETE' }));
+                } else if (accion === 'activar' || accion === 'desactivar') {
+                    await jsonOError(await fetch(`/api/catalogo/${id}`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...producto, disponible: accion === 'activar', clasificaciones: producto.clasificaciones })
+                    }));
+                } else if (accion === 'categoria') {
+                    const yaLaTiene = (producto.clasificaciones || []).some(c => c.categoria === categoriaNueva);
+                    const nuevasClasificaciones = yaLaTiene ? producto.clasificaciones : [...(producto.clasificaciones || []), { categoria: categoriaNueva, subcategoria: null, subsubcategoria: null }];
+                    await jsonOError(await fetch(`/api/catalogo/${id}`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...producto, clasificaciones: nuevasClasificaciones })
+                    }));
+                }
+                exitos++;
+            } catch (error) {
+                console.error(`No se pudo aplicar la acción al producto ${id}:`, error);
+            }
+        }
+        mostrarToast(`Se aplicó a ${exitos} de ${ids.length} producto${ids.length === 1 ? '' : 's'}.`);
+        seleccionCatalogo = new Set();
+        cargarCatalogo();
+    }
+    window.accionEnLoteCatalogo = accionEnLoteCatalogo;
+
     function renderTablaCatalogo() {
         const tbody = document.getElementById('tabla-inventario');
         const lista = catalogoFiltrado();
         document.getElementById('conteo-catalogo').innerText = `Mostrando ${lista.length} de ${catalogo.length} producto${catalogo.length === 1 ? '' : 's'}`;
-        if (catalogo.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm">Aún no hay productos registrados.</td></tr>'; return; }
-        if (lista.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm">No hay productos que coincidan con el filtro.</td></tr>'; return; }
+        if (catalogo.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-10 text-gray-500 text-sm">Aún no hay productos registrados.</td></tr>'; return; }
+        if (lista.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-10 text-gray-500 text-sm">No hay productos que coincidan con el filtro.</td></tr>'; return; }
 
         tbody.innerHTML = lista.map(item => {
             const clasifs = item.clasificaciones && item.clasificaciones.length ? item.clasificaciones : [{ categoria: item.categoria, subcategoria: item.subcategoria, subsubcategoria: item.subsubcategoria }];
@@ -1900,6 +2018,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 : `<div class="w-12 h-12 rounded-md border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-300 text-[9px]">Sin foto</div>`;
             return `
                 <tr class="hover:bg-gray-50 transition ${disponible ? '' : 'opacity-60'}">
+                    <td class="px-4 py-3"><input type="checkbox" data-check-producto="${item.id}" class="w-4 h-4 accent-brandFuchsia" onchange="actualizarSeleccionCatalogo()" ${seleccionCatalogo.has(item.id) ? 'checked' : ''}></td>
                     <td class="px-6 py-3">
                         <div class="flex items-center gap-3">
                             <a href="/producto/${item.id}" target="_blank" class="shrink-0">${imgTag}</a>
@@ -2000,6 +2119,9 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById('titulo-formulario').innerText = 'Editar Arreglo';
         document.getElementById('subtitulo-formulario').innerText = `Editando "${p.nombre}" (ID ${p.id}).`;
         cargarProductoEnFormulario(p);
+        const linkTienda = document.getElementById('link-ver-tienda');
+        linkTienda.href = `/producto/${p.id}`;
+        linkTienda.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     window.prepararEdicion = prepararEdicion;
@@ -2050,6 +2172,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById('producto_id').value = '';
         document.getElementById('titulo-formulario').innerText = 'Agregar Nuevo Arreglo';
         document.getElementById('subtitulo-formulario').innerText = 'Completa los datos del arreglo para publicarlo en la tienda.';
+        document.getElementById('link-ver-tienda').classList.add('hidden');
         document.getElementById('stock').value = 1;
         document.getElementById('disponible').checked = true;
         cargarClasificacionesEnFormulario(null);
@@ -2101,6 +2224,65 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             return true;
         });
     }
+    // =======================================================================
+    // CALENDARIO DE ENTREGAS -- vista de mes con los pedidos agrupados por
+    // fecha de entrega, para ver de un vistazo qué se entrega cada día.
+    // =======================================================================
+    let mesCalendarioActual = new Date();
+    mesCalendarioActual.setDate(1);
+
+    function cambiarVistaPedidos(vista) {
+        const esLista = vista === 'lista';
+        document.getElementById('bloque-lista-pedidos').classList.toggle('hidden', !esLista);
+        document.getElementById('bloque-calendario-pedidos').classList.toggle('hidden', esLista);
+        document.getElementById('btn-vista-lista-pedidos').className = 'px-3 py-1 rounded-md ' + (esLista ? 'bg-white shadow-sm text-brandDark' : 'text-gray-500');
+        document.getElementById('btn-vista-calendario-pedidos').className = 'px-3 py-1 rounded-md ' + (!esLista ? 'bg-white shadow-sm text-brandDark' : 'text-gray-500');
+        if (!esLista) renderCalendarioPedidos();
+    }
+    window.cambiarVistaPedidos = cambiarVistaPedidos;
+
+    function moverMesCalendario(delta) {
+        mesCalendarioActual.setMonth(mesCalendarioActual.getMonth() + delta);
+        renderCalendarioPedidos();
+    }
+    window.moverMesCalendario = moverMesCalendario;
+
+    function renderCalendarioPedidos() {
+        const año = mesCalendarioActual.getFullYear();
+        const mes = mesCalendarioActual.getMonth();
+        document.getElementById('titulo-mes-calendario').innerText = mesCalendarioActual.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+
+        // Agrupa los pedidos (que no estén cancelados) por su fecha de entrega, en clave AAAA-MM-DD.
+        const porFecha = {};
+        ordenes.forEach(o => {
+            if (!o.fecha_entrega) return;
+            const clave = String(o.fecha_entrega).slice(0, 10);
+            (porFecha[clave] ||= []).push(o);
+        });
+
+        const primerDiaMes = new Date(año, mes, 1);
+        const diasEnMes = new Date(año, mes + 1, 0).getDate();
+        const offsetInicio = primerDiaMes.getDay(); // 0=domingo
+        const hoyClave = new Date().toISOString().slice(0, 10);
+
+        const celdas = [];
+        for (let i = 0; i < offsetInicio; i++) celdas.push('<div class="min-h-[84px]"></div>');
+        for (let dia = 1; dia <= diasEnMes; dia++) {
+            const clave = `${año}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+            const pedidosDelDia = (porFecha[clave] || []).filter(o => o.estado !== 'Cancelado');
+            const esHoy = clave === hoyClave;
+            const chips = pedidosDelDia.slice(0, 3).map(o => `<div class="adm-badge ${ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500'} !text-[9px] !px-1.5 !py-0.5 w-full truncate block" title="${escaparHtmlAdmin(o.cliente_nombre)} — ${escaparHtmlAdmin(o.estado || 'Pendiente')}">${escaparHtmlAdmin(o.cliente_nombre)}</div>`).join('');
+            const masTexto = pedidosDelDia.length > 3 ? `<p class="text-[9px] text-gray-400 mt-0.5">+${pedidosDelDia.length - 3} más</p>` : '';
+            celdas.push(`
+                <div class="min-h-[84px] border border-gray-100 rounded-lg p-1.5 ${esHoy ? 'ring-2 ring-brandFuchsia' : ''}">
+                    <p class="text-[11px] font-semibold ${esHoy ? 'text-brandFuchsia' : 'text-gray-500'}">${dia}</p>
+                    <div class="space-y-0.5 mt-1">${chips}</div>
+                    ${masTexto}
+                </div>`);
+        }
+        document.getElementById('grid-calendario-pedidos').innerHTML = celdas.join('');
+    }
+
     function renderListaPedidos() {
         const cont = document.getElementById('lista-pedidos');
         const lista = ordenesFiltradas();
@@ -2161,6 +2343,16 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         <summary class="text-xs text-brandFuchsia font-medium cursor-pointer select-none">Ver ${items.length} artículo${items.length === 1 ? '' : 's'} del pedido</summary>
                         <div class="mt-2 border border-gray-100 rounded-lg px-3 py-1 bg-gray-50">${itemsHtml}</div>
                     </details>
+                    <details class="mt-2" ontoggle="if(this.open) cargarNotasPedido(${o.id})">
+                        <summary class="text-xs text-gray-500 font-medium cursor-pointer select-none">📝 Notas internas del equipo</summary>
+                        <div id="notas-pedido-${o.id}" class="mt-2 space-y-1.5">
+                            <p class="text-xs text-gray-400">Cargando...</p>
+                        </div>
+                        <form class="mt-2 flex gap-2" onsubmit="event.preventDefault(); agregarNotaPedido(${o.id}, this.querySelector('input'))">
+                            <input type="text" placeholder="Ej. Cliente pidió cambiar la hora..." class="adm-input !text-xs flex-1">
+                            <button type="submit" class="shrink-0 bg-gray-100 hover:bg-gray-200 text-brandDark text-[11px] font-semibold px-3 rounded-lg transition">Agregar</button>
+                        </form>
+                    </details>
                 </div>`;
         }).join('');
     }
@@ -2173,13 +2365,65 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             await jsonOError(await fetch(`/api/admin/ordenes/${id}/estado`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) }));
             const o = ordenes.find(x => x.id === id);
             if (o) o.estado = estado;
-            mostrarToast(`Pedido #${id} actualizado a "${estado}".`);
+            mostrarToast(`Pedido #${id} actualizado a "${estado}" — se le avisó al cliente por correo.`);
             renderStatsPedidos(); renderListaPedidos(); actualizarBadgePedidos();
         } catch (error) {
             mostrarToast(error.message, 'error');
         }
     }
     window.cambiarEstadoPedido = cambiarEstadoPedido;
+
+    // Notas internas del pedido -- nunca las ve el cliente, son para que el
+    // equipo se deje avisos entre sí (ej. "cliente pidió cambiar la hora").
+    const notasPedidoCache = {};
+    function renderNotasPedido(ordenId) {
+        const cont = document.getElementById(`notas-pedido-${ordenId}`);
+        if (!cont) return;
+        const notas = notasPedidoCache[ordenId] || [];
+        cont.innerHTML = notas.length ? notas.map(n => `
+            <div class="flex items-start justify-between gap-2 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1.5">
+                <div class="min-w-0">
+                    <p class="text-xs text-brandDark">${escaparHtmlAdmin(n.nota)}</p>
+                    <p class="text-[10px] text-gray-400">${escaparHtmlAdmin(n.autor || 'Alguien')} · ${formatearFechaAdmin(n.creado_en)}</p>
+                </div>
+                <button type="button" onclick="eliminarNotaPedido(${n.id}, ${ordenId})" class="shrink-0 text-gray-300 hover:text-red-500 text-xs">&times;</button>
+            </div>
+        `).join('') : '<p class="text-xs text-gray-400">Sin notas todavía.</p>';
+    }
+    async function cargarNotasPedido(ordenId) {
+        if (notasPedidoCache[ordenId]) { renderNotasPedido(ordenId); return; }
+        try {
+            notasPedidoCache[ordenId] = await jsonOError(await fetch(`/api/admin/ordenes/${ordenId}/notas`));
+            renderNotasPedido(ordenId);
+        } catch (error) {
+            const cont = document.getElementById(`notas-pedido-${ordenId}`);
+            if (cont) cont.innerHTML = '<p class="text-xs text-red-500">No se pudieron cargar las notas.</p>';
+        }
+    }
+    window.cargarNotasPedido = cargarNotasPedido;
+    async function agregarNotaPedido(ordenId, inputEl) {
+        const nota = inputEl.value.trim();
+        if (!nota) return;
+        try {
+            const nueva = await jsonOError(await fetch(`/api/admin/ordenes/${ordenId}/notas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nota }) }));
+            notasPedidoCache[ordenId] = [...(notasPedidoCache[ordenId] || []), nueva];
+            renderNotasPedido(ordenId);
+            inputEl.value = '';
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+        }
+    }
+    window.agregarNotaPedido = agregarNotaPedido;
+    async function eliminarNotaPedido(notaId, ordenId) {
+        try {
+            await jsonOError(await fetch(`/api/admin/ordenes/notas/${notaId}`, { method: 'DELETE' }));
+            notasPedidoCache[ordenId] = (notasPedidoCache[ordenId] || []).filter(n => n.id !== notaId);
+            renderNotasPedido(ordenId);
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+        }
+    }
+    window.eliminarNotaPedido = eliminarNotaPedido;
 
     // Abre una ventana con una nota de entrega lista para imprimir (para
     // dársela al repartidor): datos del destinatario, dirección, horario,
@@ -2264,6 +2508,39 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     }
     window.exportarPedidosCSV = exportarPedidosCSV;
 
+    // Reporte de Finanzas descargable -- resumen del periodo, ventas por día
+    // y los productos más vendidos, listo para abrir en Excel.
+    function descargarReporteFinanzas() {
+        if (!ultimosDatosFinanzas) { mostrarToast('Espera a que carguen los datos de finanzas.', 'error'); return; }
+        const d = ultimosDatosFinanzas;
+        const escaparCelda = (valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+        const filas = [];
+        filas.push(['Reporte de finanzas — Reserva Floral'].map(escaparCelda).join(','));
+        filas.push([`Generado: ${new Date().toLocaleString('es-MX')}`].map(escaparCelda).join(','));
+        filas.push('');
+        filas.push(['Resumen del periodo'].map(escaparCelda).join(','));
+        filas.push(['Ingresos totales', 'Pedidos totales', 'Ticket promedio', 'Cancelados'].map(escaparCelda).join(','));
+        filas.push([d.resumen.ingresosTotales, d.resumen.pedidosTotales, d.resumen.ticketPromedio, d.resumen.pedidosCancelados].map(escaparCelda).join(','));
+        filas.push('');
+        filas.push(['Ventas por día'].map(escaparCelda).join(','));
+        filas.push(['Fecha', 'Pedidos', 'Ingresos'].map(escaparCelda).join(','));
+        (d.serieDiaria || []).forEach(dia => filas.push([dia.fecha, dia.pedidos, dia.total].map(escaparCelda).join(',')));
+        filas.push('');
+        filas.push(['Productos más vendidos'].map(escaparCelda).join(','));
+        filas.push(['Producto', 'Unidades', 'Ingresos'].map(escaparCelda).join(','));
+        (d.topProductos || []).forEach(p => filas.push([p.nombre, p.unidades, p.ingresos].map(escaparCelda).join(',')));
+        const csv = '\uFEFF' + filas.join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const enlace = document.createElement('a');
+        enlace.href = URL.createObjectURL(blob);
+        enlace.download = `finanzas-reserva-floral-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+        URL.revokeObjectURL(enlace.href);
+    }
+    window.descargarReporteFinanzas = descargarReporteFinanzas;
+
     // =======================================================================
     // CLIENTES
     // =======================================================================
@@ -2273,6 +2550,43 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             renderStatsClientes(); renderTablaClientes();
         } catch (error) {
             console.error('Error cargando clientes', error);
+        }
+    }
+    // Calcula cuándo cae la PRÓXIMA vez que se cumple un recordatorio -- si
+    // se repite cada año y la fecha de este año ya pasó, se usa la del año
+    // que sigue.
+    function proximaFechaRecordatorio(fechaIso, repiteAnual) {
+        const original = new Date(fechaIso + 'T00:00:00');
+        if (!repiteAnual) return original;
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        let proxima = new Date(hoy.getFullYear(), original.getMonth(), original.getDate());
+        if (proxima < hoy) proxima = new Date(hoy.getFullYear() + 1, original.getMonth(), original.getDate());
+        return proxima;
+    }
+    async function cargarRecordatorios() {
+        const cont = document.getElementById('lista-recordatorios');
+        if (!cont) return;
+        try {
+            const recordatorios = await jsonOError(await fetch('/api/admin/recordatorios'));
+            const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+            const conProxima = recordatorios.map(r => ({ ...r, proxima: proximaFechaRecordatorio(r.fecha, r.repetir_anual) })).sort((a, b) => a.proxima - b.proxima);
+            cont.innerHTML = conProxima.length ? conProxima.map(r => {
+                const diasFaltan = Math.round((r.proxima - hoy) / (1000 * 60 * 60 * 24));
+                const pronto = diasFaltan <= 14;
+                return `
+                <div class="px-6 py-3 flex items-center justify-between gap-3 ${pronto ? 'bg-pink-50/40' : ''}">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-brandDark">${escaparHtmlAdmin(r.titulo)} <span class="text-xs text-gray-400 font-normal">· ${escaparHtmlAdmin(r.cliente_nombre)}</span></p>
+                        <p class="text-[11px] text-gray-500">${escaparHtmlAdmin(r.cliente_telefono || r.cliente_email || '')}${r.notas ? ` · ${escaparHtmlAdmin(r.notas)}` : ''}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="adm-badge ${pronto ? 'bg-brandFuchsia text-white' : 'bg-gray-100 text-gray-500'}">${diasFaltan === 0 ? 'Es hoy' : diasFaltan === 1 ? 'Mañana' : diasFaltan < 0 ? 'Pasó' : `En ${diasFaltan} días`}</span>
+                        <p class="text-[10px] text-gray-400 mt-1">${r.proxima.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })}</p>
+                    </div>
+                </div>`;
+            }).join('') : '<p class="text-center py-8 text-gray-400 text-sm">Ningún cliente ha guardado recordatorios todavía.</p>';
+        } catch (error) {
+            cont.innerHTML = '<p class="text-center py-8 text-gray-400 text-sm">No se pudieron cargar los recordatorios.</p>';
         }
     }
     function renderStatsClientes() {
@@ -2309,10 +2623,12 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // =======================================================================
     // FINANZAS
     // =======================================================================
+    let ultimosDatosFinanzas = null;
     async function cargarFinanzas() {
         const dias = document.getElementById('finanzas-rango').value;
         try {
             const d = await jsonOError(await fetch('/api/admin/finanzas?dias=' + dias));
+            ultimosDatosFinanzas = d;
             document.getElementById('fin-ingresos').innerText = '$' + formatearPrecioAdmin(d.resumen.ingresosTotales);
             document.getElementById('fin-pedidos').innerText = d.resumen.pedidosTotales;
             document.getElementById('fin-ticket').innerText = '$' + formatearPrecioAdmin(d.resumen.ticketPromedio);
@@ -2577,6 +2893,23 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             console.error('Error cargando usuarios', error);
         }
     }
+    async function cargarBitacora() {
+        const cont = document.getElementById('lista-bitacora');
+        if (!cont) return;
+        try {
+            const entradas = await jsonOError(await fetch('/api/admin/bitacora'));
+            cont.innerHTML = entradas.length ? entradas.map(b => `
+                <div class="px-6 py-2.5 flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs text-brandDark"><strong>${escaparHtmlAdmin(b.usuario_nombre || 'Alguien')}</strong> — ${escaparHtmlAdmin(b.accion)}${b.detalle ? `: ${escaparHtmlAdmin(b.detalle)}` : ''}</p>
+                    </div>
+                    <p class="text-[10px] text-gray-400 shrink-0">${formatearFechaAdmin(b.creado_en)}</p>
+                </div>
+            `).join('') : '<p class="text-center py-8 text-gray-400 text-sm">Todavía no hay actividad registrada.</p>';
+        } catch (error) {
+            cont.innerHTML = '<p class="text-center py-8 text-gray-400 text-sm">No se pudo cargar la bitácora.</p>';
+        }
+    }
     function renderListaUsuarios() {
         const cont = document.getElementById('lista-usuarios');
         cont.innerHTML = usuarios.map(u => `
@@ -2781,6 +3114,12 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 const actual = sel.value;
                 sel.innerHTML = construirOpcionesCategoriaHtml(actual);
             });
+
+            const selCategoriaLote = document.getElementById('select-categoria-lote');
+            if (selCategoriaLote) {
+                selCategoriaLote.innerHTML = '<option value="" disabled selected>Agregar categoría a todos...</option>' +
+                    Object.keys(taxonomia).map(c => `<option value="${escaparHtmlAdmin(c)}">${escaparHtmlAdmin(c)}</option>`).join('');
+            }
 
             const partes = [];
             for (const [categoria, subcategorias] of Object.entries(taxonomia)) {
