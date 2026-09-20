@@ -144,6 +144,26 @@ app.use(session({
 }));
 
 // ---------------------------------------------------------------------------
+// Defensa extra contra CSRF: para cualquier método que cambie datos
+// (POST/PUT/PATCH/DELETE) que traiga la cookie de sesión del panel, se
+// verifica que la petición venga del propio sitio -- un formulario CSRF
+// desde otra página no puede falsificar este encabezado.  Esto se suma a
+// que la cookie ya es `sameSite: lax` y a que todas las escrituras del
+// panel exigen `Content-Type: application/json` (que un <form> normal de
+// otra página no puede enviar).
+app.use((req, res, next) => {
+  const metodosQueEscriben = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  // El webhook de Mercado Pago llega servidor-a-servidor, nunca con un
+  // Origin/Referer del propio sitio -- se excluye de esta verificación.
+  if (!metodosQueEscriben.includes(req.method) || req.path === '/api/pagos/webhook') return next();
+  const origen = req.get('origin') || req.get('referer') || '';
+  if (origen && !origen.startsWith(URL_SITIO)) {
+    return res.status(403).json({ error: 'Solicitud rechazada por seguridad (origen inválido).' });
+  }
+  next();
+});
+
+// ---------------------------------------------------------------------------
 // Subida de imágenes (se guardan en disco y se sirven como estáticas en /uploads)
 // En Railway, el disco del contenedor NO es permanente entre despliegues --
 // para que las fotos no se borren, hay que:
@@ -207,8 +227,56 @@ for (const [rutaLimpia, archivo] of Object.entries(PAGINAS_LIMPIAS)) {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Las páginas de producto usan el mismo cascarón de la tienda; el frontend carga el ID desde la URL.
-app.get('/producto/:id', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get('/producto/:id', async (req, res) => {
+  const rutaIndex = path.join(__dirname, 'public', 'index.html');
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.sendFile(rutaIndex);
+  try {
+    const resultado = await pool.query('SELECT id, nombre, descripcion, precio, imagen_url, disponible, stock FROM arreglos_florales WHERE id=$1', [id]);
+    if (resultado.rowCount === 0) return res.sendFile(rutaIndex);
+    const p = resultado.rows[0];
+
+    // Para que Google pueda mostrar precio y disponibilidad directo en los
+    // resultados de búsqueda, se le manda el HTML ya con la información del
+    // producto puesta (título, descripción, imagen y el bloque de datos
+    // estructurados Product) -- antes esta página era siempre el mismo
+    // index.html genérico sin importar qué producto fuera.
+    let html = fs.readFileSync(rutaIndex, 'utf8');
+    const nombreEscapado = String(p.nombre || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const descripcionPlana = String(p.descripcion || 'Arreglo floral con entrega a domicilio.').replace(/</g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+    const imagenAbsoluta = p.imagen_url
+      ? (p.imagen_url.startsWith('http') ? p.imagen_url : `${URL_SITIO}${p.imagen_url}`)
+      : `${URL_SITIO}/logo-reserva-floral.png`;
+    const tituloProducto = `${nombreEscapado} | Reserva Floral`;
+
+    html = html
+      .replace(/<title>.*?<\/title>/, `<title>${tituloProducto}</title>`)
+      .replace(/<meta name="description" content=".*?">/, `<meta name="description" content="${descripcionPlana.replace(/"/g, '&quot;')}">`)
+      .replace(/<meta property="og:title" content=".*?">/, `<meta property="og:title" content="${tituloProducto}">`)
+      .replace(/<meta property="og:description" content=".*?">/, `<meta property="og:description" content="${descripcionPlana.replace(/"/g, '&quot;')}">`)
+      .replace(/<meta property="og:image" content=".*?">/, `<meta property="og:image" content="${imagenAbsoluta}">`);
+
+    const jsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: p.nombre,
+      description: descripcionPlana,
+      image: imagenAbsoluta,
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: 'MXN',
+        price: Number(p.precio).toFixed(2),
+        availability: (p.disponible !== false && Number(p.stock) > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        url: `${URL_SITIO}/producto/${p.id}`
+      }
+    };
+    html = html.replace('<!--SEO-JSONLD-->', `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`);
+
+    res.send(html);
+  } catch (error) {
+    console.error('GET /producto/:id (SEO):', error);
+    res.sendFile(rutaIndex);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -395,6 +463,20 @@ async function inicializarDB() {
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_bitacora_fecha ON bitacora_admin(creado_en DESC);
+
+    -- Carritos que alguien dejó a medias (ya escribió su correo pero no
+    -- terminó de pagar) -- para poder recordarle por correo más tarde.
+    CREATE TABLE IF NOT EXISTS carritos_abandonados (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(150) NOT NULL UNIQUE,
+      nombre VARCHAR(150),
+      items JSONB NOT NULL,
+      total DECIMAL(10,2),
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      correo_enviado BOOLEAN DEFAULT false,
+      recuperado BOOLEAN DEFAULT false
+    );
   `);
 
   // Limpieza de tablas huérfanas: durante el desarrollo del menú por
@@ -419,6 +501,7 @@ async function inicializarDB() {
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 1',
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS disponible BOOLEAN DEFAULT true',
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS es_combo BOOLEAN DEFAULT false',
+    'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS tiempo_entrega_dias INTEGER DEFAULT 0',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS dedicatoria TEXT',
     "ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS carrito JSONB NOT NULL DEFAULT '[]'::jsonb",
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS destinatario_telefono VARCHAR(20)',
@@ -1364,7 +1447,8 @@ function normalizarProducto(body) {
     tamanos: String(body.tamanos || '').trim() || null,
     cobertura: String(body.cobertura || '').trim() || null,
     stock: Number.isFinite(stockNum) && stockNum >= 0 ? Math.floor(stockNum) : 1,
-    disponible: body.disponible === undefined ? true : Boolean(body.disponible)
+    disponible: body.disponible === undefined ? true : Boolean(body.disponible),
+    tiempo_entrega_dias: Number.isFinite(Number(body.tiempo_entrega_dias)) && Number(body.tiempo_entrega_dias) >= 0 ? Math.floor(Number(body.tiempo_entrega_dias)) : 0
   };
 }
 
@@ -1387,13 +1471,13 @@ async function adjuntarClasificaciones(productos) {
   const ids = productos.map(p => p.id);
   const clasifRows = (await pool.query('SELECT * FROM producto_categorias WHERE producto_id = ANY($1)', [ids])).rows;
   const comboRows = (await pool.query(`
-    SELECT pci.producto_id, pci.cantidad, a.id AS componente_id, a.nombre, a.precio, a.imagen_url
+    SELECT pci.producto_id, pci.cantidad, a.id AS componente_id, a.nombre, a.precio, a.imagen_url, a.disponible, a.stock
     FROM producto_combo_items pci JOIN arreglos_florales a ON a.id = pci.componente_id
     WHERE pci.producto_id = ANY($1)
   `, [ids])).rows;
   const clasifPorProducto = {}; const comboPorProducto = {};
   clasifRows.forEach(c => { (clasifPorProducto[c.producto_id] ||= []).push({ categoria: c.categoria, subcategoria: c.subcategoria, subsubcategoria: c.subsubcategoria }); });
-  comboRows.forEach(c => { (comboPorProducto[c.producto_id] ||= []).push({ id: c.componente_id, nombre: c.nombre, precio: c.precio, imagen_url: c.imagen_url, cantidad: c.cantidad }); });
+  comboRows.forEach(c => { (comboPorProducto[c.producto_id] ||= []).push({ id: c.componente_id, nombre: c.nombre, precio: c.precio, imagen_url: c.imagen_url, cantidad: c.cantidad, disponible: c.disponible !== false, stock: c.stock }); });
   return productos.map(p => ({
     ...p,
     clasificaciones: clasifPorProducto[p.id] || (p.categoria ? [{ categoria: p.categoria, subcategoria: p.subcategoria, subsubcategoria: p.subsubcategoria }] : []),
@@ -1484,12 +1568,12 @@ app.post('/api/catalogo', requireAuth, async (req, res) => {
     const result = await pool.query(`
       INSERT INTO arreglos_florales
         (nombre, descripcion, especificaciones, precio, imagen_url, imagenes, categoria, subcategoria, subsubcategoria,
-         variante_personalizada, opcion_foto, tamanos, cobertura, stock, disponible, es_combo)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+         variante_personalizada, opcion_foto, tamanos, cobertura, stock, disponible, es_combo, tiempo_entrega_dias)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
       RETURNING *
     `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, primera.categoria,
         primera.subcategoria || null, primera.subsubcategoria || null, p.variante_personalizada, p.opcion_foto, p.tamanos, p.cobertura,
-        p.stock, p.disponible, !!req.body.es_combo]);
+        p.stock, p.disponible, !!req.body.es_combo, p.tiempo_entrega_dias]);
 
     await sincronizarClasificacionesProducto(result.rows[0].id, req.body.clasificaciones);
     if (req.body.es_combo) await sincronizarComboProducto(result.rows[0].id, req.body.combo_items);
@@ -1524,12 +1608,12 @@ app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
       UPDATE arreglos_florales
       SET nombre=$1, descripcion=$2, especificaciones=$3, precio=$4, imagen_url=$5, imagenes=$6,
           categoria=$7, subcategoria=$8, subsubcategoria=$9, variante_personalizada=$10,
-          opcion_foto=$11, tamanos=$12, cobertura=$13, stock=$14, disponible=$15, es_combo=$16
-      WHERE id=$17
+          opcion_foto=$11, tamanos=$12, cobertura=$13, stock=$14, disponible=$15, es_combo=$16, tiempo_entrega_dias=$17
+      WHERE id=$18
       RETURNING *
     `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, primera.categoria,
         primera.subcategoria || null, primera.subsubcategoria || null, p.variante_personalizada, p.opcion_foto, p.tamanos,
-        p.cobertura, p.stock, p.disponible, !!req.body.es_combo, id]);
+        p.cobertura, p.stock, p.disponible, !!req.body.es_combo, p.tiempo_entrega_dias, id]);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Producto no encontrado.' });
@@ -1694,6 +1778,52 @@ async function enviarCorreoEstadoActualizado(orden, estadoNuevo) {
   }
 }
 
+// Recordatorio para quien dejó su carrito a medias (ya escribió su correo en
+// el checkout, pero nunca terminó de pagar).
+async function enviarCorreoCarritoAbandonado(carritoAbandonado) {
+  if (!resendClient) return;
+  try {
+    const items = Array.isArray(carritoAbandonado.items) ? carritoAbandonado.items : JSON.parse(carritoAbandonado.items || '[]');
+    const listaHtml = items.map(it => `
+      <p style="font-size:13px;margin:4px 0;">${Number(it.cantidad) || 1} × ${it.nombre || 'Producto'} — $${Number(it.precio || 0).toFixed(2)}</p>
+    `).join('');
+    const cuerpo = `
+      <h2 style="font-size:16px;margin:0 0 8px;">🌸 Se te quedó algo en el carrito</h2>
+      <p style="font-size:13px;color:#666;margin:0 0 16px;">${carritoAbandonado.nombre ? `Hola ${carritoAbandonado.nombre}, v` : 'V'}imos que dejaste estos productos listos, pero no llegaste a terminar tu compra. Aquí siguen esperándote:</p>
+      ${listaHtml}
+      <p style="font-size:13px;margin:16px 0 4px;"><strong>Total: $${Number(carritoAbandonado.total || 0).toFixed(2)} MXN</strong></p>
+      <p style="margin-top:20px;"><a href="${URL_SITIO}/carrito" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Terminar mi compra</a></p>
+    `;
+    await resendClient.emails.send({
+      from: CORREO_REMITENTE,
+      to: carritoAbandonado.email,
+      subject: 'Se te quedó algo en el carrito 🌸',
+      html: plantillaBaseCorreo('Tu carrito te espera', cuerpo)
+    });
+  } catch (error) {
+    console.error('No se pudo enviar el correo de carrito abandonado:', error?.message || error);
+  }
+}
+
+// Cada cierto tiempo revisa si hay carritos abandonados hace más de 2 horas
+// a los que todavía no se les ha mandado el recordatorio, y se los manda --
+// una sola vez por carrito.
+async function revisarCarritosAbandonadosRF() {
+  try {
+    const resultado = await pool.query(`
+      SELECT * FROM carritos_abandonados
+      WHERE recuperado = false AND correo_enviado = false
+        AND creado_en < NOW() - INTERVAL '2 hours'
+    `);
+    for (const carrito of resultado.rows) {
+      await enviarCorreoCarritoAbandonado(carrito);
+      await pool.query('UPDATE carritos_abandonados SET correo_enviado = true WHERE id = $1', [carrito.id]);
+    }
+  } catch (error) {
+    console.error('No se pudo revisar carritos abandonados:', error?.message || error);
+  }
+}
+
 // Valida un código de cupón contra el subtotal actual del carrito, sin
 // necesidad de crear el pedido todavía -- para mostrar el descuento en el
 // checkout antes de completar la compra. La validación de verdad (la que
@@ -1725,6 +1855,30 @@ app.post('/api/cupones/validar', limitadorPedidos, async (req, res) => {
   }
 });
 
+// Guarda (o actualiza) una "foto" del carrito de alguien que ya escribió su
+// correo en el checkout pero todavía no termina de pagar -- así, si lo deja
+// a medias, se le puede mandar un recordatorio más tarde. Se llama sola
+// desde el checkout, sin que el cliente note nada.
+app.post('/api/carrito-temporal', limitadorGeneral, async (req, res) => {
+  const { email, nombre, carrito, total } = req.body || {};
+  if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || !Array.isArray(carrito) || carrito.length === 0) {
+    return res.status(400).json({ error: 'Datos incompletos.' });
+  }
+  try {
+    await pool.query(`
+      INSERT INTO carritos_abandonados (email, nombre, items, total, actualizado_en, correo_enviado, recuperado)
+      VALUES ($1,$2,$3,$4,NOW(),false,false)
+      ON CONFLICT (email) DO UPDATE SET
+        nombre = EXCLUDED.nombre, items = EXCLUDED.items, total = EXCLUDED.total,
+        actualizado_en = NOW(), correo_enviado = false, recuperado = false
+    `, [email.trim().toLowerCase(), nombre?.trim() || null, JSON.stringify(carrito), Number(total) || 0]);
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('POST /api/carrito-temporal:', error);
+    res.status(500).json({ error: 'No se pudo guardar.' });
+  }
+});
+
 app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
   const {
     cliente, telefono, direccion, fecha, dedicatoria, carrito,
@@ -1750,9 +1904,10 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     await client.query('BEGIN');
 
     const productos = await client.query(`
-      SELECT id, nombre, precio, imagen_url
+      SELECT id, nombre, precio, imagen_url, stock, es_combo
       FROM arreglos_florales
       WHERE id = ANY($1::int[]) AND COALESCE(disponible, true) = true
+      FOR UPDATE
     `, [ids]);
 
     if (productos.rowCount !== ids.length) {
@@ -1760,6 +1915,51 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     }
 
     const porId = new Map(productos.rows.map(p => [p.id, p]));
+    const cantidadPorId = new Map();
+    carrito.forEach(item => {
+      const id = Number(item.id);
+      const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
+      cantidadPorId.set(id, (cantidadPorId.get(id) || 0) + cantidad);
+    });
+
+    // Para los combos, lo que de verdad hay que revisar y descontar es el
+    // stock de cada producto que lo compone -- el combo en sí no tiene un
+    // stock propio independiente.
+    const comboItems = await client.query(`
+      SELECT pci.producto_id, pci.cantidad, a.id AS componente_id, a.nombre AS componente_nombre, a.stock AS componente_stock, a.disponible AS componente_disponible
+      FROM producto_combo_items pci JOIN arreglos_florales a ON a.id = pci.componente_id
+      WHERE pci.producto_id = ANY($1::int[])
+      FOR UPDATE OF a
+    `, [ids.filter(id => porId.get(id)?.es_combo)]);
+
+    // Junta cuánto stock de cada producto (sea porque se vende directo, o
+    // porque es componente de un combo que se está comprando) hace falta.
+    const necesarioPorProducto = new Map();
+    const sumarNecesario = (id, cantidad, nombre) => {
+      const actual = necesarioPorProducto.get(id) || { cantidad: 0, nombre };
+      actual.cantidad += cantidad;
+      necesarioPorProducto.set(id, actual);
+    };
+    for (const [id, cantidad] of cantidadPorId) {
+      const producto = porId.get(id);
+      if (producto.es_combo) {
+        const items = comboItems.rows.filter(c => c.producto_id === id);
+        if (items.length === 0) throw Object.assign(new Error(`"${producto.nombre}" es un combo sin productos configurados.`), { statusCode: 409 });
+        for (const item of items) {
+          if (!item.componente_disponible) throw Object.assign(new Error(`"${item.componente_nombre}" (parte del combo "${producto.nombre}") ya no está disponible.`), { statusCode: 409 });
+          sumarNecesario(item.componente_id, cantidad * item.cantidad, item.componente_nombre);
+        }
+      } else {
+        sumarNecesario(id, cantidad, producto.nombre);
+      }
+    }
+    for (const [id, info] of necesarioPorProducto) {
+      const stockDisponible = Number(porId.get(id)?.stock ?? (comboItems.rows.find(c => c.componente_id === id)?.componente_stock ?? 0));
+      if (stockDisponible < info.cantidad) {
+        throw Object.assign(new Error(`Ya no hay suficiente existencia de "${info.nombre}" (quedan ${stockDisponible}).`), { statusCode: 409 });
+      }
+    }
+
     const carritoConfirmado = carrito.map(item => {
       const producto = porId.get(Number(item.id));
       const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
@@ -1834,11 +2034,20 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       descuento
     ]);
 
+    // Ya que el pedido se registró bien, se descuenta el stock de verdad --
+    // de cada producto directo, y de cada componente de combo.
+    for (const [id, info] of necesarioPorProducto) {
+      await client.query('UPDATE arreglos_florales SET stock = stock - $1 WHERE id = $2', [info.cantidad, id]);
+    }
+
     await client.query('COMMIT');
     res.status(201).json({ exito: true, orden: result.rows[0] });
     // El correo se manda después de responder -- si Resend tarda o falla, no
     // hace que el cliente espere ni que la compra truene.
     enviarCorreoConfirmacionPedido(result.rows[0]);
+    // Si esta persona tenía un carrito guardado como "abandonado" con este
+    // mismo correo, ya no hace falta recordarle nada -- sí terminó comprando.
+    pool.query('UPDATE carritos_abandonados SET recuperado = true WHERE email = $1', [emailContacto.trim().toLowerCase()]).catch(() => {});
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('POST /api/ordenes:', error);
@@ -2062,17 +2271,55 @@ app.patch('/api/admin/ordenes/:id/estado', requireAuth, async (req, res) => {
   if (!ESTADOS_ORDEN_VALIDOS.includes(estado)) {
     return res.status(400).json({ error: 'Estado de pedido inválido.' });
   }
+  const client = await pool.connect();
   try {
-    const result = await pool.query('UPDATE ordenes SET estado=$1 WHERE id=$2 RETURNING *', [estado, id]);
-    if (result.rowCount === 0) {
+    await client.query('BEGIN');
+    const anterior = await client.query('SELECT * FROM ordenes WHERE id=$1 FOR UPDATE', [id]);
+    if (anterior.rowCount === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Pedido no encontrado.' });
     }
+    const ordenAnterior = anterior.rows[0];
+
+    // Si se cancela un pedido que no estaba cancelado, se le regresa al
+    // inventario el stock que se le había descontado (expandiendo combos a
+    // sus componentes, igual que al momento de comprar).
+    if (estado === 'Cancelado' && ordenAnterior.estado !== 'Cancelado') {
+      const carritoOriginal = Array.isArray(ordenAnterior.carrito) ? ordenAnterior.carrito : JSON.parse(ordenAnterior.carrito || '[]');
+      const idsCarrito = [...new Set(carritoOriginal.map(item => Number(item.id)))];
+      const productosInfo = await client.query('SELECT id, es_combo FROM arreglos_florales WHERE id = ANY($1::int[])', [idsCarrito]);
+      const esComboPorId = new Map(productosInfo.rows.map(p => [p.id, p.es_combo]));
+      const comboItems = await client.query(`
+        SELECT producto_id, componente_id, cantidad FROM producto_combo_items WHERE producto_id = ANY($1::int[])
+      `, [idsCarrito.filter(pid => esComboPorId.get(pid))]);
+
+      const restaurarPorId = new Map();
+      const sumar = (pid, cant) => restaurarPorId.set(pid, (restaurarPorId.get(pid) || 0) + cant);
+      for (const item of carritoOriginal) {
+        const pid = Number(item.id);
+        const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
+        if (esComboPorId.get(pid)) {
+          comboItems.rows.filter(c => c.producto_id === pid).forEach(c => sumar(c.componente_id, cantidad * c.cantidad));
+        } else {
+          sumar(pid, cantidad);
+        }
+      }
+      for (const [pid, cantidad] of restaurarPorId) {
+        await client.query('UPDATE arreglos_florales SET stock = stock + $1 WHERE id = $2', [cantidad, pid]);
+      }
+    }
+
+    const result = await client.query('UPDATE ordenes SET estado=$1 WHERE id=$2 RETURNING *', [estado, id]);
+    await client.query('COMMIT');
     await enviarCorreoEstadoActualizado(result.rows[0], estado);
     await registrarBitacora(req, 'Cambió el estado de un pedido', `Pedido #${id} → ${estado}`);
     res.json(result.rows[0]);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('PATCH /api/admin/ordenes/:id/estado:', error);
     res.status(500).json({ error: 'Error al actualizar el pedido.' });
+  } finally {
+    client.release();
   }
 });
 
@@ -2735,7 +2982,7 @@ app.get('/api/configuracion-publica', async (req, res) => {
   try {
     const resultado = await pool.query(
       `SELECT clave, valor FROM configuracion WHERE clave = ANY($1::text[])`,
-      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer', 'imagen_hero', 'imagen_categoria_no_disponible', 'instagram_url', 'facebook_url', 'tiktok_url', 'twitter_url']]
+      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer', 'imagen_hero', 'imagen_categoria_no_disponible', 'instagram_url', 'facebook_url', 'tiktok_url', 'twitter_url', 'google_analytics_id', 'meta_pixel_id']]
     );
     const config = {};
     for (const fila of resultado.rows) config[fila.clave] = fila.valor;
@@ -2796,6 +3043,9 @@ app.get(/.*/, (req, res) => {
   if (/^\/producto\/\d+\/?$/.test(req.path)) {
     return res.sendFile(path.join(__dirname, 'public', 'index.html'));
   }
+  if (req.path.replace(/\/+$/, '') === '/favoritos') {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
   if (pareceRutaUbicacionCategoria(req.path)) {
     return res.sendFile(path.join(__dirname, 'public', 'index.html'));
   }
@@ -2806,6 +3056,9 @@ async function iniciar() {
   try {
     await inicializarDB();
     app.listen(port, () => console.log(`Reserva Floral ejecutándose en puerto ${port}`));
+    // Revisa carritos abandonados cada 30 minutos mientras el servidor esté
+    // corriendo (no hace falta un servicio aparte para esto).
+    setInterval(revisarCarritosAbandonadosRF, 30 * 60 * 1000);
   } catch (error) {
     console.error('No se pudo inicializar la aplicación:', error);
     process.exit(1);

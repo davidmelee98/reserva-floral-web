@@ -356,6 +356,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                             <div id="p3-fecha-wrap" class="hidden mt-2">
                                 <input type="date" id="p3-fecha" class="co-input max-w-xs">
                             </div>
+                            <div id="aviso-tiempo-entrega" class="hidden mt-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                <p id="aviso-tiempo-entrega-texto" class="text-xs text-amber-700"></p>
+                            </div>
                         </div>
                         <div>
                             <p class="text-sm font-semibold text-brandDark flex items-center gap-1.5 mb-1">
@@ -973,6 +977,27 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     const pasosCompletados = new Set();
     const ENVIO_FIJO = 80;
 
+    // Guarda una "foto" del carrito con el correo del cliente, para poder
+    // recordarle por correo si lo deja a medias sin pagar -- nunca bloquea
+    // ni le muestra nada al cliente si falla, es completamente silencioso.
+    let temporizadorCarritoTemporalRF = null;
+    function guardarCarritoTemporalRF() {
+        clearTimeout(temporizadorCarritoTemporalRF);
+        temporizadorCarritoTemporalRF = setTimeout(() => {
+            const email = document.getElementById('p1-email')?.value.trim();
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+            const nombre = document.getElementById('p2-nombre')?.value.trim() || null;
+            const total = carrito.reduce((acc, it) => acc + (Number(it.precio) || 0) * (Number(it.cantidad) || 1), 0) + ENVIO_FIJO;
+            fetch('/api/carrito-temporal', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, nombre, carrito, total })
+            }).catch(() => {});
+        }, 800);
+    }
+
+    document.getElementById('p1-email')?.addEventListener('blur', guardarCarritoTemporalRF);
+    document.getElementById('p2-nombre')?.addEventListener('blur', guardarCarritoTemporalRF);
+
     const estado = {
         telefono: '',
         email: '',
@@ -1502,9 +1527,16 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             fechaGuardada = datos?.fecha || '';
         } catch (e) { /* sin datos guardados */ }
         const input = document.getElementById('p3-fecha');
+        const hoyStr = new Date().toISOString().split('T')[0];
         const manana = new Date(); manana.setDate(manana.getDate() + 1);
-        input.min = new Date().toISOString().split('T')[0];
-        input.value = fechaGuardada || manana.toISOString().split('T')[0];
+        const mananaStr = manana.toISOString().split('T')[0];
+        // Después de las 2:00 pm ya no da tiempo de preparar y entregar el
+        // mismo día, así que el mínimo seleccionable pasa a ser mañana --
+        // igual que en el selector rápido de la tienda.
+        const hoyDisponible = new Date().getHours() < 14;
+        input.min = hoyDisponible ? hoyStr : mananaStr;
+        const fechaPrellenada = (fechaGuardada && fechaGuardada >= input.min) ? fechaGuardada : mananaStr;
+        input.value = fechaPrellenada;
         estado.entrega.fecha = input.value;
         actualizarTextoFecha();
     }
@@ -1515,8 +1547,46 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const d = new Date(valor + 'T00:00:00');
         document.getElementById('p3-fecha-texto').innerText = d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
             .replace(/^\w/, c => c.toUpperCase());
+        verificarTiempoEntregaRF();
     }
     document.getElementById('p3-fecha').addEventListener('change', actualizarTextoFecha);
+
+    // Cada producto puede tener su propio tiempo de entrega (ej. la mayoría
+    // es el mismo día, pero algo que llega por paquetería puede tardar hasta
+    // 3 días) -- esto NO limita qué se puede agregar al carrito ni en qué
+    // categorías aparece, solo avisa aquí si la fecha elegida es más
+    // próxima de lo que ese producto en particular tarda en llegar.
+    let catalogoTiempoEntregaCache = null;
+    async function verificarTiempoEntregaRF() {
+        const aviso = document.getElementById('aviso-tiempo-entrega');
+        const fechaSeleccionada = document.getElementById('p3-fecha').value;
+        if (!fechaSeleccionada || !carrito.length) { aviso.classList.add('hidden'); return; }
+        try {
+            if (!catalogoTiempoEntregaCache) {
+                const productos = await fetch('/api/catalogo').then(r => r.json());
+                catalogoTiempoEntregaCache = new Map(productos.map(p => [p.id, Number(p.tiempo_entrega_dias) || 0]));
+            }
+            const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+            const fechaElegida = new Date(fechaSeleccionada + 'T00:00:00');
+            const conRetraso = [];
+            carrito.forEach(item => {
+                const dias = catalogoTiempoEntregaCache.get(Number(item.id)) || 0;
+                if (dias === 0) return;
+                const minimaLlegada = new Date(hoy); minimaLlegada.setDate(hoy.getDate() + dias);
+                if (minimaLlegada > fechaElegida) conRetraso.push(item.nombre);
+            });
+            if (conRetraso.length) {
+                document.getElementById('aviso-tiempo-entrega-texto').innerText = conRetraso.length === 1
+                    ? `"${conRetraso[0]}" podría no llegar en la fecha elegida -- este producto necesita un poco más de tiempo.`
+                    : `Algunos de tus productos (${conRetraso.join(', ')}) podrían no llegar en la fecha elegida -- necesitan un poco más de tiempo.`;
+                aviso.classList.remove('hidden');
+            } else {
+                aviso.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('No se pudo verificar el tiempo de entrega', error);
+        }
+    }
 
     function elegirHorario(btn) {
         document.querySelectorAll('.co-slot').forEach(b => b.classList.remove('is-activo'));
@@ -1957,8 +2027,32 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 </a>
 
 <script>
+    // Analítica (Google Analytics / Meta Pixel) -- solo se activa si el
+    // negocio puso su ID desde el panel (Configuración). Se carga una sola
+    // vez aunque esta función se llame más de una vez en la misma página.
+    function inicializarAnaliticaRF(cfg) {
+        if (window.rfAnaliticaInicializada) return;
+        window.rfAnaliticaInicializada = true;
+        if (cfg.google_analytics_id) {
+            const s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=' + cfg.google_analytics_id;
+            document.head.appendChild(s);
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function(){ window.dataLayer.push(arguments); };
+            window.gtag('js', new Date());
+            window.gtag('config', cfg.google_analytics_id);
+        }
+        if (cfg.meta_pixel_id) {
+            (function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)})(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+            window.fbq('init', cfg.meta_pixel_id);
+            window.fbq('track', 'PageView');
+        }
+    }
+
     (function(){
         fetch("/api/configuracion-publica").then(r => r.json()).then(cfg => {
+            inicializarAnaliticaRF(cfg);
             const btn = document.getElementById("boton-whatsapp-flotante");
             const numero = (cfg.whatsapp_numero || "").replace(/\D/g, "");
             if (btn && numero) {

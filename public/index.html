@@ -219,7 +219,13 @@
 .rf-favorites-track{display:flex;gap:18px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 10px;width:100%;}
 .rf-favorites-track::-webkit-scrollbar{display:none;}
 .rf-favorite-card{position:relative;flex:0 0 clamp(280px,20.5vw,395px);scroll-snap-align:start;background:#fff;border:1px solid #edf0f2;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
-.rf-favorite-card-image{aspect-ratio:1/1;overflow:hidden;background:#f7f7f7;}
+.rf-favorite-card-image{aspect-ratio:1/1;overflow:hidden;background:#f7f7f7;position:relative;}
+.rf-favorito-btn{position:absolute;top:8px;right:8px;z-index:2;width:30px;height:30px;border-radius:999px;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);transition:transform .12s ease;}
+.rf-favorito-btn:hover{transform:scale(1.1);}
+.rf-favorito-btn svg{width:16px;height:16px;stroke:#9a9a9a;fill:none;transition:fill .15s ease, stroke .15s ease;}
+.rf-favorito-btn.is-activo svg{fill:#c2185b;stroke:#c2185b;}
+.rf-favorito-btn.rf-favorito-btn-inline{position:static;width:40px;height:40px;background:#fff;border:1px solid #e5e5e5;box-shadow:none;}
+.rf-favorito-btn.rf-favorito-btn-inline:hover{border-color:#c2185b;}
 .rf-favorite-card-image img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease;}
 .rf-favorite-card:hover .rf-favorite-card-image img{transform:scale(1.045);}
 .rf-favorite-card-body{padding:16px;min-height:84px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;}
@@ -553,6 +559,17 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     #rf-barra-envio-compacta{ scroll-margin-top: 132px; }
 }
 </style>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FloristShop",
+        "name": "Reserva Floral",
+        "url": "https://www.reservafloral.com",
+        "image": "https://www.reservafloral.com/logo-reserva-floral.png",
+        "priceRange": "$$"
+    }
+    </script>
+<!--SEO-JSONLD-->
 </head>
 <body class="bg-white font-sans text-brandDark antialiased">
 
@@ -597,6 +614,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                         </button>
                         <div id="menu-cuenta" class="hidden absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-2 text-brandDark z-50"></div>
                     </div>
+                    <button type="button" onclick="mostrarVistaFavoritosRF()" class="relative p-1 hover:text-gray-200 transition" aria-label="Mis favoritos">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                        <span id="rf-contador-favoritos" class="hidden absolute -top-1 -right-1 h-4 w-4 rounded-full bg-white text-brandFuchsia text-[10px] font-bold items-center justify-center flex">0</span>
+                    </button>
                     <button type="button" id="btn-carrito-header" class="relative p-1 hover:text-gray-200 transition" aria-label="Abrir carrito">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         <span id="contador-carrito" class="absolute -top-1 -right-1 block h-4 w-4 rounded-full bg-white text-brandFuchsia text-[10px] font-bold flex items-center justify-center">0</span>
@@ -691,8 +712,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </button>
             <h3 class="text-lg font-semibold text-brandDark text-center mb-5">¿Cuándo lo entregamos?</h3>
             <div class="space-y-1 mb-5">
-                <label class="flex items-center justify-between px-3 py-3 border-b border-gray-100 cursor-pointer">
-                    <span class="text-sm text-brandDark">Hoy</span>
+                <label id="rf-solo-fecha-opcion-hoy" class="flex items-center justify-between px-3 py-3 border-b border-gray-100 cursor-pointer">
+                    <span class="text-sm text-brandDark">
+                        Hoy
+                        <span id="rf-solo-fecha-hoy-nota" class="hidden block text-[11px] text-gray-400 font-normal">Ya no disponible después de las 2:00 pm</span>
+                    </span>
                     <input type="radio" name="rf-solo-fecha-tipo" value="hoy" class="accent-brandFuchsia w-4 h-4">
                 </label>
                 <label class="flex items-center justify-between px-3 py-3 border-b border-gray-100 cursor-pointer">
@@ -957,11 +981,74 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     </div>
 
     <script>
+    // Analítica (Google Analytics / Meta Pixel) -- solo se activa si el
+    // negocio puso su ID desde el panel (Configuración). Se carga una sola
+    // vez aunque esta función se llame más de una vez en la misma página.
+    function inicializarAnaliticaRF(cfg) {
+        if (window.rfAnaliticaInicializada) return;
+        window.rfAnaliticaInicializada = true;
+        if (cfg.google_analytics_id) {
+            const s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=' + cfg.google_analytics_id;
+            document.head.appendChild(s);
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function(){ window.dataLayer.push(arguments); };
+            window.gtag('js', new Date());
+            window.gtag('config', cfg.google_analytics_id);
+        }
+        if (cfg.meta_pixel_id) {
+            (function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)})(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+            window.fbq('init', cfg.meta_pixel_id);
+            window.fbq('track', 'PageView');
+        }
+    }
+
         let carrito = JSON.parse(localStorage.getItem('carritoRF')) || [];
         let todosLosArreglos = []; // Memoria global para el catálogo
 
         function escaparHtml(valor) {
             return String(valor ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+        }
+
+        // =====================================================================
+        // FAVORITOS -- lista de deseos guardada en este navegador (no requiere
+        // cuenta). Un corazón en cada tarjeta y en la ficha del producto.
+        // =====================================================================
+        const RF_FAVORITOS_KEY = 'rf_favoritos';
+        function obtenerFavoritosRF() {
+            try { return JSON.parse(localStorage.getItem(RF_FAVORITOS_KEY) || '[]'); } catch (_) { return []; }
+        }
+        function esFavoritoRF(id) {
+            return obtenerFavoritosRF().includes(Number(id));
+        }
+        function botonFavoritoHtmlRF(id) {
+            const activo = esFavoritoRF(id);
+            return `<button type="button" onclick="event.stopPropagation(); toggleFavoritoRF(${id})" data-favorito-boton="${id}" class="rf-favorito-btn${activo ? ' is-activo' : ''}" title="${activo ? 'Quitar de favoritos' : 'Agregar a favoritos'}" aria-label="Favorito">
+                <svg viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+            </button>`;
+        }
+        function toggleFavoritoRF(id) {
+            id = Number(id);
+            let favoritos = obtenerFavoritosRF();
+            const yaEstaba = favoritos.includes(id);
+            favoritos = yaEstaba ? favoritos.filter(f => f !== id) : [...favoritos, id];
+            localStorage.setItem(RF_FAVORITOS_KEY, JSON.stringify(favoritos));
+            // Actualiza todos los corazones de este producto que estén en
+            // pantalla en este momento (puede repetirse en varias secciones).
+            document.querySelectorAll(`[data-favorito-boton="${id}"]`).forEach(boton => {
+                boton.classList.toggle('is-activo', !yaEstaba);
+                boton.title = !yaEstaba ? 'Quitar de favoritos' : 'Agregar a favoritos';
+            });
+            actualizarContadorFavoritosRF();
+        }
+        window.toggleFavoritoRF = toggleFavoritoRF;
+        function actualizarContadorFavoritosRF() {
+            const contador = document.getElementById('rf-contador-favoritos');
+            if (!contador) return;
+            const total = obtenerFavoritosRF().length;
+            contador.innerText = total;
+            contador.classList.toggle('hidden', total === 0);
         }
 
         function obtenerImagenes(producto) {
@@ -1266,7 +1353,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     contenedor.innerHTML += `
                         <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
                             <div class="rf-favorite-card-image">
-                                <img src="${urlImagen}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                                <img src="${urlImagen}" alt="${arreglo.nombre}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                            ${botonFavoritoHtmlRF(arreglo.id)}
                             </div>
                             <div class="rf-favorite-card-body">
                                 <h3 class="font-medium text-sm text-gray-800 leading-tight">${arreglo.nombre}</h3>
@@ -1389,7 +1477,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     contenedor.innerHTML += `
                         <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
                             <div class="rf-favorite-card-image">
-                                <img src="${urlImagen}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                                <img src="${urlImagen}" alt="${arreglo.nombre}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                            ${botonFavoritoHtmlRF(arreglo.id)}
                             </div>
                             <div class="rf-favorite-card-body">
                                 <h3 class="font-medium text-sm text-gray-800 leading-tight">${arreglo.nombre}</h3>
@@ -1428,7 +1517,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 grid.innerHTML += `
                     <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
                         <div class="rf-favorite-card-image">
-                            <img src="${urlImagen}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                            <img src="${urlImagen}" alt="${arreglo.nombre}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                            ${botonFavoritoHtmlRF(arreglo.id)}
                         </div>
                         <div class="rf-favorite-card-body">
                             <h3 class="font-medium text-sm text-gray-800 leading-tight">${arreglo.nombre}</h3>
@@ -1469,6 +1559,38 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             scrollARaizCategoriaRF();
         }
         window.irARegalosDeLaCiudadRF = irARegalosDeLaCiudadRF;
+
+        // Muestra la cuadrícula de categoría, pero con solo los productos que
+        // el cliente guardó como favoritos en este navegador.
+        async function mostrarVistaFavoritosRF() {
+            const idsFavoritos = obtenerFavoritosRF();
+            document.getElementById('rf-categoria-no-disponible')?.classList.add('hidden');
+            document.getElementById('rf-categoria-encabezado')?.classList.remove('hidden');
+            document.getElementById('rf-inicio-hero')?.classList.add('hidden');
+            document.getElementById('rf-inicio-trending')?.classList.add('hidden');
+            document.getElementById('rf-inicio-carruseles')?.classList.add('hidden');
+            document.getElementById('rf-vista-categoria')?.classList.remove('hidden');
+            document.getElementById('rf-barra-envio-compacta')?.classList.add('hidden');
+            document.getElementById('rf-categoria-titulo').innerText = 'Mis favoritos';
+            renderBreadcrumbCategoriaRF([{ texto: 'Mis favoritos' }]);
+            window.history.replaceState({}, '', '/favoritos');
+
+            if (idsFavoritos.length === 0) {
+                renderGridCategoriaRF([]);
+                document.getElementById('rf-grid-categoria').innerHTML = '<p class="text-gray-500 py-10 col-span-full">Todavía no has guardado ningún favorito -- toca el corazón en cualquier producto para guardarlo aquí.</p>';
+                document.getElementById('rf-categoria-contador').innerText = '';
+            } else {
+                try {
+                    const todos = await (await fetch('/api/catalogo')).json();
+                    const productosFavoritos = todos.filter(p => idsFavoritos.includes(p.id));
+                    renderGridCategoriaRF(productosFavoritos);
+                } catch (error) {
+                    console.error('No se pudieron cargar los favoritos', error);
+                }
+            }
+            scrollARaizCategoriaRF();
+        }
+        window.mostrarVistaFavoritosRF = mostrarVistaFavoritosRF;
 
         function abrirProducto(dataStr, urlImagen) {
             const productoActual = JSON.parse(decodeURIComponent(dataStr));
@@ -1609,7 +1731,32 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const urlImagen = imagenes[0] || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
             document.getElementById('modal-id').innerText = '00' + productoActual.id;
             document.getElementById('modal-nombre').innerText = productoActual.nombre;
+            const idProd = productoActual.id;
+            const activoModal = esFavoritoRF(idProd);
+            document.getElementById('modal-favorito-wrap').innerHTML = `
+                <button type="button" onclick="toggleFavoritoRF(${idProd})" data-favorito-boton="${idProd}" class="rf-favorito-btn rf-favorito-btn-inline${activoModal ? ' is-activo' : ''}" title="${activoModal ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
+                    <svg viewBox="0 0 24 24" stroke-width="2" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                </button>`;
             const botonAgregarRF = document.getElementById('btn-modal-agregar');
+
+            // Si es un combo, su disponibilidad real depende de que TODOS sus
+            // componentes sigan disponibles y con stock -- si a alguno le
+            // falta, se avisa y no se deja agregar al carrito.
+            const componentesFaltantes = (productoActual.es_combo ? (productoActual.combo_items || []) : [])
+                .filter(c => c.disponible === false || Number(c.stock) <= 0);
+            document.getElementById('aviso-combo-incompleto')?.remove();
+            if (componentesFaltantes.length > 0) {
+                const aviso = document.createElement('div');
+                aviso.id = 'aviso-combo-incompleto';
+                aviso.className = 'bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-lg px-3 py-2 mb-3';
+                aviso.innerText = `Este combo no se puede agregar por ahora: "${componentesFaltantes.map(c => c.nombre).join('", "')}" ya no está disponible.`;
+                botonAgregarRF.parentElement.insertBefore(aviso, botonAgregarRF);
+                botonAgregarRF.disabled = true;
+                botonAgregarRF.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                botonAgregarRF.disabled = false;
+                botonAgregarRF.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
 
             // Si el producto tiene tamaños/cantidades, el precio mostrado (y el
             // que se cobra) depende de cuál elija el cliente -- empieza
@@ -1617,7 +1764,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             function actualizarPrecioMostradoRF() {
                 const precioEfectivo = productoTamanoSeleccionado ? productoTamanoSeleccionado.precio : productoActual.precio;
                 document.getElementById('modal-precio').innerText = '$' + formatearPrecio(precioEfectivo);
-                botonAgregarRF.innerHTML = `Agregar al carrito <span class="ml-1 font-normal">$${formatearPrecio(precioEfectivo)} <small class="text-[0.7em]">mxn</small></span>`;
+                if (componentesFaltantes.length === 0) botonAgregarRF.innerHTML = `Agregar al carrito <span class="ml-1 font-normal">$${formatearPrecio(precioEfectivo)} <small class="text-[0.7em]">mxn</small></span>`;
             }
             prepararTamanos(productoActual, actualizarPrecioMostradoRF);
             actualizarPrecioMostradoRF();
@@ -1767,7 +1914,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     const safeName = escaparHtml(comp.nombre || 'Producto');
                     contenedorComp.innerHTML += `
                         <button type="button" data-complemento-index="${index}" class="rf-complemento-card border border-gray-200 rounded-xl p-3 text-center cursor-pointer transition-colors flex flex-col justify-between group/comp focus:outline-none focus:ring-0">
-                            <img src="${urlImagenComp}" class="w-12 h-12 mx-auto object-cover rounded mb-2 shadow-sm group-hover/comp:scale-105 transition-transform" alt="${safeName}">
+                            <img src="${urlImagenComp}" class="w-12 h-12 mx-auto object-cover rounded mb-2 shadow-sm group-hover/comp:scale-105 transition-transform" alt="${safeName}" loading="lazy">
                             <span class="rf-complemento-nombre text-[11px] text-gray-700">${safeName}</span>
                             <span class="font-bold text-xs mt-1 text-brandDark">$${formatearPrecio(comp.precio)}</span>
                             <span class="rf-complemento-detalle text-[10px] font-bold text-brandLightPink mt-1 hover:underline">+ Detalle</span>
@@ -2617,14 +2764,35 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
         window.confirmarSoloUbicacionRF = confirmarSoloUbicacionRF;
 
+        // Después de las 2:00 pm ya no da tiempo de preparar y entregar el
+        // mismo día, así que esa opción se deshabilita (se ve en gris) el
+        // resto del día -- vuelve a estar disponible automáticamente al
+        // día siguiente.
+        function entregaHoyDisponibleRF() {
+            return new Date().getHours() < 14;
+        }
+
         function abrirModalSoloFechaRF() {
             let guardado = null;
             try { guardado = JSON.parse(localStorage.getItem(RF_UBICACION_KEY) || 'null'); } catch (_) {}
+            const hoyDisponible = entregaHoyDisponibleRF();
             const radios = document.getElementsByName('rf-solo-fecha-tipo');
-            radios.forEach(r => { r.checked = (r.value === (guardado?.tipoFecha || 'manana')); });
+            const tipoGuardado = guardado?.tipoFecha || 'manana';
+            // Si lo que tenía guardado era "hoy" pero ya se pasó la hora, se
+            // recae en "mañana" en vez de dejarlo en una opción ya no válida.
+            const tipoInicial = (tipoGuardado === 'hoy' && !hoyDisponible) ? 'manana' : tipoGuardado;
+            radios.forEach(r => { r.checked = (r.value === tipoInicial); });
+
+            const radioHoy = [...radios].find(r => r.value === 'hoy');
+            radioHoy.disabled = !hoyDisponible;
+            document.getElementById('rf-solo-fecha-opcion-hoy').classList.toggle('opacity-40', !hoyDisponible);
+            document.getElementById('rf-solo-fecha-opcion-hoy').classList.toggle('cursor-not-allowed', !hoyDisponible);
+            document.getElementById('rf-solo-fecha-opcion-hoy').classList.toggle('cursor-pointer', hoyDisponible);
+            document.getElementById('rf-solo-fecha-hoy-nota').classList.toggle('hidden', hoyDisponible);
+
             const wrapOtro = document.getElementById('rf-solo-fecha-otro-wrap');
-            wrapOtro.classList.toggle('hidden', guardado?.tipoFecha !== 'otro');
-            document.getElementById('rf-solo-fecha-otro-input').value = guardado?.tipoFecha === 'otro' ? (guardado.fecha || '') : '';
+            wrapOtro.classList.toggle('hidden', tipoInicial !== 'otro');
+            document.getElementById('rf-solo-fecha-otro-input').value = tipoInicial === 'otro' ? (guardado.fecha || '') : '';
             radios.forEach(r => r.onchange = () => wrapOtro.classList.toggle('hidden', r.value !== 'otro' || !r.checked));
 
             const modal = document.getElementById('rf-modal-solo-fecha');
@@ -2640,8 +2808,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         function confirmarSoloFechaRF() {
             const seleccionado = [...document.getElementsByName('rf-solo-fecha-tipo')].find(r => r.checked);
-            const tipoFecha = seleccionado ? seleccionado.value : '';
+            let tipoFecha = seleccionado ? seleccionado.value : '';
             if (!tipoFecha) return;
+            // Por si el modal se quedó abierto desde antes de las 2:00 pm y se
+            // confirma ya después: recae en "mañana" en vez de dejar pasar una
+            // entrega para hoy que ya no da tiempo de preparar.
+            if (tipoFecha === 'hoy' && !entregaHoyDisponibleRF()) tipoFecha = 'manana';
             let fecha = '';
             if (tipoFecha === 'hoy') fecha = new Date().toISOString().slice(0, 10);
             else if (tipoFecha === 'manana') { const d = new Date(); d.setDate(d.getDate() + 1); fecha = d.toISOString().slice(0, 10); }
@@ -2917,6 +3089,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const tramos = ruta ? ruta.split('/') : [];
             if (tramos.length === 0) return false; // es la portada normal
 
+            if (tramos[0] === 'favoritos') { await mostrarVistaFavoritosRF(); return true; }
+
             // Aseguramos tener las zonas reales para reconocer estado/ciudad.
             if (zonasDisponiblesRF.length === 0) await cargarZonasDisponiblesRF();
             let taxonomia = {};
@@ -3008,6 +3182,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
 
         (async function iniciarRutaDeEntradaRF() {
+            actualizarContadorFavoritosRF();
             const eraRutaBonita = await resolverRutaCategoriaRF();
             if (!eraRutaBonita) aplicarCategoriaDesdeUrl();
         })();
@@ -3074,7 +3249,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             <div class="w-full md:w-1/2 p-6 md:p-10 flex flex-col overflow-y-auto rf-product-info-mobile">
                 <div class="mb-6">
                     <p class="text-xs text-gray-500 mb-1">SKU: <span id="modal-id"></span></p>
-                    <h2 id="modal-nombre" class="text-2xl font-semibold text-brandDark mb-2"></h2>
+                    <div class="flex items-start justify-between gap-3">
+                        <h2 id="modal-nombre" class="text-2xl font-semibold text-brandDark mb-2"></h2>
+                        <div id="modal-favorito-wrap" class="shrink-0 mt-1"></div>
+                    </div>
                     <div class="flex items-end gap-2 mb-2">
                         <span id="modal-precio" class="text-2xl font-bold text-gray-900"></span>
                         <span class="text-sm text-gray-500 line-through hidden" id="modal-precio-old"></span>
@@ -3528,6 +3706,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 <script>
     (function(){
         fetch('/api/configuracion-publica').then(r => r.json()).then(cfg => {
+            inicializarAnaliticaRF(cfg);
             const btn = document.getElementById('boton-whatsapp-flotante');
             const numero = (cfg.whatsapp_numero || '').replace(/\D/g, '');
             if (btn && numero) {

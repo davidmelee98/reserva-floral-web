@@ -281,10 +281,34 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     </footer>
 
     <script>
+    // Analítica (Google Analytics / Meta Pixel) -- solo se activa si el
+    // negocio puso su ID desde el panel (Configuración). Se carga una sola
+    // vez aunque esta función se llame más de una vez en la misma página.
+    function inicializarAnaliticaRF(cfg) {
+        if (window.rfAnaliticaInicializada) return;
+        window.rfAnaliticaInicializada = true;
+        if (cfg.google_analytics_id) {
+            const s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=' + cfg.google_analytics_id;
+            document.head.appendChild(s);
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function(){ window.dataLayer.push(arguments); };
+            window.gtag('js', new Date());
+            window.gtag('config', cfg.google_analytics_id);
+        }
+        if (cfg.meta_pixel_id) {
+            (function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)})(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+            window.fbq('init', cfg.meta_pixel_id);
+            window.fbq('track', 'PageView');
+        }
+    }
+
         (function () {
             const el = document.getElementById('pie-anio');
             if (el) el.textContent = new Date().getFullYear();
             fetch('/api/configuracion-publica').then(r => r.json()).then(cfg => {
+            inicializarAnaliticaRF(cfg);
                 const cont = document.getElementById('pie-redes-sociales');
                 if (!cont) return;
                 const numero = (cfg.whatsapp_numero || '').replace(/\D/g, '');
