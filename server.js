@@ -224,6 +224,25 @@ for (const [rutaLimpia, archivo] of Object.entries(PAGINAS_LIMPIAS)) {
   });
 }
 
+// Sitemap dinámico: antes solo tenía la portada -- ahora se genera solo,
+// listando también cada producto activo, para que Google los pueda
+// encontrar e indexar (aprovechando los datos estructurados que ya trae
+// cada página de producto).
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const productos = await pool.query('SELECT id FROM arreglos_florales WHERE COALESCE(disponible, true) = true ORDER BY id');
+    const urls = [
+      `<url><loc>${URL_SITIO}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      ...productos.rows.map(p => `<url><loc>${URL_SITIO}/producto/${p.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`)
+    ];
+    res.set('Content-Type', 'application/xml');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`);
+  } catch (error) {
+    console.error('GET /sitemap.xml:', error);
+    res.status(500).send('Error generando el sitemap.');
+  }
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Las páginas de producto usan el mismo cascarón de la tienda; el frontend carga el ID desde la URL.
@@ -1852,6 +1871,52 @@ app.post('/api/cupones/validar', limitadorPedidos, async (req, res) => {
   } catch (error) {
     console.error('POST /api/cupones/validar:', error);
     res.status(500).json({ error: 'No se pudo validar el cupón.' });
+  }
+});
+
+// Revisa si lo que hay en el carrito sigue disponible y con stock suficiente
+// -- antes esto solo se revisaba hasta el paso final de pagar, así que el
+// cliente podía llenar todo el checkout y enterarse hasta el último clic.
+app.post('/api/carrito/validar', limitadorGeneral, async (req, res) => {
+  const carrito = Array.isArray(req.body?.carrito) ? req.body.carrito : [];
+  if (carrito.length === 0) return res.json({ items: [] });
+  try {
+    const ids = [...new Set(carrito.map(item => Number(item.id)).filter(Number.isInteger))];
+    const productos = await pool.query('SELECT id, nombre, disponible, stock, es_combo FROM arreglos_florales WHERE id = ANY($1::int[])', [ids]);
+    const porId = new Map(productos.rows.map(p => [p.id, p]));
+
+    const idsCombo = productos.rows.filter(p => p.es_combo).map(p => p.id);
+    const comboItems = idsCombo.length ? (await pool.query(`
+      SELECT pci.producto_id, pci.cantidad, a.id AS componente_id, a.nombre AS componente_nombre, a.disponible AS componente_disponible, a.stock AS componente_stock
+      FROM producto_combo_items pci JOIN arreglos_florales a ON a.id = pci.componente_id
+      WHERE pci.producto_id = ANY($1::int[])
+    `, [idsCombo])).rows : [];
+
+    const items = carrito.map(item => {
+      const id = Number(item.id);
+      const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
+      const producto = porId.get(id);
+      if (!producto || producto.disponible === false) {
+        return { id, disponible: false, motivo: 'Ya no está disponible.' };
+      }
+      if (producto.es_combo) {
+        const piezas = comboItems.filter(c => c.producto_id === id);
+        const faltante = piezas.find(c => c.componente_disponible === false || Number(c.componente_stock) < cantidad * c.cantidad);
+        if (faltante) {
+          return { id, disponible: false, motivo: `"${faltante.componente_nombre}" (parte de este combo) ya no está disponible o no alcanza.` };
+        }
+        return { id, disponible: true };
+      }
+      if (Number(producto.stock) < cantidad) {
+        return { id, disponible: false, motivo: `Ya no hay suficiente existencia (quedan ${producto.stock}).`, stockActual: Number(producto.stock) };
+      }
+      return { id, disponible: true };
+    });
+
+    res.json({ items });
+  } catch (error) {
+    console.error('POST /api/carrito/validar:', error);
+    res.status(500).json({ error: 'No se pudo validar el carrito.' });
   }
 });
 

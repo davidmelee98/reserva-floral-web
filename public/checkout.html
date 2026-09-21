@@ -870,7 +870,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     window.cerrarModalCuenta = cerrarModalCuenta;
 
     function mostrarProximamenteCuenta() {
-        alert('Esto estará disponible próximamente.');
+        mostrarToast('Esto estará disponible próximamente.', 'error');
     }
 
     function continuarConGoogle() {
@@ -883,7 +883,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     (function avisarSiFalloLoginGoogle() {
         const parametros = new URLSearchParams(window.location.search);
         if (parametros.get('login') !== 'error') return;
-        alert('No se pudo iniciar sesión con Google. Intenta de nuevo.');
+        mostrarToast('No se pudo iniciar sesión con Google. Intenta de nuevo.', 'error');
         parametros.delete('login');
         const resto = parametros.toString();
         window.history.replaceState({}, '', window.location.pathname + (resto ? '?' + resto : ''));
@@ -972,6 +972,30 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     if (!Array.isArray(carrito) || carrito.length === 0) {
         window.location.href = '/carrito';
     }
+
+    // Revisa que todo lo que trae el carrito siga disponible ANTES de que el
+    // cliente llene todo el formulario -- antes esto solo se sabía hasta el
+    // último paso, al intentar pagar.
+    (async function validarCarritoAlEntrarRF() {
+        try {
+            const resultado = await fetch('/api/carrito/validar', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ carrito: carrito.map(it => ({ id: it.id, cantidad: it.cantidad })) })
+            }).then(r => r.json());
+            const conProblema = (resultado.items || []).filter(it => it.disponible === false);
+            if (conProblema.length === 0) return;
+            const nombresConProblema = conProblema
+                .map(p => carrito.find(it => it.id === p.id)?.nombre)
+                .filter(Boolean);
+            const mensaje = nombresConProblema.length === 1
+                ? `"${nombresConProblema[0]}" ya no está disponible. Vuelve al carrito para quitarlo.`
+                : `Algunos productos de tu carrito ya no están disponibles (${nombresConProblema.join(', ')}). Vuelve al carrito para ajustarlo.`;
+            sessionStorage.setItem('rf_aviso_carrito_invalido', mensaje);
+            window.location.href = '/carrito';
+        } catch (error) {
+            console.error('No se pudo validar el carrito al entrar al checkout', error);
+        }
+    })();
 
     let pasoAbierto = 1;
     const pasosCompletados = new Set();
@@ -1114,7 +1138,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const sku = String(item.id ?? '').padStart(3, '0');
             return `
                 <div class="flex items-center gap-3 py-3">
-                    <img src="${escaparHtml(item.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
+                    <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || \'Producto\')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
                     <div class="flex-1 min-w-0">
                         <h4 class="font-medium text-sm text-brandDark truncate">${escaparHtml(item.nombre)}</h4>
                         <p class="text-xs text-gray-500">Cantidad: ${cantidad}</p>

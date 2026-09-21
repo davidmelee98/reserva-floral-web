@@ -444,7 +444,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         'Entregado': 'bg-green-50 text-green-600', 'Cancelado': 'bg-gray-100 text-gray-500'
     };
 
-    function mostrarProximamenteCuentaPagina() { alert('Esto estará disponible próximamente.'); }
+    function mostrarProximamenteCuentaPagina() { mostrarNotificacionRF('Esto estará disponible próximamente.', 'error'); }
     window.mostrarProximamenteCuentaPagina = mostrarProximamenteCuentaPagina;
 
     function alternarBusquedaMovil() {
@@ -567,7 +567,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             renderWidgetCuenta();
             renderDatosCuenta();
         } catch (error) {
-            alert(error.message);
+            mostrarNotificacionRF(error.message, 'error');
         }
     }
     window.guardarCampoCuenta = guardarCampoCuenta;
@@ -585,7 +585,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (!r.ok) throw new Error(datos.error || 'No se pudo actualizar.');
             document.getElementById('form-cambiar-password').reset();
             document.getElementById('panel-password').classList.add('hidden');
-            alert('Contraseña actualizada.');
+            mostrarNotificacionRF('Contraseña actualizada.');
         } catch (error) {
             errorEl.innerText = error.message;
             errorEl.classList.remove('hidden');
@@ -598,7 +598,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             await fetch('/api/cuenta', { method: 'DELETE' });
             window.location.href = '/';
         } catch (error) {
-            alert('No se pudo eliminar la cuenta.');
+            mostrarNotificacionRF('No se pudo eliminar la cuenta.', 'error');
         }
     }
     window.eliminarCuenta = eliminarCuenta;
@@ -746,7 +746,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (o) o.estado = 'Cancelado';
             renderMisPedidos();
         } catch (error) {
-            alert(error.message);
+            mostrarNotificacionRF(error.message, 'error');
         }
     }
     window.cancelarMiPedido = cancelarMiPedido;
@@ -865,7 +865,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             await fetch(`/api/cuenta/direcciones/${id}`, { method: 'DELETE' });
             cargarDirecciones();
         } catch (error) {
-            alert('No se pudo eliminar la dirección.');
+            mostrarNotificacionRF('No se pudo eliminar la dirección.', 'error');
         }
     }
     window.eliminarDireccion = eliminarDireccion;
@@ -1009,7 +1009,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             document.getElementById('form-recordatorio-wrap').classList.add('hidden');
             cargarRecordatorios();
         } catch (error) {
-            alert(error.message || 'No se pudo guardar el recordatorio.');
+            mostrarNotificacionRF(error.message || 'No se pudo guardar el recordatorio.', 'error');
         }
     });
     async function eliminarRecordatorio(id) {
@@ -1018,7 +1018,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             await fetch(`/api/cuenta/recordatorios/${id}`, { method: 'DELETE' });
             cargarRecordatorios();
         } catch (error) {
-            alert('No se pudo eliminar.');
+            mostrarNotificacionRF('No se pudo eliminar.', 'error');
         }
     }
     window.eliminarRecordatorio = eliminarRecordatorio;
@@ -1087,7 +1087,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     }
 
     function copiarCupon(codigo) {
-        navigator.clipboard?.writeText(codigo).then(() => alert('Código copiado.')).catch(() => {});
+        navigator.clipboard?.writeText(codigo).then(() => mostrarNotificacionRF('Código copiado.')).catch(() => {});
     }
     window.copiarCupon = copiarCupon;
 
@@ -1098,10 +1098,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const r = await fetch('/api/cuenta/puntos/canjear', { method: 'POST' });
             const datos = await r.json();
             if (!r.ok) throw new Error(datos.error || 'No se pudo canjear.');
-            alert(`¡Listo! Tu cupón ${datos.codigo} por $${datos.valor} ya está disponible.`);
+            mostrarNotificacionRF(`¡Listo! Tu cupón ${datos.codigo} por $${datos.valor} ya está disponible.`);
             cargarPuntos();
         } catch (error) {
-            alert(error.message);
+            mostrarNotificacionRF(error.message, 'error');
         } finally {
             btn.disabled = false; btn.innerText = 'Canjear por un cupón de descuento';
         }
@@ -1168,6 +1168,27 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // Analítica (Google Analytics / Meta Pixel) -- solo se activa si el
     // negocio puso su ID desde el panel (Configuración). Se carga una sola
     // vez aunque esta función se llame más de una vez en la misma página.
+    // Notificacion chica y discreta (en vez del cuadro feo de alert() del
+    // navegador) -- se crea su propio contenedor solo, no necesita nada en
+    // el HTML.
+    function mostrarNotificacionRF(mensaje, tipo) {
+        tipo = tipo || 'exito';
+        let cont = document.getElementById('rf-toast-container');
+        if (!cont) {
+            cont = document.createElement('div');
+            cont.id = 'rf-toast-container';
+            cont.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;width:calc(100% - 32px);max-width:380px;pointer-events:none;';
+            document.body.appendChild(cont);
+        }
+        const color = tipo === 'error' ? '#dc2626' : '#22c55e';
+        const el = document.createElement('div');
+        el.style.cssText = 'background:#fff;border-left:4px solid ' + color + ';border-radius:10px;padding:12px 16px;font-size:13px;color:#333;box-shadow:0 8px 20px rgba(0,0,0,.15);width:100%;opacity:0;transform:translateY(8px);transition:opacity .2s ease, transform .2s ease;pointer-events:auto;';
+        el.innerText = mensaje;
+        cont.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+        setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(8px)'; setTimeout(() => el.remove(), 200); }, 3800);
+    }
+
     function inicializarAnaliticaRF(cfg) {
         if (window.rfAnaliticaInicializada) return;
         window.rfAnaliticaInicializada = true;

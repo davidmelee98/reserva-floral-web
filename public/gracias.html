@@ -351,7 +351,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     window.cerrarModalCuenta = cerrarModalCuenta;
 
     function mostrarProximamenteCuenta() {
-        alert('Esto estará disponible próximamente.');
+        mostrarNotificacionRF('Esto estará disponible próximamente.', 'error');
     }
 
     function continuarConGoogle() {
@@ -364,7 +364,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     (function avisarSiFalloLoginGoogle() {
         const parametros = new URLSearchParams(window.location.search);
         if (parametros.get('login') !== 'error') return;
-        alert('No se pudo iniciar sesión con Google. Intenta de nuevo.');
+        mostrarNotificacionRF('No se pudo iniciar sesión con Google. Intenta de nuevo.', 'error');
         parametros.delete('login');
         const resto = parametros.toString();
         window.history.replaceState({}, '', window.location.pathname + (resto ? '?' + resto : ''));
@@ -467,7 +467,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 const cantidad = Math.max(1, Number(item.cantidad) || 1);
                 return `
                     <div class="flex items-center gap-3 py-3">
-                        <img src="${escaparHtml(item.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
+                        <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || \'Producto\')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
                         <div class="flex-1 min-w-0">
                             <p class="font-medium text-sm text-brandDark truncate">${escaparHtml(item.nombre)}</p>
                             <p class="text-xs text-gray-500">Cantidad: ${cantidad}</p>
@@ -542,6 +542,27 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // Analítica (Google Analytics / Meta Pixel) -- solo se activa si el
     // negocio puso su ID desde el panel (Configuración). Se carga una sola
     // vez aunque esta función se llame más de una vez en la misma página.
+    // Notificacion chica y discreta (en vez del cuadro feo de alert() del
+    // navegador) -- se crea su propio contenedor solo, no necesita nada en
+    // el HTML.
+    function mostrarNotificacionRF(mensaje, tipo) {
+        tipo = tipo || 'exito';
+        let cont = document.getElementById('rf-toast-container');
+        if (!cont) {
+            cont = document.createElement('div');
+            cont.id = 'rf-toast-container';
+            cont.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;width:calc(100% - 32px);max-width:380px;pointer-events:none;';
+            document.body.appendChild(cont);
+        }
+        const color = tipo === 'error' ? '#dc2626' : '#22c55e';
+        const el = document.createElement('div');
+        el.style.cssText = 'background:#fff;border-left:4px solid ' + color + ';border-radius:10px;padding:12px 16px;font-size:13px;color:#333;box-shadow:0 8px 20px rgba(0,0,0,.15);width:100%;opacity:0;transform:translateY(8px);transition:opacity .2s ease, transform .2s ease;pointer-events:auto;';
+        el.innerText = mensaje;
+        cont.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+        setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(8px)'; setTimeout(() => el.remove(), 200); }, 3800);
+    }
+
     function inicializarAnaliticaRF(cfg) {
         if (window.rfAnaliticaInicializada) return;
         window.rfAnaliticaInicializada = true;

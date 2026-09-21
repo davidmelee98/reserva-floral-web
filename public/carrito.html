@@ -1648,6 +1648,25 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }, 320);
         }
 
+        // Guarda el resultado de la última validación contra el servidor
+        // (id -> {disponible, motivo}) para poder marcar en la vista qué
+        // artículos ya no se pueden comprar tal cual están en el carrito.
+        let validacionCarritoRF = {};
+        async function validarDisponibilidadCarritoRF() {
+            if (carrito.length === 0) { validacionCarritoRF = {}; return; }
+            try {
+                const resultado = await fetch('/api/carrito/validar', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ carrito: carrito.map(it => ({ id: it.id, cantidad: it.cantidad })) })
+                }).then(r => r.json());
+                validacionCarritoRF = {};
+                (resultado.items || []).forEach(it => { validacionCarritoRF[it.id] = it; });
+                actualizarUI();
+            } catch (error) {
+                console.error('No se pudo validar el carrito', error);
+            }
+        }
+
         function actualizarUI() {
             normalizarCarrito();
             localStorage.setItem('carritoRF', JSON.stringify(carrito));
@@ -1669,7 +1688,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     const sku = String(item.id ?? '').padStart(3, '0');
                     contenedor.innerHTML += `
                         <div class="flex items-start gap-3 py-3 border-b border-gray-100 last:border-b-0">
-                            <img src="${escaparHtml(item.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-[82px] h-[82px] object-cover rounded-md bg-gray-100 flex-shrink-0">
+                            <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || \'Producto\')}" onerror="this.style.visibility='hidden'" class="w-[82px] h-[82px] object-cover rounded-md bg-gray-100 flex-shrink-0">
                             <div class="min-w-0 flex-1 pt-0.5">
                                 <h4 class="font-medium text-[12px] leading-tight text-brandDark line-clamp-2">${escaparHtml(item.nombre)}</h4>
                                 <p class="font-semibold text-[11px] text-brandDark mt-1">$${formatearPrecio(item.precio)}<span class="text-[7px] align-top ml-0.5">MXN</span></p>
@@ -1702,9 +1721,15 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     contenedorPagina.innerHTML = carrito.map((item, index) => {
                         const cantidad = Math.max(1, Number(item.cantidad) || 1);
                         const sku = String(item.id ?? '').padStart(3, '0');
+                        const problema = validacionCarritoRF[item.id];
+                        const avisoHtml = (problema && problema.disponible === false) ? `
+                            <div class="mt-2 flex items-start gap-1.5 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
+                                <svg class="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                <p class="text-[11px] text-red-600">${escaparHtml(problema.motivo || 'Ya no está disponible.')} <button type="button" onclick="eliminarDelCarrito(${index})" class="underline font-semibold">Quitar</button></p>
+                            </div>` : '';
                         return `
                             <div class="flex items-start gap-4 py-5">
-                                <img src="${escaparHtml(item.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-[96px] h-[96px] object-cover rounded-lg bg-gray-100 flex-shrink-0">
+                                <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || \'Producto\')}" onerror="this.style.visibility='hidden'" class="w-[96px] h-[96px] object-cover rounded-lg bg-gray-100 flex-shrink-0">
                                 <div class="min-w-0 flex-1">
                                     <h4 class="font-medium text-sm text-brandDark leading-tight">${escaparHtml(item.nombre)}</h4>
                                     <p class="text-xs text-gray-500 mt-1.5">Cantidad: ${cantidad}</p>
@@ -1715,6 +1740,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                                     </div>
                                     <p class="text-xs text-gray-500 mt-2">SKU: ${escaparHtml(sku)}</p>
                                     ${item.variante ? `<p class="text-xs text-gray-500 mt-0.5">${escaparHtml(formatearVarianteCarrito(item.variante))}</p>` : ''}
+                                    ${avisoHtml}
                                 </div>
                                 <div class="flex flex-col items-end justify-between self-stretch shrink-0">
                                     <p class="font-semibold text-sm text-brandDark">$${formatearPrecio(item.precio)}<span class="text-[9px] align-top ml-0.5 font-medium">MXN</span></p>
@@ -1776,7 +1802,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
 
         async function procesarPago() {
-            if (carrito.length === 0) return alert('Por favor, agrega un arreglo antes de continuar.');
+            if (carrito.length === 0) { mostrarNotificacionRF('Agrega un arreglo antes de continuar.', 'error'); return; }
             if (sesionCliente) { window.location.href = '/checkout'; return; }
             accionTrasCuenta = () => { window.location.href = '/checkout'; };
             abrirModalCuenta('login');
@@ -2257,6 +2283,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
             normalizarCarrito();
             actualizarUI();
+            validarDisponibilidadCarritoRF();
+            const avisoInvalido = sessionStorage.getItem('rf_aviso_carrito_invalido');
+            if (avisoInvalido) {
+                sessionStorage.removeItem('rf_aviso_carrito_invalido');
+                mostrarNotificacionRF(avisoInvalido, 'error');
+            }
             document.querySelectorAll('.rf-select-trigger').forEach(trigger => {
                 trigger.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); abrirDropdownRF(trigger.dataset.target, trigger); });
             });
@@ -2614,7 +2646,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     window.cerrarModalCuenta = cerrarModalCuenta;
 
     function mostrarProximamenteCuenta() {
-        alert('Esto estará disponible próximamente.');
+        mostrarNotificacionRF('Esto estará disponible próximamente.', 'error');
     }
 
     function continuarConGoogle() {
@@ -2627,7 +2659,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     (function avisarSiFalloLoginGoogle() {
         const parametros = new URLSearchParams(window.location.search);
         if (parametros.get('login') !== 'error') return;
-        alert('No se pudo iniciar sesión con Google. Intenta de nuevo.');
+        mostrarNotificacionRF('No se pudo iniciar sesión con Google. Intenta de nuevo.', 'error');
         parametros.delete('login');
         const resto = parametros.toString();
         window.history.replaceState({}, '', window.location.pathname + (resto ? '?' + resto : ''));
@@ -2815,6 +2847,27 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // Analítica (Google Analytics / Meta Pixel) -- solo se activa si el
     // negocio puso su ID desde el panel (Configuración). Se carga una sola
     // vez aunque esta función se llame más de una vez en la misma página.
+    // Notificacion chica y discreta (en vez del cuadro feo de alert() del
+    // navegador) -- se crea su propio contenedor solo, no necesita nada en
+    // el HTML.
+    function mostrarNotificacionRF(mensaje, tipo) {
+        tipo = tipo || 'exito';
+        let cont = document.getElementById('rf-toast-container');
+        if (!cont) {
+            cont = document.createElement('div');
+            cont.id = 'rf-toast-container';
+            cont.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;width:calc(100% - 32px);max-width:380px;pointer-events:none;';
+            document.body.appendChild(cont);
+        }
+        const color = tipo === 'error' ? '#dc2626' : '#22c55e';
+        const el = document.createElement('div');
+        el.style.cssText = 'background:#fff;border-left:4px solid ' + color + ';border-radius:10px;padding:12px 16px;font-size:13px;color:#333;box-shadow:0 8px 20px rgba(0,0,0,.15);width:100%;opacity:0;transform:translateY(8px);transition:opacity .2s ease, transform .2s ease;pointer-events:auto;';
+        el.innerText = mensaje;
+        cont.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+        setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(8px)'; setTimeout(() => el.remove(), 200); }, 3800);
+    }
+
     function inicializarAnaliticaRF(cfg) {
         if (window.rfAnaliticaInicializada) return;
         window.rfAnaliticaInicializada = true;

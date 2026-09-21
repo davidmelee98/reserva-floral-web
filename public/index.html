@@ -941,7 +941,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </button>
             
             <div class="w-1/2">
-                <img id="comp-modal-img" src="" class="w-full aspect-square object-cover rounded-xl border border-gray-100">
+                <img id="comp-modal-img" src="" alt="Imagen del producto" class="w-full aspect-square object-cover rounded-xl border border-gray-100">
             </div>
             <div class="w-1/2 flex flex-col justify-center">
                 <h2 id="comp-modal-nombre" class="text-xl font-semibold text-brandDark mb-1 leading-tight"></h2>
@@ -984,6 +984,27 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // Analítica (Google Analytics / Meta Pixel) -- solo se activa si el
     // negocio puso su ID desde el panel (Configuración). Se carga una sola
     // vez aunque esta función se llame más de una vez en la misma página.
+    // Notificacion chica y discreta (en vez del cuadro feo de alert() del
+    // navegador) -- se crea su propio contenedor solo, no necesita nada en
+    // el HTML.
+    function mostrarNotificacionRF(mensaje, tipo) {
+        tipo = tipo || 'exito';
+        let cont = document.getElementById('rf-toast-container');
+        if (!cont) {
+            cont = document.createElement('div');
+            cont.id = 'rf-toast-container';
+            cont.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;width:calc(100% - 32px);max-width:380px;pointer-events:none;';
+            document.body.appendChild(cont);
+        }
+        const color = tipo === 'error' ? '#dc2626' : '#22c55e';
+        const el = document.createElement('div');
+        el.style.cssText = 'background:#fff;border-left:4px solid ' + color + ';border-radius:10px;padding:12px 16px;font-size:13px;color:#333;box-shadow:0 8px 20px rgba(0,0,0,.15);width:100%;opacity:0;transform:translateY(8px);transition:opacity .2s ease, transform .2s ease;pointer-events:auto;';
+        el.innerText = mensaje;
+        cont.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+        setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(8px)'; setTimeout(() => el.remove(), 200); }, 3800);
+    }
+
     function inicializarAnaliticaRF(cfg) {
         if (window.rfAnaliticaInicializada) return;
         window.rfAnaliticaInicializada = true;
@@ -2158,7 +2179,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     const sku = String(item.id ?? '').padStart(3, '0');
                     contenedor.innerHTML += `
                         <div class="flex items-start gap-3 py-3 border-b border-gray-100 last:border-b-0">
-                            <img src="${escaparHtml(item.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-[82px] h-[82px] object-cover rounded-md bg-gray-100 flex-shrink-0">
+                            <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || \'Producto\')}" onerror="this.style.visibility='hidden'" class="w-[82px] h-[82px] object-cover rounded-md bg-gray-100 flex-shrink-0">
                             <div class="min-w-0 flex-1 pt-0.5">
                                 <h4 class="font-medium text-[12px] leading-tight text-brandDark line-clamp-2">${escaparHtml(item.nombre)}</h4>
                                 <p class="font-semibold text-[11px] text-brandDark mt-1">$${formatearPrecio(item.precio)}<span class="text-[7px] align-top ml-0.5">MXN</span></p>
@@ -2225,7 +2246,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
 
         function procesarPago() {
-            if (carrito.length === 0) return alert('Por favor, agrega un arreglo antes de continuar.');
+            if (carrito.length === 0) { mostrarNotificacionRF('Agrega un arreglo antes de continuar.', 'error'); return; }
             window.location.href = '/checkout';
         }
 
@@ -3318,7 +3339,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </button>
             
             <div class="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
-                <img id="conf-img" src="" class="w-16 h-16 object-cover rounded-lg shadow-sm border border-gray-100">
+                <img id="conf-img" src="" alt="Imagen del producto" class="w-16 h-16 object-cover rounded-lg shadow-sm border border-gray-100">
                 <div>
                     <p class="text-sm font-semibold text-green-600 flex items-center gap-1">
                         Agregaste al carrito <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
@@ -3504,7 +3525,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     window.cerrarModalCuenta = cerrarModalCuenta;
 
     function mostrarProximamenteCuenta() {
-        alert('Esto estará disponible próximamente.');
+        mostrarNotificacionRF('Esto estará disponible próximamente.', 'error');
     }
 
     function continuarConGoogle() {
@@ -3517,7 +3538,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     (function avisarSiFalloLoginGoogle() {
         const parametros = new URLSearchParams(window.location.search);
         if (parametros.get('login') !== 'error') return;
-        alert('No se pudo iniciar sesión con Google. Intenta de nuevo.');
+        mostrarNotificacionRF('No se pudo iniciar sesión con Google. Intenta de nuevo.', 'error');
         parametros.delete('login');
         const resto = parametros.toString();
         window.history.replaceState({}, '', window.location.pathname + (resto ? '?' + resto : ''));
