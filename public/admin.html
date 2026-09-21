@@ -1512,20 +1512,39 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         `;
         const selCategoria = fila.querySelector('[data-clasif-categoria]');
         const selSub = fila.querySelector('[data-clasif-subcategoria]');
-        selCategoria.addEventListener('change', () => { poblarSelectSubcategoriaFila(fila, selCategoria.value, ''); poblarSelectTipoFila(fila, selCategoria.value, '', ''); marcarError('clasificaciones', false); actualizarPreviewVivo(); });
-        selSub.addEventListener('change', () => { poblarSelectTipoFila(fila, selCategoria.value, selSub.value, ''); actualizarPreviewVivo(); });
-        fila.querySelector('[data-clasif-tipo]').addEventListener('change', actualizarPreviewVivo);
+        selCategoria.addEventListener('change', () => { poblarSelectSubcategoriaFila(fila, selCategoria.value, ''); poblarSelectTipoFila(fila, selCategoria.value, '', ''); marcarError('clasificaciones', false); marcarClasificacionesDuplicadasRF(); actualizarPreviewVivo(); });
+        selSub.addEventListener('change', () => { poblarSelectTipoFila(fila, selCategoria.value, selSub.value, ''); marcarClasificacionesDuplicadasRF(); actualizarPreviewVivo(); });
+        fila.querySelector('[data-clasif-tipo]').addEventListener('change', () => { marcarClasificacionesDuplicadasRF(); actualizarPreviewVivo(); });
         fila.querySelector('[data-quitar-clasificacion]').addEventListener('click', () => {
             if (document.querySelectorAll('#lista-clasificaciones [data-fila-clasificacion]').length <= 1) { mostrarToast('Debe quedar al menos una clasificación.', 'error'); return; }
             fila.remove();
+            marcarClasificacionesDuplicadasRF();
             actualizarPreviewVivo();
         });
         cont.appendChild(fila);
         if (categoria) poblarSelectSubcategoriaFila(fila, categoria, subcategoria);
         if (categoria && subcategoria) poblarSelectTipoFila(fila, categoria, subcategoria, subsubcategoria);
+        marcarClasificacionesDuplicadasRF();
         return fila;
     }
     window.agregarFilaClasificacion = agregarFilaClasificacion;
+
+    // Si dos filas terminan con exactamente la misma categoría/subcategoría/
+    // tipo, se marcan en rojo -- no aportan nada distinto y es fácil que
+    // pase sin querer al ir armando varias clasificaciones.
+    function marcarClasificacionesDuplicadasRF() {
+        const filas = [...document.querySelectorAll('#lista-clasificaciones [data-fila-clasificacion]')];
+        const conteo = new Map();
+        filas.forEach(fila => {
+            const clave = [fila.querySelector('[data-clasif-categoria]').value, fila.querySelector('[data-clasif-subcategoria]').value, fila.querySelector('[data-clasif-tipo]').value].join('|');
+            if (fila.querySelector('[data-clasif-categoria]').value) conteo.set(clave, (conteo.get(clave) || 0) + 1);
+        });
+        filas.forEach(fila => {
+            const clave = [fila.querySelector('[data-clasif-categoria]').value, fila.querySelector('[data-clasif-subcategoria]').value, fila.querySelector('[data-clasif-tipo]').value].join('|');
+            const esDuplicado = fila.querySelector('[data-clasif-categoria]').value && conteo.get(clave) > 1;
+            fila.querySelectorAll('select').forEach(sel => sel.classList.toggle('is-invalid', esDuplicado));
+        });
+    }
 
     function obtenerClasificacionesDelFormulario() {
         return [...document.querySelectorAll('#lista-clasificaciones [data-fila-clasificacion]')]
@@ -1633,6 +1652,21 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // =======================================================================
     function sincronizarTamanos() {
         const filas = [...document.querySelectorAll('#lista-tamanos [data-fila-tamano]')];
+        // Si dos tamaños quedan con el mismo nombre pero precios distintos, en
+        // la tienda el cliente vería dos botones idénticos sin poder saber
+        // cuál es cuál -- se marcan en rojo para que sea obvio antes de guardar.
+        const conteoNombres = new Map();
+        filas.forEach(fila => {
+            const nombre = fila.querySelector('[data-tamano-nombre]').value.trim().toLowerCase();
+            if (nombre) conteoNombres.set(nombre, (conteoNombres.get(nombre) || 0) + 1);
+        });
+        filas.forEach(fila => {
+            const inputNombre = fila.querySelector('[data-tamano-nombre]');
+            const nombre = inputNombre.value.trim().toLowerCase();
+            const esDuplicado = nombre && conteoNombres.get(nombre) > 1;
+            inputNombre.classList.toggle('is-invalid', esDuplicado);
+            inputNombre.title = esDuplicado ? 'Ya tienes otro tamaño con este mismo nombre' : '';
+        });
         const datos = filas.map(fila => ({
             nombre: fila.querySelector('[data-tamano-nombre]').value.trim(),
             precio: Number(fila.querySelector('[data-tamano-precio]').value) || 0
@@ -1733,6 +1767,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             e.preventDefault();
             const valor = inputNueva.value.trim();
             if (!valor) return;
+            const yaExiste = [...chipsWrap.querySelectorAll('[data-chip-opcion]')].some(chip => chip.dataset.valor.toLowerCase() === valor.toLowerCase());
+            if (yaExiste) { mostrarToast('Esa opción ya está en este grupo.', 'error'); inputNueva.value = ''; return; }
             crearChipOpcion(chipsWrap, valor);
             inputNueva.value = '';
             sincronizarVariantes();
@@ -1901,6 +1937,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const precio = Number(document.getElementById('precio').value);
         if (!Number.isFinite(precio) || precio < 0 || document.getElementById('precio').value === '') { marcarError('precio', true); valido = false; } else marcarError('precio', false);
         if (obtenerClasificacionesDelFormulario().length === 0) { marcarError('clasificaciones', true); valido = false; } else marcarError('clasificaciones', false);
+        if (document.querySelector('#lista-tamanos .is-invalid')) { mostrarToast('Tienes dos tamaños con el mismo nombre -- corrígelo antes de guardar.', 'error'); valido = false; }
+        if (document.querySelector('#lista-clasificaciones .is-invalid')) { mostrarToast('Tienes una clasificación repetida -- quita la que sobra antes de guardar.', 'error'); valido = false; }
         return valido;
     }
 

@@ -2035,61 +2035,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
 
         // Función que abre el recuadro visual original del complemento.
-        function abrirComplemento(comp) {
-            if (!comp) return;
-            complementoActual = comp;
-            const urlImagen = comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
-            
-            const nombreEl = document.getElementById('comp-modal-nombre');
-            const precioEl = document.getElementById('comp-modal-precio');
-            const descEl = document.getElementById('comp-modal-desc');
-            const imgEl = document.getElementById('comp-modal-img');
-            const detallesBtn = document.getElementById('btn-modal-comp-detalles');
-            const agregarBtn = document.getElementById('btn-modal-comp-agregar');
-            const modal = document.getElementById('modal-complemento');
-            const content = document.getElementById('modal-complemento-content');
-
-            if (!modal || !content) return;
-
-            nombreEl.innerText = comp.nombre || 'Producto';
-            precioEl.innerText = "$" + formatearPrecio(comp.precio);
-            descEl.innerText = comp.descripcion || "Complemento perfecto para tu regalo.";
-            imgEl.src = urlImagen;
-            imgEl.alt = comp.nombre || 'Producto';
-            
-            detallesBtn.onclick = function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                abrirPanelDescripcionRF(comp, false);
-            };
-
-            agregarBtn.onclick = function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                ejecutarConUbicacionRF(() => {
-                    agregarItemCarrito({ id: comp.id, nombre: comp.nombre, precio: comp.precio, imagen: urlImagen, variante: null });
-                    cerrarComplemento();
-                });
-            };
-
-            // Abrimos de forma explícita para que no dependa del orden de las clases
-            // Tailwind (hidden/flex), tanto en escritorio como en iOS.
-            content.classList.remove('scale-100', 'opacity-100');
-            content.classList.add('scale-95', 'opacity-0');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            modal.style.display = 'flex';
-            modal.style.zIndex = '300';
-            document.body.appendChild(modal);
-            
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    content.classList.remove('scale-95', 'opacity-0');
-                    content.classList.add('scale-100', 'opacity-100');
-                });
-            });
-        }
-
         function cerrarComplemento() {
             const modal = document.getElementById('modal-complemento');
             const content = document.getElementById('modal-complemento-content');
@@ -2243,11 +2188,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 panel.classList.remove('carrito-abierto');
                 panel.classList.add('carrito-cerrado');
             }
-        }
-
-        function procesarPago() {
-            if (carrito.length === 0) { mostrarNotificacionRF('Agrega un arreglo antes de continuar.', 'error'); return; }
-            window.location.href = '/checkout';
         }
 
         async function abrirProductoDesdeRuta() {
@@ -2854,16 +2794,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             // recargar nada más -- solo se actualiza el texto de la barra.
         }
         window.confirmarSoloFechaRF = confirmarSoloFechaRF;
-
-        function solicitarUbicacionAntesDeCategoria(accion) {
-            if (ubicacionRFCompleta()) {
-                if (typeof accion === 'function') accion();
-                return true;
-            }
-            abrirModalUbicacion(accion);
-            return false;
-        }
-
 
         // Rutas de catálogo: se mantienen los mega menús y su diseño, pero ahora todos los enlaces navegan a páginas reales.
         const RF_CATEGORY_ROUTES = {
@@ -3645,14 +3575,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
       items=next.children;
     }
     return items;
-  }
-  function currentNode(){
-    let items=tree['Categorías'], node={label:'Categorías',children:items};
-    for(const label of path){
-      node=items.find(i=>i.label===label)||node;
-      items=node.children||[];
-    }
-    return node;
   }
   function render(){
     title.textContent=path.length ? path[path.length-1] : 'Categorías';
