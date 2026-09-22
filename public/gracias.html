@@ -68,7 +68,7 @@
 .rf-mobile-menu-button:active{background:rgba(255,255,255,.12)}
 .rf-mobile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease;z-index:99998}
 .rf-mobile-overlay.is-open{opacity:1;visibility:visible;pointer-events:auto}
-.rf-mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:min(66.666vw,420px);background:#fff;transform:translateX(-102%);transition:transform .24s ease;z-index:99999;display:flex;flex-direction:column;box-shadow:16px 0 35px rgba(0,0,0,.16)}
+.rf-mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:min(82vw,400px);background:#fff;transform:translateX(-102%);transition:transform .24s ease;z-index:99999;display:flex;flex-direction:column;box-shadow:16px 0 35px rgba(0,0,0,.16)}
 .rf-mobile-drawer.is-open{transform:translateX(0)}
 .rf-mobile-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:18px 14px 14px;border-bottom:1px solid #eee;flex:0 0 auto}
 .rf-mobile-title{font-size:19px;line-height:1.2;font-weight:600;color:#252525;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -467,7 +467,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 const cantidad = Math.max(1, Number(item.cantidad) || 1);
                 return `
                     <div class="flex items-center gap-3 py-3">
-                        <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || \'Producto\')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
+                        <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || 'Producto')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
                         <div class="flex-1 min-w-0">
                             <p class="font-medium text-sm text-brandDark truncate">${escaparHtml(item.nombre)}</p>
                             <p class="text-xs text-gray-500">Cantidad: ${cantidad}</p>

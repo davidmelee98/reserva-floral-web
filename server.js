@@ -228,15 +228,27 @@ for (const [rutaLimpia, archivo] of Object.entries(PAGINAS_LIMPIAS)) {
 // listando también cada producto activo, para que Google los pueda
 // encontrar e indexar (aprovechando los datos estructurados que ya trae
 // cada página de producto).
-app.get('/sitemap.xml', async (req, res) => {
+// Cache simple en memoria: el sitemap no cambia tan seguido como para
+// consultar la base de datos en cada visita de un buscador o un bot --
+// se recalcula solo una vez por hora.
+let sitemapCacheRF = { xml: null, generadoEn: 0 };
+const SITEMAP_CACHE_MS = 60 * 60 * 1000;
+
+app.get('/sitemap.xml', limitadorGeneral, async (req, res) => {
   try {
+    if (sitemapCacheRF.xml && (Date.now() - sitemapCacheRF.generadoEn) < SITEMAP_CACHE_MS) {
+      res.set('Content-Type', 'application/xml');
+      return res.send(sitemapCacheRF.xml);
+    }
     const productos = await pool.query('SELECT id FROM arreglos_florales WHERE COALESCE(disponible, true) = true ORDER BY id');
     const urls = [
       `<url><loc>${URL_SITIO}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
       ...productos.rows.map(p => `<url><loc>${URL_SITIO}/producto/${p.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`)
     ];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`;
+    sitemapCacheRF = { xml, generadoEn: Date.now() };
     res.set('Content-Type', 'application/xml');
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`);
+    res.send(xml);
   } catch (error) {
     console.error('GET /sitemap.xml:', error);
     res.status(500).send('Error generando el sitemap.');
@@ -312,7 +324,6 @@ const columnasProducto = `
   subcategoria VARCHAR(100),
   subsubcategoria VARCHAR(100),
   variante_personalizada TEXT,
-  opcion_foto BOOLEAN DEFAULT false,
   tamanos TEXT,
   cobertura TEXT,
   stock INTEGER DEFAULT 1 CHECK (stock >= 0),
@@ -511,7 +522,6 @@ async function inicializarDB() {
   const alterQueries = [
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS imagenes TEXT',
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS especificaciones TEXT',
-    'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS opcion_foto BOOLEAN DEFAULT false',
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS tamanos TEXT',
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS cobertura TEXT',
     'ALTER TABLE arreglos_florales ADD COLUMN IF NOT EXISTS subcategoria VARCHAR(100)',
@@ -1462,7 +1472,6 @@ function normalizarProducto(body) {
     subcategoria: String(body.subcategoria || '').trim() || null,
     subsubcategoria: String(body.subsubcategoria || '').trim() || null,
     variante_personalizada: String(body.variante_personalizada || '').trim() || null,
-    opcion_foto: Boolean(body.opcion_foto),
     tamanos: String(body.tamanos || '').trim() || null,
     cobertura: String(body.cobertura || '').trim() || null,
     stock: Number.isFinite(stockNum) && stockNum >= 0 ? Math.floor(stockNum) : 1,
@@ -1587,11 +1596,11 @@ app.post('/api/catalogo', requireAuth, async (req, res) => {
     const result = await pool.query(`
       INSERT INTO arreglos_florales
         (nombre, descripcion, especificaciones, precio, imagen_url, imagenes, categoria, subcategoria, subsubcategoria,
-         variante_personalizada, opcion_foto, tamanos, cobertura, stock, disponible, es_combo, tiempo_entrega_dias)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+         variante_personalizada, tamanos, cobertura, stock, disponible, es_combo, tiempo_entrega_dias)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       RETURNING *
     `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, primera.categoria,
-        primera.subcategoria || null, primera.subsubcategoria || null, p.variante_personalizada, p.opcion_foto, p.tamanos, p.cobertura,
+        primera.subcategoria || null, primera.subsubcategoria || null, p.variante_personalizada, p.tamanos, p.cobertura,
         p.stock, p.disponible, !!req.body.es_combo, p.tiempo_entrega_dias]);
 
     await sincronizarClasificacionesProducto(result.rows[0].id, req.body.clasificaciones);
@@ -1627,11 +1636,11 @@ app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
       UPDATE arreglos_florales
       SET nombre=$1, descripcion=$2, especificaciones=$3, precio=$4, imagen_url=$5, imagenes=$6,
           categoria=$7, subcategoria=$8, subsubcategoria=$9, variante_personalizada=$10,
-          opcion_foto=$11, tamanos=$12, cobertura=$13, stock=$14, disponible=$15, es_combo=$16, tiempo_entrega_dias=$17
-      WHERE id=$18
+          tamanos=$11, cobertura=$12, stock=$13, disponible=$14, es_combo=$15, tiempo_entrega_dias=$16
+      WHERE id=$17
       RETURNING *
     `, [p.nombre, p.descripcion, p.especificaciones, p.precio, p.imagen_url, p.imagenes, primera.categoria,
-        primera.subcategoria || null, primera.subsubcategoria || null, p.variante_personalizada, p.opcion_foto, p.tamanos,
+        primera.subcategoria || null, primera.subsubcategoria || null, p.variante_personalizada, p.tamanos,
         p.cobertura, p.stock, p.disponible, !!req.body.es_combo, p.tiempo_entrega_dias, id]);
 
     if (result.rowCount === 0) {
@@ -1659,10 +1668,29 @@ app.delete('/api/catalogo/:id', requireAuth, async (req, res) => {
   }
 
   try {
+    // Si este producto es componente de algún combo, borrarlo lo dejaría
+    // incompleto sin que nadie se diera cuenta -- se avisa primero, y solo
+    // se elimina de una vez si el propio panel confirma que sí quiere.
+    if (req.query.forzar !== 'true') {
+      const combosQueLoUsan = await pool.query(`
+        SELECT DISTINCT a.nombre FROM producto_combo_items pci
+        JOIN arreglos_florales a ON a.id = pci.producto_id
+        WHERE pci.componente_id = $1
+      `, [id]);
+      if (combosQueLoUsan.rowCount > 0) {
+        const nombres = combosQueLoUsan.rows.map(r => r.nombre);
+        return res.status(409).json({
+          error: `Este producto es parte de ${nombres.length === 1 ? 'este combo' : 'estos combos'}: ${nombres.join(', ')}. Si lo eliminas, ${nombres.length === 1 ? 'ese combo' : 'esos combos'} se quedará${nombres.length === 1 ? '' : 'n'} incompleto${nombres.length === 1 ? '' : 's'}.`,
+          requiereConfirmacion: true
+        });
+      }
+    }
+
     const result = await pool.query('DELETE FROM arreglos_florales WHERE id = $1', [id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Producto no encontrado.' });
     }
+    await registrarBitacora(req, 'Eliminó un producto', `ID ${id}`);
     res.json({ exito: true });
   } catch (error) {
     console.error('DELETE /api/catalogo/:id:', error);
@@ -1882,7 +1910,7 @@ app.post('/api/carrito/validar', limitadorGeneral, async (req, res) => {
   if (carrito.length === 0) return res.json({ items: [] });
   try {
     const ids = [...new Set(carrito.map(item => Number(item.id)).filter(Number.isInteger))];
-    const productos = await pool.query('SELECT id, nombre, disponible, stock, es_combo FROM arreglos_florales WHERE id = ANY($1::int[])', [ids]);
+    const productos = await pool.query('SELECT id, nombre, disponible, stock, es_combo, tiempo_entrega_dias FROM arreglos_florales WHERE id = ANY($1::int[])', [ids]);
     const porId = new Map(productos.rows.map(p => [p.id, p]));
 
     const idsCombo = productos.rows.filter(p => p.es_combo).map(p => p.id);
@@ -1896,21 +1924,22 @@ app.post('/api/carrito/validar', limitadorGeneral, async (req, res) => {
       const id = Number(item.id);
       const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
       const producto = porId.get(id);
+      const tiempoEntregaDias = Number(producto?.tiempo_entrega_dias) || 0;
       if (!producto || producto.disponible === false) {
-        return { id, disponible: false, motivo: 'Ya no está disponible.' };
+        return { id, disponible: false, motivo: 'Ya no está disponible.', tiempoEntregaDias };
       }
       if (producto.es_combo) {
         const piezas = comboItems.filter(c => c.producto_id === id);
         const faltante = piezas.find(c => c.componente_disponible === false || Number(c.componente_stock) < cantidad * c.cantidad);
         if (faltante) {
-          return { id, disponible: false, motivo: `"${faltante.componente_nombre}" (parte de este combo) ya no está disponible o no alcanza.` };
+          return { id, disponible: false, motivo: `"${faltante.componente_nombre}" (parte de este combo) ya no está disponible o no alcanza.`, tiempoEntregaDias };
         }
-        return { id, disponible: true };
+        return { id, disponible: true, tiempoEntregaDias };
       }
       if (Number(producto.stock) < cantidad) {
-        return { id, disponible: false, motivo: `Ya no hay suficiente existencia (quedan ${producto.stock}).`, stockActual: Number(producto.stock) };
+        return { id, disponible: false, motivo: `Ya no hay suficiente existencia (quedan ${producto.stock}).`, stockActual: Number(producto.stock), tiempoEntregaDias };
       }
-      return { id, disponible: true };
+      return { id, disponible: true, tiempoEntregaDias };
     });
 
     res.json({ items });

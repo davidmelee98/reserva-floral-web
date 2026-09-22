@@ -2220,12 +2220,23 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     }
     window.toggleDisponible = toggleDisponible;
 
-    async function eliminarProducto(id) {
+    async function eliminarProducto(id, forzar = false) {
         const p = catalogo.find(x => x.id === id);
-        const ok = await pedirConfirmacionAdmin('¿Eliminar producto?', p ? `Se eliminará "${p.nombre}" de forma permanente.` : 'Esta acción no se puede deshacer.');
-        if (!ok) return;
+        if (!forzar) {
+            const ok = await pedirConfirmacionAdmin('¿Eliminar producto?', p ? `Se eliminará "${p.nombre}" de forma permanente.` : 'Esta acción no se puede deshacer.');
+            if (!ok) return;
+        }
         try {
-            await jsonOError(await fetch(`/api/catalogo/${id}`, { method: 'DELETE' }));
+            const respuesta = await fetch(`/api/catalogo/${id}${forzar ? '?forzar=true' : ''}`, { method: 'DELETE' });
+            const datos = await respuesta.json().catch(() => ({}));
+            if (!respuesta.ok) {
+                if (respuesta.status === 409 && datos.requiereConfirmacion) {
+                    const confirmarDeTodosModos = await pedirConfirmacionAdmin('Este producto es parte de un combo', `${datos.error} ¿Aun así quieres eliminarlo?`);
+                    if (confirmarDeTodosModos) await eliminarProducto(id, true);
+                    return;
+                }
+                throw new Error(datos.error || 'Ocurrió un error inesperado.');
+            }
             mostrarToast('Producto eliminado.');
             cargarCatalogo(); cargarDashboard();
         } catch (error) {
@@ -2296,6 +2307,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // CALENDARIO DE ENTREGAS -- vista de mes con los pedidos agrupados por
     // fecha de entrega, para ver de un vistazo qué se entrega cada día.
     // =======================================================================
+    // "Hoy" siempre debe ser el día tal como lo ve quien usa el panel en su
+    // propio reloj -- usar toISOString() aquí convertiría a hora UTC primero,
+    // lo que en ciertas horas de la tarde/noche resaltaría el día equivocado.
+    function fechaLocalRF(fecha) {
+        fecha = fecha || new Date();
+        return fecha.getFullYear() + '-' + String(fecha.getMonth() + 1).padStart(2, '0') + '-' + String(fecha.getDate()).padStart(2, '0');
+    }
     let mesCalendarioActual = new Date();
     mesCalendarioActual.setDate(1);
 
@@ -2331,7 +2349,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const primerDiaMes = new Date(año, mes, 1);
         const diasEnMes = new Date(año, mes + 1, 0).getDate();
         const offsetInicio = primerDiaMes.getDay(); // 0=domingo
-        const hoyClave = new Date().toISOString().slice(0, 10);
+        const hoyClave = fechaLocalRF();
 
         const celdas = [];
         for (let i = 0; i < offsetInicio; i++) celdas.push('<div class="min-h-[84px]"></div>');
@@ -2568,7 +2586,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const enlace = document.createElement('a');
         enlace.href = URL.createObjectURL(blob);
-        enlace.download = `pedidos-reserva-floral-${new Date().toISOString().slice(0, 10)}.csv`;
+        enlace.download = `pedidos-reserva-floral-${fechaLocalRF()}.csv`;
         document.body.appendChild(enlace);
         enlace.click();
         document.body.removeChild(enlace);
@@ -2601,7 +2619,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const enlace = document.createElement('a');
         enlace.href = URL.createObjectURL(blob);
-        enlace.download = `finanzas-reserva-floral-${new Date().toISOString().slice(0, 10)}.csv`;
+        enlace.download = `finanzas-reserva-floral-${fechaLocalRF()}.csv`;
         document.body.appendChild(enlace);
         enlace.click();
         document.body.removeChild(enlace);

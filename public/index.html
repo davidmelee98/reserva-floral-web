@@ -271,7 +271,7 @@
 .rf-mobile-menu-button:active{background:rgba(255,255,255,.12)}
 .rf-mobile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease;z-index:99998}
 .rf-mobile-overlay.is-open{opacity:1;visibility:visible;pointer-events:auto}
-.rf-mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:min(66.666vw,420px);background:#fff;transform:translateX(-102%);transition:transform .24s ease;z-index:99999;display:flex;flex-direction:column;box-shadow:16px 0 35px rgba(0,0,0,.16)}
+.rf-mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:min(82vw,400px);background:#fff;transform:translateX(-102%);transition:transform .24s ease;z-index:99999;display:flex;flex-direction:column;box-shadow:16px 0 35px rgba(0,0,0,.16)}
 .rf-mobile-drawer.is-open{transform:translateX(0)}
 .rf-mobile-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:18px 14px 14px;border-bottom:1px solid #eee;flex:0 0 auto}
 .rf-mobile-title{font-size:19px;line-height:1.2;font-weight:600;color:#252525;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -302,8 +302,12 @@ body.rf-mobile-menu-open{overflow:hidden !important}
 body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0;}
 
 
-        /* Vista de producto móvil: modal realmente a pantalla completa; header y CTA persistentes, galería con scroll normal */
-        @media (max-width: 767px) {
+        /* Vista de producto móvil/tablet: modal realmente a pantalla completa;
+           header y CTA persistentes, galería con scroll normal. Este punto de
+           quiebre llega hasta el ancho de un iPad -- antes se cortaba en
+           767px y dejaba el iPad (768px+) caer en el layout de escritorio de
+           dos columnas, mucho más angosto de lo que ese ancho merece. */
+        @media (max-width: 1023px) {
             body.rf-product-open { overflow-x: hidden !important; overflow-y: auto !important; }
             /* Si el selector de ubicación se abre ENCIMA de la vista de producto móvil,
                debe bloquear el scroll del fondo igual que lo hace en cualquier otro lado.
@@ -528,7 +532,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 background: #e91e63;
             }
         }
-        @media (min-width: 768px) {
+        @media (min-width: 1024px) {
             #modal-mobile-gallery { display: none !important; }
         }
 
@@ -1604,6 +1608,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 try {
                     const todos = await (await fetch('/api/catalogo')).json();
                     const productosFavoritos = todos.filter(p => idsFavoritos.includes(p.id));
+                    // Si algún favorito ya no existe o se dio de baja, se quita
+                    // solo de la lista guardada -- si no, el contador se queda
+                    // inflado para siempre con productos que ya no se ven aquí.
+                    if (productosFavoritos.length !== idsFavoritos.length) {
+                        localStorage.setItem(RF_FAVORITOS_KEY, JSON.stringify(productosFavoritos.map(p => p.id)));
+                        actualizarContadorFavoritosRF();
+                    }
                     renderGridCategoriaRF(productosFavoritos);
                 } catch (error) {
                     console.error('No se pudieron cargar los favoritos', error);
@@ -2124,7 +2135,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     const sku = String(item.id ?? '').padStart(3, '0');
                     contenedor.innerHTML += `
                         <div class="flex items-start gap-3 py-3 border-b border-gray-100 last:border-b-0">
-                            <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || \'Producto\')}" onerror="this.style.visibility='hidden'" class="w-[82px] h-[82px] object-cover rounded-md bg-gray-100 flex-shrink-0">
+                            <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || 'Producto')}" onerror="this.style.visibility='hidden'" class="w-[82px] h-[82px] object-cover rounded-md bg-gray-100 flex-shrink-0">
                             <div class="min-w-0 flex-1 pt-0.5">
                                 <h4 class="font-medium text-[12px] leading-tight text-brandDark line-clamp-2">${escaparHtml(item.nombre)}</h4>
                                 <p class="font-semibold text-[11px] text-brandDark mt-1">$${formatearPrecio(item.precio)}<span class="text-[7px] align-top ml-0.5">MXN</span></p>
@@ -2591,9 +2602,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         function fechaEntregaRF() {
             const tipo = document.getElementById('rf-ubicacion-fecha').value;
-            if (tipo === 'hoy') return new Date().toISOString().slice(0, 10);
+            if (tipo === 'hoy') return fechaLocalRF();
             if (tipo === 'manana') {
-                const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10);
+                const d = new Date(); d.setDate(d.getDate() + 1); return fechaLocalRF(d);
             }
             if (tipo === 'otro') return document.getElementById('rf-otra-fecha').value;
             return '';
@@ -2725,6 +2736,16 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
         window.confirmarSoloUbicacionRF = confirmarSoloUbicacionRF;
 
+        // "Hoy" siempre debe ser el día tal como lo ve el cliente en su propio
+        // reloj -- usar toISOString() aquí sería un error, porque convierte a
+        // hora UTC primero: pasadas ciertas horas de la tarde/noche (según la
+        // zona horaria de México), terminaría calculando "mañana" en vez de
+        // "hoy". Esta función arma la fecha con los componentes locales.
+        function fechaLocalRF(fecha) {
+            fecha = fecha || new Date();
+            return fecha.getFullYear() + '-' + String(fecha.getMonth() + 1).padStart(2, '0') + '-' + String(fecha.getDate()).padStart(2, '0');
+        }
+
         // Después de las 2:00 pm ya no da tiempo de preparar y entregar el
         // mismo día, así que esa opción se deshabilita (se ve en gris) el
         // resto del día -- vuelve a estar disponible automáticamente al
@@ -2776,8 +2797,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             // entrega para hoy que ya no da tiempo de preparar.
             if (tipoFecha === 'hoy' && !entregaHoyDisponibleRF()) tipoFecha = 'manana';
             let fecha = '';
-            if (tipoFecha === 'hoy') fecha = new Date().toISOString().slice(0, 10);
-            else if (tipoFecha === 'manana') { const d = new Date(); d.setDate(d.getDate() + 1); fecha = d.toISOString().slice(0, 10); }
+            if (tipoFecha === 'hoy') fecha = fechaLocalRF();
+            else if (tipoFecha === 'manana') { const d = new Date(); d.setDate(d.getDate() + 1); fecha = fechaLocalRF(d); }
             else fecha = document.getElementById('rf-solo-fecha-otro-input').value;
             if (!fecha) return;
 
@@ -2970,7 +2991,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             });
             const otraFecha = document.getElementById('rf-otra-fecha');
             if (otraFecha) {
-                otraFecha.min = new Date().toISOString().slice(0, 10);
+                otraFecha.min = fechaLocalRF();
                 otraFecha.addEventListener('change', () => {
                     if (otraFecha.value) {
                         document.getElementById('rf-ubicacion-fecha').value = 'otro';
@@ -3173,7 +3194,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         <div class="absolute inset-0 bg-black bg-opacity-50 transition-opacity" onclick="cerrarProducto()"></div>
         
         <!-- Modal Content -->
-        <div class="absolute inset-0 md:inset-y-10 md:inset-x-20 lg:inset-x-40 xl:inset-x-60 bg-white md:rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden transform transition-transform scale-95 opacity-0" id="modal-content">
+        <div class="absolute inset-0 lg:inset-y-6 lg:inset-x-6 xl:inset-x-16 2xl:inset-x-32 bg-white lg:rounded-2xl shadow-2xl flex flex-col lg:flex-row overflow-hidden transform transition-transform scale-95 opacity-0" id="modal-content">
             
             <!-- Botón Cerrar -->
             <button onclick="cerrarProducto()" class="absolute top-4 right-4 z-10 bg-white rounded-full p-2 text-gray-500 hover:text-brandDark shadow-sm">
@@ -3181,23 +3202,23 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             </button>
 
             <!-- Sección Izquierda: Imágenes -->
-            <div class="w-full md:w-1/2 bg-gray-50 flex p-4 md:p-8 rf-product-media">
+            <div class="w-full lg:w-1/2 bg-gray-50 flex p-4 lg:p-8 rf-product-media">
                 <!-- Miniaturas -->
-                <div id="modal-thumbnails" class="w-20 hidden md:flex flex-col gap-4 pr-4 overflow-y-auto"></div>
+                <div id="modal-thumbnails" class="w-20 hidden lg:flex flex-col gap-4 pr-4 overflow-y-auto"></div>
                 <!-- Imagen Principal -->
                 <div class="flex-1 bg-white rounded-xl overflow-hidden shadow-sm flex items-center justify-center relative rf-desktop-product-main">
-                    <img id="modal-img" src="" alt="Producto" class="w-full h-full object-contain max-h-[60vh] md:max-h-none">
+                    <img id="modal-img" src="" alt="Producto" class="w-full h-full object-contain max-h-[60vh] lg:max-h-none">
                 </div>
 
                 <!-- Galería móvil: todas las imágenes registradas en el catálogo -->
-                <div id="modal-mobile-gallery" class="md:hidden">
+                <div id="modal-mobile-gallery" class="lg:hidden">
                     <div id="modal-mobile-gallery-track"></div>
                     <div id="modal-mobile-gallery-dots" aria-label="Fotos del producto"></div>
                 </div>
             </div>
 
             <!-- Sección Derecha: Info y Compra -->
-            <div class="w-full md:w-1/2 p-6 md:p-10 flex flex-col overflow-y-auto rf-product-info-mobile">
+            <div class="w-full lg:w-1/2 p-6 lg:p-10 flex flex-col overflow-y-auto rf-product-info-mobile">
                 <div class="mb-6">
                     <p class="text-xs text-gray-500 mb-1">SKU: <span id="modal-id"></span></p>
                     <div class="flex items-start justify-between gap-3">

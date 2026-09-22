@@ -103,7 +103,7 @@
 .rf-mobile-menu-button:active{background:rgba(255,255,255,.12)}
 .rf-mobile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease;z-index:99998}
 .rf-mobile-overlay.is-open{opacity:1;visibility:visible;pointer-events:auto}
-.rf-mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:min(66.666vw,420px);background:#fff;transform:translateX(-102%);transition:transform .24s ease;z-index:99999;display:flex;flex-direction:column;box-shadow:16px 0 35px rgba(0,0,0,.16)}
+.rf-mobile-drawer{position:fixed;top:0;left:0;bottom:0;width:min(82vw,400px);background:#fff;transform:translateX(-102%);transition:transform .24s ease;z-index:99999;display:flex;flex-direction:column;box-shadow:16px 0 35px rgba(0,0,0,.16)}
 .rf-mobile-drawer.is-open{transform:translateX(0)}
 .rf-mobile-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:18px 14px 14px;border-bottom:1px solid #eee;flex:0 0 auto}
 .rf-mobile-title{font-size:19px;line-height:1.2;font-weight:600;color:#252525;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -975,26 +975,35 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
     // Revisa que todo lo que trae el carrito siga disponible ANTES de que el
     // cliente llene todo el formulario -- antes esto solo se sabía hasta el
-    // último paso, al intentar pagar.
-    (async function validarCarritoAlEntrarRF() {
+    // último paso, al intentar pagar. De paso, esta misma respuesta ya trae
+    // el tiempo de entrega de cada producto, así no hace falta pedir el
+    // catálogo completo aparte solo para ese aviso.
+    let validacionCarritoCacheRF = null;
+    async function obtenerValidacionCarritoRF() {
+        if (validacionCarritoCacheRF) return validacionCarritoCacheRF;
         try {
-            const resultado = await fetch('/api/carrito/validar', {
+            validacionCarritoCacheRF = await fetch('/api/carrito/validar', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ carrito: carrito.map(it => ({ id: it.id, cantidad: it.cantidad })) })
             }).then(r => r.json());
-            const conProblema = (resultado.items || []).filter(it => it.disponible === false);
-            if (conProblema.length === 0) return;
-            const nombresConProblema = conProblema
-                .map(p => carrito.find(it => it.id === p.id)?.nombre)
-                .filter(Boolean);
-            const mensaje = nombresConProblema.length === 1
-                ? `"${nombresConProblema[0]}" ya no está disponible. Vuelve al carrito para quitarlo.`
-                : `Algunos productos de tu carrito ya no están disponibles (${nombresConProblema.join(', ')}). Vuelve al carrito para ajustarlo.`;
-            sessionStorage.setItem('rf_aviso_carrito_invalido', mensaje);
-            window.location.href = '/carrito';
         } catch (error) {
-            console.error('No se pudo validar el carrito al entrar al checkout', error);
+            console.error('No se pudo validar el carrito', error);
+            validacionCarritoCacheRF = { items: [] };
         }
+        return validacionCarritoCacheRF;
+    }
+    (async function validarCarritoAlEntrarRF() {
+        const resultado = await obtenerValidacionCarritoRF();
+        const conProblema = (resultado.items || []).filter(it => it.disponible === false);
+        if (conProblema.length === 0) return;
+        const nombresConProblema = conProblema
+            .map(p => carrito.find(it => it.id === p.id)?.nombre)
+            .filter(Boolean);
+        const mensaje = nombresConProblema.length === 1
+            ? `"${nombresConProblema[0]}" ya no está disponible. Vuelve al carrito para quitarlo.`
+            : `Algunos productos de tu carrito ya no están disponibles (${nombresConProblema.join(', ')}). Vuelve al carrito para ajustarlo.`;
+        sessionStorage.setItem('rf_aviso_carrito_invalido', mensaje);
+        window.location.href = '/carrito';
     })();
 
     let pasoAbierto = 1;
@@ -1138,7 +1147,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const sku = String(item.id ?? '').padStart(3, '0');
             return `
                 <div class="flex items-center gap-3 py-3">
-                    <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || \'Producto\')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
+                    <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || 'Producto')}" onerror="this.style.visibility='hidden'" class="w-14 h-14 object-cover rounded-lg bg-gray-100 flex-shrink-0">
                     <div class="flex-1 min-w-0">
                         <h4 class="font-medium text-sm text-brandDark truncate">${escaparHtml(item.nombre)}</h4>
                         <p class="text-xs text-gray-500">Cantidad: ${cantidad}</p>
@@ -1544,6 +1553,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // =======================================================================
     // PASO 3: horario (la fecha viene de lo que ya habías elegido en el carrito)
     // =======================================================================
+    // "Hoy" siempre debe ser el día tal como lo ve el cliente en su propio
+    // reloj -- usar toISOString() aquí sería un error, porque convierte a
+    // hora UTC primero: pasadas ciertas horas de la tarde/noche (según la
+    // zona horaria de México), terminaría calculando "mañana" en vez de "hoy".
+    function fechaLocalRF(fecha) {
+        fecha = fecha || new Date();
+        return fecha.getFullYear() + '-' + String(fecha.getMonth() + 1).padStart(2, '0') + '-' + String(fecha.getDate()).padStart(2, '0');
+    }
     function prellenarFechaGuardada() {
         let fechaGuardada = '';
         try {
@@ -1551,9 +1568,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             fechaGuardada = datos?.fecha || '';
         } catch (e) { /* sin datos guardados */ }
         const input = document.getElementById('p3-fecha');
-        const hoyStr = new Date().toISOString().split('T')[0];
+        const hoyStr = fechaLocalRF();
         const manana = new Date(); manana.setDate(manana.getDate() + 1);
-        const mananaStr = manana.toISOString().split('T')[0];
+        const mananaStr = fechaLocalRF(manana);
         // Después de las 2:00 pm ya no da tiempo de preparar y entregar el
         // mismo día, así que el mínimo seleccionable pasa a ser mañana --
         // igual que en el selector rápido de la tienda.
@@ -1580,21 +1597,18 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // 3 días) -- esto NO limita qué se puede agregar al carrito ni en qué
     // categorías aparece, solo avisa aquí si la fecha elegida es más
     // próxima de lo que ese producto en particular tarda en llegar.
-    let catalogoTiempoEntregaCache = null;
     async function verificarTiempoEntregaRF() {
         const aviso = document.getElementById('aviso-tiempo-entrega');
         const fechaSeleccionada = document.getElementById('p3-fecha').value;
         if (!fechaSeleccionada || !carrito.length) { aviso.classList.add('hidden'); return; }
         try {
-            if (!catalogoTiempoEntregaCache) {
-                const productos = await fetch('/api/catalogo').then(r => r.json());
-                catalogoTiempoEntregaCache = new Map(productos.map(p => [p.id, Number(p.tiempo_entrega_dias) || 0]));
-            }
+            const validacion = await obtenerValidacionCarritoRF();
+            const tiempoPorId = new Map((validacion.items || []).map(it => [it.id, Number(it.tiempoEntregaDias) || 0]));
             const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
             const fechaElegida = new Date(fechaSeleccionada + 'T00:00:00');
             const conRetraso = [];
             carrito.forEach(item => {
-                const dias = catalogoTiempoEntregaCache.get(Number(item.id)) || 0;
+                const dias = tiempoPorId.get(Number(item.id)) || 0;
                 if (dias === 0) return;
                 const minimaLlegada = new Date(hoy); minimaLlegada.setDate(hoy.getDate() + dias);
                 if (minimaLlegada > fechaElegida) conRetraso.push(item.nombre);
