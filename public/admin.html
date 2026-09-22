@@ -1693,6 +1693,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         fila.querySelectorAll('input').forEach(input => input.addEventListener('input', sincronizarTamanos));
         fila.querySelector('[data-quitar-tamano]').addEventListener('click', () => { fila.remove(); sincronizarTamanos(); });
         cont.appendChild(fila);
+        if (nombre) sincronizarTamanos();
         return fila;
     }
     window.agregarFilaTamano = agregarFilaTamano;
@@ -1774,6 +1775,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             sincronizarVariantes();
         });
         cont.appendChild(grupo);
+        if (nombre || opciones.length) sincronizarVariantes();
         return grupo;
     }
     window.agregarGrupoVariante = agregarGrupoVariante;
