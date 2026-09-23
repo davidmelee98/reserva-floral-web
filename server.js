@@ -2047,6 +2047,19 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     return res.status(400).json({ error: 'Ingresa un correo electrónico válido.' });
   }
 
+  // El selector de fecha en la tienda ya evita elegir un día pasado, pero eso
+  // es solo del lado del cliente -- una petición armada a mano podría
+  // saltárselo. El límite es "el inicio de ayer en UTC" (fijo durante todo el
+  // día) y no "hace 24 horas exactas" (una ventana que se recorre) -- así
+  // cubre bien el caso de que el cliente esté en una zona horaria detrás de
+  // UTC, donde su "hoy" real cae en la fecha de "ayer" para el servidor.
+  const inicioHoyUTC = new Date(); inicioHoyUTC.setUTCHours(0, 0, 0, 0);
+  const limiteFechaMs = inicioHoyUTC.getTime() - 24 * 60 * 60 * 1000;
+  const fechaEntregaMs = Date.parse(`${fecha}T00:00:00Z`);
+  if (!Number.isFinite(fechaEntregaMs) || fechaEntregaMs < limiteFechaMs) {
+    return res.status(400).json({ error: 'La fecha de entrega no es válida.' });
+  }
+
   const idsCarrito = carrito.map(item => Number(item.id));
   if (idsCarrito.some(id => !Number.isInteger(id) || id <= 0)) {
     return res.status(400).json({ error: 'El carrito contiene productos inválidos.' });

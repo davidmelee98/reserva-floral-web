@@ -947,7 +947,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 const img = document.createElement('img');
                 img.src = url;
                 img.className = 'w-full h-full object-cover';
-                img.onerror = () => { img.onerror = null; img.src = 'https://via.placeholder.com/100?text=Foto'; };
+                img.onerror = () => { wrap.remove(); };
                 wrap.appendChild(img);
                 wrap.onclick = () => {
                     main.src = url;
@@ -963,7 +963,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     mobileImg.src = url;
                     mobileImg.alt = `${producto.nombre || 'Producto'} - foto ${index + 1}`;
                     mobileImg.loading = index === 0 ? 'eager' : 'lazy';
-                    mobileImg.onerror = () => { mobileImg.onerror = null; mobileImg.src = 'https://via.placeholder.com/600?text=Foto'; };
+                    mobileImg.onerror = () => { slide.remove(); dot?.remove(); };
                     slide.appendChild(mobileImg);
                     mobileTrack.appendChild(slide);
 
