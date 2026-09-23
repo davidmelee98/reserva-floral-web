@@ -1075,27 +1075,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const btn = document.getElementById('btn-aplicar-cupon');
         btn.disabled = true; btn.innerText = 'Verificando...';
         try {
-            const r = await fetch('/api/cupones/validar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ codigo, subtotal: subtotalCarrito() })
-            });
-            const datos = await r.json();
-            if (!r.ok) throw new Error(datos.error || 'No se pudo aplicar el cupón.');
-
-            estado.cupon = { codigo: datos.codigo, descuento: datos.descuento };
-            document.getElementById('cupon-formulario-bloque').classList.add('hidden');
-            document.getElementById('cupon-aplicado-bloque').classList.remove('hidden');
-            document.getElementById('cupon-aplicado-bloque').classList.add('flex');
-            document.getElementById('cupon-aplicado-texto').innerText = datos.codigo;
-            renderResumen();
-            // Si ya se había montado el formulario de pago con el monto viejo,
-            // hay que re-crearlo con el monto correcto -- lo más simple es
-            // pedirle a la persona que confirme el paso de nuevo si ya llegó
-            // hasta ahí (esto solo pasaría si vuelve a abrir el paso 2-4).
-            if (ordenCreadaId) {
-                mostrarToast('Cupón aplicado. Continúa hasta el pago para ver el nuevo total.', 'exito');
-            }
+            await intentarAplicarCuponRF(codigo);
         } catch (error) {
             errorEl.innerText = error.message;
             errorEl.classList.remove('hidden');
@@ -1105,8 +1085,52 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     }
     window.aplicarCupon = aplicarCupon;
 
+    // Comparte la validación entre el botón "Aplicar" de aquí y el cupón que
+    // ya se haya aplicado desde la página del carrito -- ese se revalida
+    // solo, contra el subtotal real de este momento, nunca se confía en el
+    // descuento que quedó guardado de antes.
+    async function intentarAplicarCuponRF(codigo) {
+        const r = await fetch('/api/cupones/validar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codigo, subtotal: subtotalCarrito() })
+        });
+        const datos = await r.json();
+        if (!r.ok) throw new Error(datos.error || 'No se pudo aplicar el cupón.');
+
+        estado.cupon = { codigo: datos.codigo, descuento: datos.descuento };
+        localStorage.setItem('rf_cupon_aplicado', JSON.stringify(estado.cupon));
+        document.getElementById('cupon-formulario-bloque').classList.add('hidden');
+        document.getElementById('cupon-aplicado-bloque').classList.remove('hidden');
+        document.getElementById('cupon-aplicado-bloque').classList.add('flex');
+        document.getElementById('cupon-aplicado-texto').innerText = datos.codigo;
+        renderResumen();
+        if (ordenCreadaId) {
+            mostrarToast('Cupón aplicado. Continúa hasta el pago para ver el nuevo total.', 'exito');
+        }
+    }
+
+    // Si ya habían aplicado un cupón desde la página del carrito, se recoge
+    // aquí solo -- pero se vuelve a validar contra el subtotal de este
+    // momento (pudo cambiar el carrito, o el cupón pudo vencerse mientras
+    // tanto), nunca se confía a ciegas en lo que quedó guardado.
+    (async function recogerCuponDelCarritoRF() {
+        let guardado;
+        try { guardado = JSON.parse(localStorage.getItem('rf_cupon_aplicado') || 'null'); } catch (e) { return; }
+        if (!guardado?.codigo) return;
+        try {
+            await intentarAplicarCuponRF(guardado.codigo);
+        } catch (error) {
+            // Si ya no es válido (venció, cambió el carrito, etc.), simplemente
+            // se descarta en silencio -- la persona puede volver a escribirlo
+            // si quiere, sin que le aparezca un error por algo que no hizo aquí.
+            localStorage.removeItem('rf_cupon_aplicado');
+        }
+    })();
+
     function quitarCupon() {
         estado.cupon = { codigo: null, descuento: 0 };
+        localStorage.removeItem('rf_cupon_aplicado');
         document.getElementById('input-cupon').value = '';
         document.getElementById('cupon-formulario-bloque').classList.remove('hidden');
         document.getElementById('cupon-aplicado-bloque').classList.add('hidden');

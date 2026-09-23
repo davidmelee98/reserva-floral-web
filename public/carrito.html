@@ -702,19 +702,23 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 </div>
 
                 <div class="bg-white rounded-2xl border border-gray-100 p-5">
-                    <div class="flex items-center justify-between text-sm text-brandDark opacity-60">
-                        <span class="flex items-center gap-2 font-medium">
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v3a2 2 0 01-2 2 2 2 0 012 2v3a2 2 0 002 2h2m6-14h2a2 2 0 012 2v3a2 2 0 002 2 2 2 0 00-2 2v3a2 2 0 01-2 2h-2" /></svg>
-                            Cupón de descuento
-                        </span>
-                        <span class="text-gray-400 font-medium text-xs">Próximamente</span>
+                    <div id="cupon-carrito-aplicado-bloque" class="hidden items-center justify-between bg-green-50 border border-green-100 rounded-lg px-3 py-2 text-xs mb-1">
+                        <span class="text-green-700 font-medium">✓ Cupón <span id="cupon-carrito-aplicado-texto"></span> aplicado</span>
+                        <button type="button" onclick="quitarCuponCarritoRF()" class="text-gray-400 hover:text-red-500">Quitar</button>
                     </div>
+                    <div id="cupon-carrito-formulario-bloque" class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v3a2 2 0 01-2 2 2 2 0 012 2v3a2 2 0 002 2h2m6-14h2a2 2 0 012 2v3a2 2 0 002 2 2 2 0 00-2 2v3a2 2 0 01-2 2h-2" /></svg>
+                        <input type="text" id="cupon-carrito-input" placeholder="Código de descuento" class="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2 text-sm uppercase focus:outline-none focus:border-brandFuchsia" maxlength="50">
+                        <button type="button" onclick="aplicarCuponCarritoRF()" id="cupon-carrito-btn-aplicar" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-brandDark font-semibold rounded-lg text-sm transition whitespace-nowrap shrink-0">Aplicar</button>
+                    </div>
+                    <p id="cupon-carrito-error" class="hidden text-[11px] text-red-600 mt-1.5"></p>
                 </div>
 
                 <div class="bg-white rounded-2xl border border-gray-100 p-5">
                     <h3 class="font-semibold text-brandDark mb-3">Resumen del pedido</h3>
                     <div class="space-y-2 text-sm">
                         <div class="flex justify-between text-gray-600"><span>Subtotal</span><span id="carrito-pagina-subtotal" class="font-medium text-brandDark">$0.00</span></div>
+                        <div id="carrito-pagina-descuento-fila" class="hidden flex justify-between text-green-600"><span>Descuento (<span id="carrito-pagina-descuento-codigo"></span>)</span><span id="carrito-pagina-descuento">-$0.00</span></div>
                         <div class="flex justify-between text-gray-600"><span>Envío</span><span class="text-gray-500 text-xs">Al ingresar la dirección</span></div>
                         <div class="flex justify-between text-base font-bold text-brandDark pt-2 border-t border-gray-100 mt-1"><span>Total</span><span id="carrito-pagina-total">$0.00</span></div>
                     </div>
@@ -1621,9 +1625,57 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
         }
 
+        // El cupón aplicado aquí se guarda para que el checkout lo recoja
+        // solo al llegar -- ahí se vuelve a validar contra el subtotal real
+        // de ese momento, nunca se confía en el descuento guardado a ciegas.
+        let cuponCarritoRF = JSON.parse(localStorage.getItem('rf_cupon_aplicado') || 'null');
+
+        function subtotalCarritoRF() {
+            return carrito.reduce((s, it) => s + Number(it.precio) * (Math.max(1, Number(it.cantidad) || 1)), 0);
+        }
+
+        async function aplicarCuponCarritoRF() {
+            const input = document.getElementById('cupon-carrito-input');
+            const codigo = input.value.trim();
+            const errorEl = document.getElementById('cupon-carrito-error');
+            errorEl.classList.add('hidden');
+            if (!codigo) { errorEl.innerText = 'Escribe un código.'; errorEl.classList.remove('hidden'); return; }
+
+            const btn = document.getElementById('cupon-carrito-btn-aplicar');
+            btn.disabled = true; btn.innerText = 'Verificando...';
+            try {
+                const r = await fetch('/api/cupones/validar', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codigo, subtotal: subtotalCarritoRF() })
+                });
+                const datos = await r.json();
+                if (!r.ok) throw new Error(datos.error || 'No se pudo aplicar el cupón.');
+
+                cuponCarritoRF = { codigo: datos.codigo, descuento: datos.descuento };
+                localStorage.setItem('rf_cupon_aplicado', JSON.stringify(cuponCarritoRF));
+                actualizarUI();
+                mostrarNotificacionRF(`Cupón ${datos.codigo} aplicado.`);
+            } catch (error) {
+                errorEl.innerText = error.message;
+                errorEl.classList.remove('hidden');
+            } finally {
+                btn.disabled = false; btn.innerText = 'Aplicar';
+            }
+        }
+        window.aplicarCuponCarritoRF = aplicarCuponCarritoRF;
+
+        function quitarCuponCarritoRF() {
+            cuponCarritoRF = null;
+            localStorage.removeItem('rf_cupon_aplicado');
+            document.getElementById('cupon-carrito-input').value = '';
+            actualizarUI();
+        }
+        window.quitarCuponCarritoRF = quitarCuponCarritoRF;
+
         function actualizarUI() {
             normalizarCarrito();
             localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            guardarCarritoEnCuentaRF();
             const unidades = totalUnidadesCarrito();
             document.getElementById('contador-carrito').innerText = unidades;
             const boton = document.getElementById('contador-carrito-boton');
@@ -1708,8 +1760,25 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 }
                 const subtotalEl = document.getElementById('carrito-pagina-subtotal');
                 const totalEl = document.getElementById('carrito-pagina-total');
+                const descuento = Math.min(cuponCarritoRF?.descuento || 0, total);
                 if (subtotalEl) subtotalEl.innerText = '$' + formatearPrecio(total);
-                if (totalEl) totalEl.innerText = '$' + formatearPrecio(total);
+                if (totalEl) totalEl.innerText = '$' + formatearPrecio(Math.max(0, total - descuento));
+                const filaDescuento = document.getElementById('carrito-pagina-descuento-fila');
+                if (filaDescuento) {
+                    filaDescuento.classList.toggle('hidden', !cuponCarritoRF);
+                    if (cuponCarritoRF) {
+                        document.getElementById('carrito-pagina-descuento-codigo').innerText = cuponCarritoRF.codigo;
+                        document.getElementById('carrito-pagina-descuento').innerText = '-$' + formatearPrecio(descuento);
+                    }
+                }
+                const bloqueAplicado = document.getElementById('cupon-carrito-aplicado-bloque');
+                const bloqueFormulario = document.getElementById('cupon-carrito-formulario-bloque');
+                if (bloqueAplicado && bloqueFormulario) {
+                    bloqueAplicado.classList.toggle('hidden', !cuponCarritoRF);
+                    bloqueAplicado.classList.toggle('flex', !!cuponCarritoRF);
+                    bloqueFormulario.classList.toggle('hidden', !!cuponCarritoRF);
+                    if (cuponCarritoRF) document.getElementById('cupon-carrito-aplicado-texto').innerText = cuponCarritoRF.codigo;
+                }
                 renderSugeridosCarrito();
             }
         }
@@ -2541,6 +2610,61 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     let sesionCliente = null;
     let accionTrasCuenta = null;
 
+    // El carrito de quien tiene cuenta se guarda también en el servidor, no
+    // solo en este navegador -- así, si arma su pedido en el celular y luego
+    // abre la laptop para pagar más cómodo, lo encuentra tal cual lo dejó.
+    // Al iniciar sesión (aquí o al recién registrarse) se combinan ambos
+    // carritos -- el de este navegador y el que ya tenía guardado en su
+    // cuenta -- sumando cantidades cuando el mismo producto aparece en los
+    // dos, para no perder nada de ningún lado.
+    async function sincronizarCarritoConCuentaRF() {
+        if (!sesionCliente) return;
+        try {
+            const datos = await (await fetch('/api/cuenta/carrito')).json();
+            const carritoCuenta = Array.isArray(datos.carrito) ? datos.carrito : [];
+            if (carritoCuenta.length === 0) {
+                await guardarCarritoEnCuentaRF();
+                return;
+            }
+            const combinado = [...carrito];
+            carritoCuenta.forEach(itemCuenta => {
+                const igual = combinado.find(it => it.id === itemCuenta.id && (it.variante || null) === (itemCuenta.variante || null));
+                if (igual) {
+                    igual.cantidad = Math.max(1, Number(igual.cantidad) || 1) + Math.max(1, Number(itemCuenta.cantidad) || 1);
+                } else {
+                    combinado.push(itemCuenta);
+                }
+            });
+            carrito = combinado;
+            localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            actualizarUI();
+            await guardarCarritoEnCuentaRF();
+        } catch (error) {
+            console.error('No se pudo sincronizar el carrito con la cuenta', error);
+        }
+    }
+
+    // Se guarda con un pequeño retraso (no en cada tecla/clic exacto) para no
+    // saturar de peticiones si la persona cambia cantidades rápido seguido.
+    let temporizadorGuardarCarritoCuentaRF = null;
+    function guardarCarritoEnCuentaRF() {
+        if (!sesionCliente) return;
+        clearTimeout(temporizadorGuardarCarritoCuentaRF);
+        return new Promise(resolve => {
+            temporizadorGuardarCarritoCuentaRF = setTimeout(async () => {
+                try {
+                    await fetch('/api/cuenta/carrito', {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ carrito })
+                    });
+                } catch (error) {
+                    console.error('No se pudo guardar el carrito en la cuenta', error);
+                }
+                resolve();
+            }, 700);
+        });
+    }
+
     async function cargarSesionCliente() {
         try {
             const r = await fetch('/api/cuenta/sesion');
@@ -2548,6 +2672,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             sesionCliente = datos.autenticado ? datos.cliente : null;
         } catch (e) { sesionCliente = null; }
         renderWidgetCuenta();
+        if (sesionCliente) sincronizarCarritoConCuentaRF();
     }
 
     function renderWidgetCuenta() {
@@ -2657,6 +2782,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (!r.ok) throw new Error(datos.error || 'No se pudo iniciar sesión.');
             sesionCliente = datos.cliente;
             renderWidgetCuenta();
+            sincronizarCarritoConCuentaRF();
             const accion = accionTrasCuenta;
             accionTrasCuenta = null;
             cerrarModalCuenta();
@@ -2688,6 +2814,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (!r.ok) throw new Error(datos.error || 'No se pudo crear la cuenta.');
             sesionCliente = datos.cliente;
             renderWidgetCuenta();
+            sincronizarCarritoConCuentaRF();
             const accion = accionTrasCuenta;
             accionTrasCuenta = null;
             cerrarModalCuenta();

@@ -385,6 +385,8 @@ async function inicializarDB() {
       email VARCHAR(150) UNIQUE NOT NULL,
       telefono VARCHAR(20),
       password_hash TEXT,
+      carrito_guardado JSONB,
+      carrito_actualizado_en TIMESTAMP,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -551,6 +553,8 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descuento DECIMAL(10,2) DEFAULT 0',
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS puntos_canjeados INTEGER DEFAULT 0',
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS google_id VARCHAR(100)',
+    'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS carrito_guardado JSONB',
+    'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS carrito_actualizado_en TIMESTAMP',
     'ALTER TABLE clientes_cuenta ALTER COLUMN password_hash DROP NOT NULL',
     'ALTER TABLE zonas_cobertura ADD COLUMN IF NOT EXISTS estado VARCHAR(100)'
   ];
@@ -1365,6 +1369,36 @@ app.get('/api/cuenta/cupones', requireClienteAuth, async (req, res) => {
   } catch (error) {
     console.error('GET /api/cuenta/cupones:', error);
     res.status(500).json({ error: 'No se pudieron cargar tus cupones.' });
+  }
+});
+
+// El carrito de quien tiene cuenta se guarda también del lado del servidor,
+// no solo en su navegador -- así, si arma su pedido en el celular y luego
+// abre la laptop para pagar más cómodo, su carrito lo sigue esperando ahí.
+app.get('/api/cuenta/carrito', requireClienteAuth, limitadorGeneral, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT carrito_guardado FROM clientes_cuenta WHERE id=$1', [req.session.clienteId]);
+    res.json({ carrito: Array.isArray(resultado.rows[0]?.carrito_guardado) ? resultado.rows[0].carrito_guardado : [] });
+  } catch (error) {
+    console.error('GET /api/cuenta/carrito:', error);
+    res.status(500).json({ error: 'No se pudo cargar tu carrito guardado.' });
+  }
+});
+
+app.put('/api/cuenta/carrito', requireClienteAuth, limitadorGeneral, async (req, res) => {
+  const carrito = Array.isArray(req.body?.carrito) ? req.body.carrito : [];
+  if (carrito.length > 200) {
+    return res.status(400).json({ error: 'El carrito tiene demasiados artículos.' });
+  }
+  try {
+    await pool.query(
+      'UPDATE clientes_cuenta SET carrito_guardado=$1, carrito_actualizado_en=NOW() WHERE id=$2',
+      [JSON.stringify(carrito), req.session.clienteId]
+    );
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('PUT /api/cuenta/carrito:', error);
+    res.status(500).json({ error: 'No se pudo guardar tu carrito.' });
   }
 });
 
