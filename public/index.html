@@ -317,9 +317,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             /* Mismo bloqueo de scroll para el nuevo modal de "Descripción". */
             body.rf-product-open.rf-descripcion-open { overflow: hidden !important; }
             /* Al abrir un producto, ocultamos completamente la página que queda detrás.
-               Solo permanecen visibles el header y la pantalla de producto. */
+               Solo permanecen visibles el header y la pantalla de producto.
+               IMPORTANTE: se usa "display:none", no "visibility:hidden" -- lo
+               segundo solo vuelve invisible el contenido pero sigue ocupando
+               su espacio real en el documento (que es MUCHO, al ser toda la
+               portada). Eso era lo que dejaba un tramo enorme de scroll en
+               blanco debajo de la información del producto. */
             body.rf-product-open > *:not(header):not(#modal-producto):not(#rf-mobile-overlay):not(#rf-mobile-drawer):not(#carrito-lateral):not(#modal-ubicacion):not(#panel-descripcion-producto) {
-                visibility: hidden !important;
+                display: none !important;
                 pointer-events: none !important;
             }
             body.rf-product-open > header {
