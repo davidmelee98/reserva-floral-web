@@ -1731,67 +1731,86 @@ function formatearFechaCorreo(fecha) {
   return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-function plantillaBaseCorreo(tituloInterno, cuerpoHtml) {
+async function plantillaBaseCorreo(tituloInterno, cuerpoHtml) {
+  const logoUrl = `${URL_SITIO}/logo-reserva-floral.png`;
+  let whatsappBoton = '';
+  try {
+    const cfg = await pool.query("SELECT clave, valor FROM configuracion WHERE clave = 'whatsapp_numero'");
+    const numero = String(cfg.rows[0]?.valor || '').replace(/\D/g, '');
+    if (numero) {
+      whatsappBoton = `
+        <tr><td align="center" style="padding-top:18px;">
+          <a href="https://wa.me/${numero}" style="display:inline-block;background:#ffffff;color:#c2185b;text-decoration:none;font-size:12px;font-weight:600;padding:9px 18px;border-radius:999px;">¿Dudas? Escríbenos por WhatsApp</a>
+        </td></tr>`;
+    }
+  } catch (error) {
+    console.error('No se pudo cargar el número de WhatsApp para el correo:', error?.message || error);
+  }
   return `
-    <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#353535;">
-      <div style="background:#c2185b;padding:20px;text-align:center;border-radius:12px 12px 0 0;">
-        <h1 style="color:#fff;font-size:20px;margin:0;font-weight:600;">Reserva Floral</h1>
-      </div>
-      <div style="background:#fff;border:1px solid #ececec;border-top:none;border-radius:0 0 12px 12px;padding:24px;">
-        ${cuerpoHtml}
-      </div>
-      <p style="text-align:center;color:#999;font-size:11px;margin-top:16px;">© ${new Date().getFullYear()} Reserva Floral</p>
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7eef2;padding:32px 16px;font-family:'Helvetica Neue',Arial,sans-serif;">
+      <tr><td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;">
+          <tr><td style="background:#ffffff;border-radius:20px 20px 0 0;padding:30px 24px 18px;text-align:center;">
+            <img src="${logoUrl}" alt="Reserva Floral" style="height:46px;width:auto;">
+          </td></tr>
+          <tr><td style="background:#ffffff;padding:6px 32px 32px;color:#3a3a3a;line-height:1.55;">
+            ${cuerpoHtml}
+          </td></tr>
+          <tr><td style="background:#c2185b;border-radius:0 0 20px 20px;padding:20px 24px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              ${whatsappBoton}
+            </table>
+          </td></tr>
+        </table>
+        <p style="text-align:center;color:#b58f9c;font-size:11px;margin:16px 0 0;">© ${new Date().getFullYear()} Reserva Floral · reservafloral.com</p>
+      </td></tr>
+    </table>
   `;
 }
 
-async function enviarCorreoConfirmacionPedido(orden) {
-  if (!resendClient || !orden.email_contacto) return;
+// Permite apagar cualquiera de los 4 correos automáticos desde el panel
+// (Configuración → Correos automáticos) sin tocar código -- por defecto,
+// si nunca se ha guardado nada, todos están activos.
+async function correoTipoActivoRF(clave) {
   try {
-    const items = Array.isArray(orden.carrito) ? orden.carrito : JSON.parse(orden.carrito || '[]');
-    const filas = items.map(it => `
-      <tr>
-        <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">${it.nombre}${it.variante ? ` (${it.variante})` : ''} × ${it.cantidad}</td>
-        <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;">$${(it.precio * it.cantidad).toFixed(2)}</td>
-      </tr>`).join('');
-    const cuerpo = `
-      <h2 style="font-size:16px;margin:0 0 8px;">¡Gracias por tu pedido, ${orden.cliente_nombre}!</h2>
-      <p style="font-size:13px;color:#666;margin:0 0 16px;">Tu pedido <strong>#${orden.id}</strong> fue registrado correctamente.</p>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">${filas}</table>
-      <p style="font-size:13px;margin:4px 0;"><strong>Total:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
-      <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
-      <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${orden.direccion_entrega}</p>
-    `;
-    await resendClient.emails.send({
-      from: CORREO_REMITENTE,
-      to: orden.email_contacto,
-      subject: `Recibimos tu pedido #${orden.id} — Reserva Floral`,
-      html: plantillaBaseCorreo('Confirmación de pedido', cuerpo)
-    });
+    const resultado = await pool.query('SELECT valor FROM configuracion WHERE clave = $1', [clave]);
+    return resultado.rows[0]?.valor !== 'false';
   } catch (error) {
-    // Un correo que falla nunca debe tumbar la venta -- solo se registra.
-    console.error('No se pudo enviar el correo de confirmación de pedido:', error?.message || error);
+    console.error(`No se pudo revisar si "${clave}" está activo, se manda por default:`, error?.message || error);
+    return true;
   }
 }
 
-async function enviarCorreoPagoConfirmado(orden) {
-  if (!resendClient || !orden.email_contacto) return;
-  try {
-    const cuerpo = `
-      <h2 style="font-size:16px;margin:0 0 8px;">✓ Tu pago fue confirmado</h2>
-      <p style="font-size:13px;color:#666;margin:0 0 16px;">El pago de tu pedido <strong>#${orden.id}</strong> ya se acreditó. Empezaremos a prepararlo para la entrega.</p>
-      <p style="font-size:13px;margin:4px 0;"><strong>Total pagado:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
-      <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
-    `;
-    await resendClient.emails.send({
-      from: CORREO_REMITENTE,
-      to: orden.email_contacto,
-      subject: `Tu pago fue confirmado — Pedido #${orden.id}`,
-      html: plantillaBaseCorreo('Pago confirmado', cuerpo)
-    });
-  } catch (error) {
-    console.error('No se pudo enviar el correo de pago confirmado:', error?.message || error);
-  }
+// Cada una de estas arma el asunto y el cuerpo de un correo a partir de los
+// datos de un pedido -- las usa tanto el envío real como la vista previa del
+// panel, para que lo que se vea ahí sea EXACTAMENTE lo que le llega al
+// cliente, nunca una copia aparte que se pueda desactualizar.
+function construirCorreoConfirmacion(orden) {
+  const items = Array.isArray(orden.carrito) ? orden.carrito : JSON.parse(orden.carrito || '[]');
+  const filas = items.map(it => `
+    <tr>
+      <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">${it.nombre}${it.variante ? ` (${it.variante})` : ''} × ${it.cantidad}</td>
+      <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;">$${(it.precio * it.cantidad).toFixed(2)}</td>
+    </tr>`).join('');
+  const cuerpo = `
+    <h2 style="font-size:16px;margin:0 0 8px;">¡Gracias por tu pedido, ${orden.cliente_nombre}!</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px;">Tu pedido <strong>#${orden.id}</strong> fue registrado correctamente.</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">${filas}</table>
+    <p style="font-size:13px;margin:4px 0;"><strong>Total:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${orden.direccion_entrega}</p>
+  `;
+  return { titulo: 'Confirmación de pedido', asunto: `Recibimos tu pedido #${orden.id} — Reserva Floral`, cuerpo };
+}
+
+function construirCorreoPagoConfirmado(orden) {
+  const cuerpo = `
+    <h2 style="font-size:16px;margin:0 0 8px;">✓ Tu pago fue confirmado</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px;">El pago de tu pedido <strong>#${orden.id}</strong> ya se acreditó. Empezaremos a prepararlo para la entrega.</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Total pagado:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
+  `;
+  return { titulo: 'Pago confirmado', asunto: `Tu pago fue confirmado — Pedido #${orden.id}`, cuerpo };
 }
 
 // Le avisa al cliente cuando el negocio cambia el estado de su pedido (ej. a
@@ -1803,22 +1822,73 @@ const MENSAJES_ESTADO_CORREO = {
   'Entregado': { asunto: 'Tu pedido fue entregado', titulo: '✓ Tu pedido fue entregado', texto: 'Confirmamos que tu pedido ya fue entregado. ¡Gracias por tu compra!' },
   'Cancelado': { asunto: 'Tu pedido fue cancelado', titulo: 'Tu pedido fue cancelado', texto: 'Tu pedido fue cancelado. Si tienes dudas, contáctanos y con gusto te ayudamos.' }
 };
-async function enviarCorreoEstadoActualizado(orden, estadoNuevo) {
-  const mensaje = MENSAJES_ESTADO_CORREO[estadoNuevo];
-  if (!mensaje || !resendClient || !orden.email_contacto) return;
+function construirCorreoEstadoActualizado(orden, estadoNuevo) {
+  const mensaje = MENSAJES_ESTADO_CORREO[estadoNuevo] || MENSAJES_ESTADO_CORREO['En preparación'];
+  const cuerpo = `
+    <h2 style="font-size:16px;margin:0 0 8px;">${mensaje.titulo}</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px;">${mensaje.texto}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Pedido:</strong> #${orden.id}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${orden.direccion_entrega || ''}</p>
+  `;
+  return { titulo: mensaje.titulo, asunto: `${mensaje.asunto} — Pedido #${orden.id}`, cuerpo };
+}
+
+function construirCorreoCarritoAbandonado(carritoAbandonado) {
+  const items = Array.isArray(carritoAbandonado.items) ? carritoAbandonado.items : JSON.parse(carritoAbandonado.items || '[]');
+  const listaHtml = items.map(it => `
+    <p style="font-size:13px;margin:4px 0;">${Number(it.cantidad) || 1} × ${it.nombre || 'Producto'} — $${Number(it.precio || 0).toFixed(2)}</p>
+  `).join('');
+  const cuerpo = `
+    <h2 style="font-size:16px;margin:0 0 8px;">🌸 Se te quedó algo en el carrito</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px;">${carritoAbandonado.nombre ? `Hola ${carritoAbandonado.nombre}, v` : 'V'}imos que dejaste estos productos listos, pero no llegaste a terminar tu compra. Aquí siguen esperándote:</p>
+    ${listaHtml}
+    <p style="font-size:13px;margin:16px 0 4px;"><strong>Total: $${Number(carritoAbandonado.total || 0).toFixed(2)} MXN</strong></p>
+    <p style="margin-top:20px;"><a href="${URL_SITIO}/carrito" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Terminar mi compra</a></p>
+  `;
+  return { titulo: 'Tu carrito te espera', asunto: 'Se te quedó algo en el carrito 🌸', cuerpo };
+}
+
+async function enviarCorreoConfirmacionPedido(orden) {
+  if (!resendClient || !orden.email_contacto || !(await correoTipoActivoRF('correo_confirmacion_activo'))) return;
   try {
-    const cuerpo = `
-      <h2 style="font-size:16px;margin:0 0 8px;">${mensaje.titulo}</h2>
-      <p style="font-size:13px;color:#666;margin:0 0 16px;">${mensaje.texto}</p>
-      <p style="font-size:13px;margin:4px 0;"><strong>Pedido:</strong> #${orden.id}</p>
-      <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
-      <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${orden.direccion_entrega || ''}</p>
-    `;
+    const { titulo, asunto, cuerpo } = construirCorreoConfirmacion(orden);
     await resendClient.emails.send({
       from: CORREO_REMITENTE,
       to: orden.email_contacto,
-      subject: `${mensaje.asunto} — Pedido #${orden.id}`,
-      html: plantillaBaseCorreo(mensaje.titulo, cuerpo)
+      subject: asunto,
+      html: await plantillaBaseCorreo(titulo, cuerpo)
+    });
+  } catch (error) {
+    // Un correo que falla nunca debe tumbar la venta -- solo se registra.
+    console.error('No se pudo enviar el correo de confirmación de pedido:', error?.message || error);
+  }
+}
+
+async function enviarCorreoPagoConfirmado(orden) {
+  if (!resendClient || !orden.email_contacto || !(await correoTipoActivoRF('correo_pago_confirmado_activo'))) return;
+  try {
+    const { titulo, asunto, cuerpo } = construirCorreoPagoConfirmado(orden);
+    await resendClient.emails.send({
+      from: CORREO_REMITENTE,
+      to: orden.email_contacto,
+      subject: asunto,
+      html: await plantillaBaseCorreo(titulo, cuerpo)
+    });
+  } catch (error) {
+    console.error('No se pudo enviar el correo de pago confirmado:', error?.message || error);
+  }
+}
+
+async function enviarCorreoEstadoActualizado(orden, estadoNuevo) {
+  if (!MENSAJES_ESTADO_CORREO[estadoNuevo] || !resendClient || !orden.email_contacto || !(await correoTipoActivoRF('correo_estado_actualizado_activo'))) return;
+  try {
+    const { titulo, asunto, cuerpo } = construirCorreoEstadoActualizado(orden, estadoNuevo);
+    await resendClient.emails.send({
+      from: CORREO_REMITENTE,
+      to: orden.email_contacto,
+      subject: asunto,
+      html: await plantillaBaseCorreo(titulo, cuerpo)
     });
   } catch (error) {
     console.error('No se pudo enviar el correo de estado actualizado:', error?.message || error);
@@ -1828,24 +1898,14 @@ async function enviarCorreoEstadoActualizado(orden, estadoNuevo) {
 // Recordatorio para quien dejó su carrito a medias (ya escribió su correo en
 // el checkout, pero nunca terminó de pagar).
 async function enviarCorreoCarritoAbandonado(carritoAbandonado) {
-  if (!resendClient) return;
+  if (!resendClient || !(await correoTipoActivoRF('correo_carrito_abandonado_activo'))) return;
   try {
-    const items = Array.isArray(carritoAbandonado.items) ? carritoAbandonado.items : JSON.parse(carritoAbandonado.items || '[]');
-    const listaHtml = items.map(it => `
-      <p style="font-size:13px;margin:4px 0;">${Number(it.cantidad) || 1} × ${it.nombre || 'Producto'} — $${Number(it.precio || 0).toFixed(2)}</p>
-    `).join('');
-    const cuerpo = `
-      <h2 style="font-size:16px;margin:0 0 8px;">🌸 Se te quedó algo en el carrito</h2>
-      <p style="font-size:13px;color:#666;margin:0 0 16px;">${carritoAbandonado.nombre ? `Hola ${carritoAbandonado.nombre}, v` : 'V'}imos que dejaste estos productos listos, pero no llegaste a terminar tu compra. Aquí siguen esperándote:</p>
-      ${listaHtml}
-      <p style="font-size:13px;margin:16px 0 4px;"><strong>Total: $${Number(carritoAbandonado.total || 0).toFixed(2)} MXN</strong></p>
-      <p style="margin-top:20px;"><a href="${URL_SITIO}/carrito" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Terminar mi compra</a></p>
-    `;
+    const { titulo, asunto, cuerpo } = construirCorreoCarritoAbandonado(carritoAbandonado);
     await resendClient.emails.send({
       from: CORREO_REMITENTE,
       to: carritoAbandonado.email,
-      subject: 'Se te quedó algo en el carrito 🌸',
-      html: plantillaBaseCorreo('Tu carrito te espera', cuerpo)
+      subject: asunto,
+      html: await plantillaBaseCorreo(titulo, cuerpo)
     });
   } catch (error) {
     console.error('No se pudo enviar el correo de carrito abandonado:', error?.message || error);
@@ -2461,6 +2521,34 @@ app.get('/api/admin/bitacora', requireAuth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('GET /api/admin/bitacora:', error);
     res.status(500).json({ error: 'No se pudo cargar la bitácora.' });
+  }
+});
+
+// Vista previa de cómo se ve cada correo automático -- arma el mismo HTML
+// que de verdad se manda (usando datos de ejemplo), para que se pueda ver el
+// diseño sin tener que provocar un pedido real. Se abre directo en una
+// pestaña nueva desde el panel.
+const ORDEN_EJEMPLO_CORREO = {
+  id: 1042, cliente_nombre: 'Ana Torres', total: 850,
+  carrito: [{ nombre: 'Ramo de Rosas Rojas', cantidad: 1, precio: 650 }, { nombre: 'Caja de Chocolates', cantidad: 1, precio: 200 }],
+  fecha_entrega: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+  horario_entrega: '3:00 pm - 5:00 pm',
+  direccion_entrega: 'Calle Falsa 123, Col. Centro, Cd. Madero, Tamaulipas'
+};
+app.get('/api/admin/correos/vista-previa/:tipo', requireAuth, async (req, res) => {
+  try {
+    let datos;
+    if (req.params.tipo === 'confirmacion') datos = construirCorreoConfirmacion(ORDEN_EJEMPLO_CORREO);
+    else if (req.params.tipo === 'pago') datos = construirCorreoPagoConfirmado(ORDEN_EJEMPLO_CORREO);
+    else if (req.params.tipo === 'estado') datos = construirCorreoEstadoActualizado(ORDEN_EJEMPLO_CORREO, MENSAJES_ESTADO_CORREO[req.query.estado] ? req.query.estado : 'En camino');
+    else if (req.params.tipo === 'carrito') datos = construirCorreoCarritoAbandonado({ nombre: 'Ana', email: 'ana@ejemplo.com', total: 850, items: ORDEN_EJEMPLO_CORREO.carrito });
+    else return res.status(400).send('Tipo de correo no reconocido.');
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(await plantillaBaseCorreo(datos.titulo, datos.cuerpo));
+  } catch (error) {
+    console.error('GET /api/admin/correos/vista-previa/:tipo:', error);
+    res.status(500).send('No se pudo generar la vista previa.');
   }
 });
 

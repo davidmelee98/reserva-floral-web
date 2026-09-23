@@ -1109,6 +1109,53 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             </div>
                         </div>
 
+                        <div class="border-t border-gray-100 pt-4 mt-2">
+                            <p class="text-sm font-semibold text-brandDark mb-1">Correos automáticos</p>
+                            <p class="text-xs text-gray-400 mb-3">Estos correos se le mandan solos al cliente en cada momento de su compra. Apaga los que no quieras usar, y dale a "Ver ejemplo" para ver exactamente cómo se ven antes de decidir.</p>
+                            <div class="space-y-2" id="lista-correos-automaticos">
+                                <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2.5">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-semibold text-brandDark">Confirmación de pedido</p>
+                                        <p class="text-[11px] text-gray-400">Se manda en cuanto el cliente hace su pedido.</p>
+                                    </div>
+                                    <div class="flex items-center gap-3 shrink-0">
+                                        <a href="/api/admin/correos/vista-previa/confirmacion" target="_blank" class="text-[11px] font-semibold text-brandFuchsia hover:underline">Ver ejemplo ↗</a>
+                                        <label class="adm-switch"><input type="checkbox" id="cfg_correo_confirmacion_activo" checked><span class="adm-switch-track"></span></label>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2.5">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-semibold text-brandDark">Pago confirmado</p>
+                                        <p class="text-[11px] text-gray-400">Se manda cuando el pago con tarjeta/OXXO/SPEI ya se acreditó.</p>
+                                    </div>
+                                    <div class="flex items-center gap-3 shrink-0">
+                                        <a href="/api/admin/correos/vista-previa/pago" target="_blank" class="text-[11px] font-semibold text-brandFuchsia hover:underline">Ver ejemplo ↗</a>
+                                        <label class="adm-switch"><input type="checkbox" id="cfg_correo_pago_confirmado_activo" checked><span class="adm-switch-track"></span></label>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2.5">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-semibold text-brandDark">Actualización de estado</p>
+                                        <p class="text-[11px] text-gray-400">Se manda cuando tú cambias el estado del pedido (En preparación, En camino, Entregado, Cancelado).</p>
+                                    </div>
+                                    <div class="flex items-center gap-3 shrink-0">
+                                        <a href="/api/admin/correos/vista-previa/estado?estado=En%20camino" target="_blank" class="text-[11px] font-semibold text-brandFuchsia hover:underline">Ver ejemplo ↗</a>
+                                        <label class="adm-switch"><input type="checkbox" id="cfg_correo_estado_actualizado_activo" checked><span class="adm-switch-track"></span></label>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2.5">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-semibold text-brandDark">Recordatorio de carrito abandonado</p>
+                                        <p class="text-[11px] text-gray-400">Se manda ~2 horas después si alguien dejó su carrito a medias sin pagar.</p>
+                                    </div>
+                                    <div class="flex items-center gap-3 shrink-0">
+                                        <a href="/api/admin/correos/vista-previa/carrito" target="_blank" class="text-[11px] font-semibold text-brandFuchsia hover:underline">Ver ejemplo ↗</a>
+                                        <label class="adm-switch"><input type="checkbox" id="cfg_correo_carrito_abandonado_activo" checked><span class="adm-switch-track"></span></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 px-6 rounded-lg text-sm transition">Guardar configuración</button>
                     </form>
                 </div>
@@ -3098,6 +3145,10 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             document.getElementById('cfg_twitter_url').value = cfg.twitter_url || '';
             document.getElementById('cfg_google_analytics_id').value = cfg.google_analytics_id || '';
             document.getElementById('cfg_meta_pixel_id').value = cfg.meta_pixel_id || '';
+            document.getElementById('cfg_correo_confirmacion_activo').checked = cfg.correo_confirmacion_activo !== 'false';
+            document.getElementById('cfg_correo_pago_confirmado_activo').checked = cfg.correo_pago_confirmado_activo !== 'false';
+            document.getElementById('cfg_correo_estado_actualizado_activo').checked = cfg.correo_estado_actualizado_activo !== 'false';
+            document.getElementById('cfg_correo_carrito_abandonado_activo').checked = cfg.correo_carrito_abandonado_activo !== 'false';
 
             const previewHero = document.getElementById('ib-preview-hero');
             if (previewHero) {
@@ -3636,7 +3687,11 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     tiktok_url: document.getElementById('cfg_tiktok_url').value,
                     twitter_url: document.getElementById('cfg_twitter_url').value,
                     google_analytics_id: document.getElementById('cfg_google_analytics_id').value,
-                    meta_pixel_id: document.getElementById('cfg_meta_pixel_id').value
+                    meta_pixel_id: document.getElementById('cfg_meta_pixel_id').value,
+                    correo_confirmacion_activo: String(document.getElementById('cfg_correo_confirmacion_activo').checked),
+                    correo_pago_confirmado_activo: String(document.getElementById('cfg_correo_pago_confirmado_activo').checked),
+                    correo_estado_actualizado_activo: String(document.getElementById('cfg_correo_estado_actualizado_activo').checked),
+                    correo_carrito_abandonado_activo: String(document.getElementById('cfg_correo_carrito_abandonado_activo').checked)
                 })
             }));
             mostrarToast('Configuración guardada.');
