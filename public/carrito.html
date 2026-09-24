@@ -1373,6 +1373,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             return true;
         }
 
+        // Marca "el carrito de este dispositivo cambió justo ahora" -- se usa
+        // para decidir, la próxima vez que se sincronice con la cuenta, si lo
+        // de aquí es más reciente que lo que haya guardado en el servidor (y
+        // por lo tanto no hay que pisarlo con datos viejos de otro dispositivo).
+        function marcarCarritoModificadoRF() {
+            localStorage.setItem('rf_carrito_actualizado_en', String(Date.now()));
+        }
+
         function agregarItemCarrito(item) {
             const varianteReal = tieneVarianteCarrito(item.variante);
             const existente = !varianteReal
@@ -1394,6 +1402,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
 
             localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            marcarCarritoModificadoRF();
             actualizarUI();
         }
 
@@ -1610,6 +1619,15 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         // (id -> {disponible, motivo}) para poder marcar en la vista qué
         // artículos ya no se pueden comprar tal cual están en el carrito.
         let validacionCarritoRF = {};
+        // Con cuánto retraso se vuelve a revisar disponibilidad tras un cambio
+        // en el carrito -- lo suficiente para no mandar una petición por cada
+        // clic si la persona cambia cantidades varias veces seguidas.
+        let temporizadorValidarDisponibilidadRF = null;
+        function programarValidarDisponibilidadRF() {
+            clearTimeout(temporizadorValidarDisponibilidadRF);
+            temporizadorValidarDisponibilidadRF = setTimeout(validarDisponibilidadCarritoRF, 500);
+        }
+
         async function validarDisponibilidadCarritoRF() {
             if (carrito.length === 0) { validacionCarritoRF = {}; return; }
             try {
@@ -1619,7 +1637,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 }).then(r => r.json());
                 validacionCarritoRF = {};
                 (resultado.items || []).forEach(it => { validacionCarritoRF[it.id] = it; });
-                actualizarUI();
+                // "true" = este re-render es SOLO para mostrar el resultado de
+                // la validación que acabamos de hacer -- si volviera a programar
+                // otra validación aquí, sería un ciclo infinito (valida ->
+                // re-renderiza -> programa otra validación -> valida -> ...).
+                actualizarUI(true);
             } catch (error) {
                 console.error('No se pudo validar el carrito', error);
             }
@@ -1672,10 +1694,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
         window.quitarCuponCarritoRF = quitarCuponCarritoRF;
 
-        function actualizarUI() {
+        function actualizarUI(saltarValidacion) {
             normalizarCarrito();
             localStorage.setItem('carritoRF', JSON.stringify(carrito));
             guardarCarritoEnCuentaRF();
+            if (!saltarValidacion) programarValidarDisponibilidadRF();
             const unidades = totalUnidadesCarrito();
             document.getElementById('contador-carrito').innerText = unidades;
             const boton = document.getElementById('contador-carrito-boton');
@@ -1801,12 +1824,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
             carrito[index].cantidad = nueva;
             localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            marcarCarritoModificadoRF();
             actualizarUI();
         }
 
         function eliminarDelCarrito(index) {
             carrito.splice(index, 1);
             localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            marcarCarritoModificadoRF();
             actualizarUI();
         }
 
@@ -2322,7 +2347,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
             normalizarCarrito();
             actualizarUI();
-            validarDisponibilidadCarritoRF();
             const avisoInvalido = sessionStorage.getItem('rf_aviso_carrito_invalido');
             if (avisoInvalido) {
                 sessionStorage.removeItem('rf_aviso_carrito_invalido');
@@ -2613,31 +2637,47 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // El carrito de quien tiene cuenta se guarda también en el servidor, no
     // solo en este navegador -- así, si arma su pedido en el celular y luego
     // abre la laptop para pagar más cómodo, lo encuentra tal cual lo dejó.
-    // Al iniciar sesión (aquí o al recién registrarse) se combinan ambos
-    // carritos -- el de este navegador y el que ya tenía guardado en su
-    // cuenta -- sumando cantidades cuando el mismo producto aparece en los
-    // dos, para no perder nada de ningún lado.
+    //
+    // IMPORTANTE: la primera vez que se sincroniza en un dispositivo, sí tiene
+    // sentido COMBINAR lo que traiga cada lado (pueden ser productos
+    // genuinamente distintos, cada uno agregado en su momento). Pero las
+    // veces siguientes NO se debe volver a sumar -- para entonces, ambos
+    // lados ya deberían ser iguales (se guardaron juntos la vez pasada), y
+    // sumarlos de nuevo duplicaría cantidades que ya estaban bien. En su
+    // lugar, se compara cuál lado se modificó más recientemente y ese gana
+    // tal cual, sin combinar.
     async function sincronizarCarritoConCuentaRF() {
         if (!sesionCliente) return;
         try {
             const datos = await (await fetch('/api/cuenta/carrito')).json();
             const carritoCuenta = Array.isArray(datos.carrito) ? datos.carrito : [];
-            if (carritoCuenta.length === 0) {
-                await guardarCarritoEnCuentaRF();
-                return;
-            }
-            const combinado = [...carrito];
-            carritoCuenta.forEach(itemCuenta => {
-                const igual = combinado.find(it => it.id === itemCuenta.id && (it.variante || null) === (itemCuenta.variante || null));
-                if (igual) {
-                    igual.cantidad = Math.max(1, Number(igual.cantidad) || 1) + Math.max(1, Number(itemCuenta.cantidad) || 1);
-                } else {
-                    combinado.push(itemCuenta);
+            const yaSincronizadoAntes = localStorage.getItem('rf_carrito_sincronizado') === 'true';
+
+            if (carritoCuenta.length > 0 && !yaSincronizadoAntes) {
+                const combinado = [...carrito];
+                carritoCuenta.forEach(itemCuenta => {
+                    const igual = combinado.find(it => it.id === itemCuenta.id && (it.variante || null) === (itemCuenta.variante || null));
+                    if (igual) {
+                        igual.cantidad = Math.max(1, Number(igual.cantidad) || 1) + Math.max(1, Number(itemCuenta.cantidad) || 1);
+                    } else {
+                        combinado.push(itemCuenta);
+                    }
+                });
+                carrito = combinado;
+                localStorage.setItem('carritoRF', JSON.stringify(carrito));
+                localStorage.setItem('rf_carrito_actualizado_en', String(Date.now()));
+                actualizarUI();
+            } else if (carritoCuenta.length > 0) {
+                const actualizadoServidor = datos.actualizadoEn ? new Date(datos.actualizadoEn).getTime() : 0;
+                const actualizadoLocal = Number(localStorage.getItem('rf_carrito_actualizado_en')) || 0;
+                if (actualizadoServidor > actualizadoLocal) {
+                    carrito = carritoCuenta;
+                    localStorage.setItem('carritoRF', JSON.stringify(carrito));
+                    localStorage.setItem('rf_carrito_actualizado_en', String(actualizadoServidor));
+                    actualizarUI();
                 }
-            });
-            carrito = combinado;
-            localStorage.setItem('carritoRF', JSON.stringify(carrito));
-            actualizarUI();
+            }
+            localStorage.setItem('rf_carrito_sincronizado', 'true');
             await guardarCarritoEnCuentaRF();
         } catch (error) {
             console.error('No se pudo sincronizar el carrito con la cuenta', error);

@@ -1906,6 +1906,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             return true;
         }
 
+        // Marca "el carrito de este dispositivo cambió justo ahora" -- se usa
+        // para decidir, la próxima vez que se sincronice con la cuenta, si lo
+        // de aquí es más reciente que lo que haya guardado en el servidor (y
+        // por lo tanto no hay que pisarlo con datos viejos de otro dispositivo).
+        function marcarCarritoModificadoRF() {
+            localStorage.setItem('rf_carrito_actualizado_en', String(Date.now()));
+        }
+
         function agregarItemCarrito(item) {
             const varianteReal = tieneVarianteCarrito(item.variante);
             const existente = !varianteReal
@@ -1927,6 +1935,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
 
             localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            marcarCarritoModificadoRF();
             actualizarUI();
         }
 
@@ -2199,12 +2208,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
             carrito[index].cantidad = nueva;
             localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            marcarCarritoModificadoRF();
             actualizarUI();
         }
 
         function eliminarDelCarrito(index) {
             carrito.splice(index, 1);
             localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            marcarCarritoModificadoRF();
             actualizarUI();
         }
 
@@ -3425,31 +3436,49 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // El carrito de quien tiene cuenta se guarda también en el servidor, no
     // solo en este navegador -- así, si arma su pedido en el celular y luego
     // abre la laptop para pagar más cómodo, lo encuentra tal cual lo dejó.
-    // Al iniciar sesión (aquí o al recién registrarse) se combinan ambos
-    // carritos -- el de este navegador y el que ya tenía guardado en su
-    // cuenta -- sumando cantidades cuando el mismo producto aparece en los
-    // dos, para no perder nada de ningún lado.
+    //
+    // IMPORTANTE: la primera vez que se sincroniza en un dispositivo, sí tiene
+    // sentido COMBINAR lo que traiga cada lado (pueden ser productos
+    // genuinamente distintos, cada uno agregado en su momento). Pero las
+    // veces siguientes NO se debe volver a sumar -- para entonces, ambos
+    // lados ya deberían ser iguales (se guardaron juntos la vez pasada), y
+    // sumarlos de nuevo duplicaría cantidades que ya estaban bien. En su
+    // lugar, se compara cuál lado se modificó más recientemente y ese gana
+    // tal cual, sin combinar.
     async function sincronizarCarritoConCuentaRF() {
         if (!sesionCliente) return;
         try {
             const datos = await (await fetch('/api/cuenta/carrito')).json();
             const carritoCuenta = Array.isArray(datos.carrito) ? datos.carrito : [];
-            if (carritoCuenta.length === 0) {
-                await guardarCarritoEnCuentaRF();
-                return;
-            }
-            const combinado = [...carrito];
-            carritoCuenta.forEach(itemCuenta => {
-                const igual = combinado.find(it => it.id === itemCuenta.id && (it.variante || null) === (itemCuenta.variante || null));
-                if (igual) {
-                    igual.cantidad = Math.max(1, Number(igual.cantidad) || 1) + Math.max(1, Number(itemCuenta.cantidad) || 1);
-                } else {
-                    combinado.push(itemCuenta);
+            const yaSincronizadoAntes = localStorage.getItem('rf_carrito_sincronizado') === 'true';
+
+            if (carritoCuenta.length > 0 && !yaSincronizadoAntes) {
+                const combinado = [...carrito];
+                carritoCuenta.forEach(itemCuenta => {
+                    const igual = combinado.find(it => it.id === itemCuenta.id && (it.variante || null) === (itemCuenta.variante || null));
+                    if (igual) {
+                        igual.cantidad = Math.max(1, Number(igual.cantidad) || 1) + Math.max(1, Number(itemCuenta.cantidad) || 1);
+                    } else {
+                        combinado.push(itemCuenta);
+                    }
+                });
+                carrito = combinado;
+                localStorage.setItem('carritoRF', JSON.stringify(carrito));
+                localStorage.setItem('rf_carrito_actualizado_en', String(Date.now()));
+                actualizarUI();
+            } else if (carritoCuenta.length > 0) {
+                const actualizadoServidor = datos.actualizadoEn ? new Date(datos.actualizadoEn).getTime() : 0;
+                const actualizadoLocal = Number(localStorage.getItem('rf_carrito_actualizado_en')) || 0;
+                if (actualizadoServidor > actualizadoLocal) {
+                    // Se cambió desde otro dispositivo después de la última vez
+                    // que se tocó aquí -- se adopta tal cual, sin combinar.
+                    carrito = carritoCuenta;
+                    localStorage.setItem('carritoRF', JSON.stringify(carrito));
+                    localStorage.setItem('rf_carrito_actualizado_en', String(actualizadoServidor));
+                    actualizarUI();
                 }
-            });
-            carrito = combinado;
-            localStorage.setItem('carritoRF', JSON.stringify(carrito));
-            actualizarUI();
+            }
+            localStorage.setItem('rf_carrito_sincronizado', 'true');
             await guardarCarritoEnCuentaRF();
         } catch (error) {
             console.error('No se pudo sincronizar el carrito con la cuenta', error);

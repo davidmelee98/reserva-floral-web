@@ -1377,8 +1377,11 @@ app.get('/api/cuenta/cupones', requireClienteAuth, async (req, res) => {
 // abre la laptop para pagar más cómodo, su carrito lo sigue esperando ahí.
 app.get('/api/cuenta/carrito', requireClienteAuth, limitadorGeneral, async (req, res) => {
   try {
-    const resultado = await pool.query('SELECT carrito_guardado FROM clientes_cuenta WHERE id=$1', [req.session.clienteId]);
-    res.json({ carrito: Array.isArray(resultado.rows[0]?.carrito_guardado) ? resultado.rows[0].carrito_guardado : [] });
+    const resultado = await pool.query('SELECT carrito_guardado, carrito_actualizado_en FROM clientes_cuenta WHERE id=$1', [req.session.clienteId]);
+    res.json({
+      carrito: Array.isArray(resultado.rows[0]?.carrito_guardado) ? resultado.rows[0].carrito_guardado : [],
+      actualizadoEn: resultado.rows[0]?.carrito_actualizado_en || null
+    });
   } catch (error) {
     console.error('GET /api/cuenta/carrito:', error);
     res.status(500).json({ error: 'No se pudo cargar tu carrito guardado.' });
