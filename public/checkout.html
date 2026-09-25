@@ -637,7 +637,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <input type="email" id="cta-login-email" placeholder="Correo electrónico" required autocomplete="email" class="cta-input">
                     <input type="password" id="cta-login-password" placeholder="Contraseña" required autocomplete="current-password" class="cta-input">
                     <p id="error-cuenta-login" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></p>
-                    <p class="text-right"><button type="button" class="text-xs text-brandFuchsia hover:underline" onclick="mostrarProximamenteCuenta()">¿Olvidaste tu contraseña?</button></p>
+                    <p class="text-right"><button type="button" class="text-xs text-brandFuchsia hover:underline" onclick="mostrarVistaCuenta('recuperar')">¿Olvidaste tu contraseña?</button></p>
                     <button type="submit" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Iniciar sesión</button>
                 </form>
                 <div class="flex items-center gap-3 my-5"><div class="flex-1 h-px bg-gray-200"></div><span class="text-xs text-gray-400">o</span><div class="flex-1 h-px bg-gray-200"></div></div>
@@ -681,6 +681,18 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <button type="submit" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Crear cuenta</button>
                 </form>
                 <p class="text-center text-sm text-gray-500 mt-5">¿Ya tienes una cuenta? <button type="button" onclick="mostrarVistaCuenta('login')" class="text-brandFuchsia font-semibold hover:underline">Iniciar sesión</button></p>
+            </div>
+
+            <div id="vista-cuenta-recuperar" class="hidden">
+                <h2 class="text-xl font-semibold text-brandDark text-center mb-2">Recuperar contraseña</h2>
+                <p class="text-xs text-gray-500 text-center mb-6">Escribe tu correo y te mandamos un enlace para elegir una nueva.</p>
+                <form id="form-cuenta-recuperar" class="space-y-3">
+                    <input type="email" id="cta-recuperar-email" placeholder="Correo electrónico" required autocomplete="email" class="cta-input">
+                    <p id="error-cuenta-recuperar" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></p>
+                    <p id="exito-cuenta-recuperar" class="hidden text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2"></p>
+                    <button type="submit" id="btn-cuenta-recuperar" class="w-full bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold py-3 rounded-full text-sm transition">Enviar enlace</button>
+                </form>
+                <p class="text-center text-sm text-gray-500 mt-5"><button type="button" onclick="mostrarVistaCuenta('login')" class="text-brandFuchsia font-semibold hover:underline">Volver a iniciar sesión</button></p>
             </div>
         </div>
     </div>
@@ -855,6 +867,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     function mostrarVistaCuenta(vista) {
         document.getElementById('vista-cuenta-login').classList.toggle('hidden', vista !== 'login');
         document.getElementById('vista-cuenta-registro').classList.toggle('hidden', vista !== 'registro');
+        document.getElementById('vista-cuenta-recuperar').classList.toggle('hidden', vista !== 'recuperar');
     }
     function abrirModalCuenta(vista) {
         mostrarVistaCuenta(vista || 'login');
@@ -918,6 +931,32 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         } catch (error) {
             errorEl.innerText = error.message;
             errorEl.classList.remove('hidden');
+        }
+    });
+
+    
+    document.getElementById('form-cuenta-recuperar').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorEl = document.getElementById('error-cuenta-recuperar');
+        const exitoEl = document.getElementById('exito-cuenta-recuperar');
+        errorEl.classList.add('hidden'); exitoEl.classList.add('hidden');
+        const btn = document.getElementById('btn-cuenta-recuperar');
+        btn.disabled = true; btn.innerText = 'Enviando...';
+        try {
+            const r = await fetch('/api/cuenta/recuperar-password', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: document.getElementById('cta-recuperar-email').value })
+            });
+            const datos = await r.json();
+            if (!r.ok) throw new Error(datos.error || 'No se pudo procesar tu solicitud.');
+            exitoEl.innerText = datos.mensaje;
+            exitoEl.classList.remove('hidden');
+            document.getElementById('cta-recuperar-email').value = '';
+        } catch (error) {
+            errorEl.innerText = error.message;
+            errorEl.classList.remove('hidden');
+        } finally {
+            btn.disabled = false; btn.innerText = 'Enviar enlace';
         }
     });
 

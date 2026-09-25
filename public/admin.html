@@ -578,6 +578,15 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Ventas entregadas</p><p id="stat-pedidos-ventas" class="text-xl font-bold text-green-600">—</p></div>
                     </div>
                 </div>
+
+                <div id="tarjeta-facturas-pendientes" class="adm-card p-5 mb-6 hidden">
+                    <h3 class="text-sm font-semibold text-brandDark mb-3 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Facturas pendientes de subir
+                    </h3>
+                    <div id="lista-facturas-pendientes" class="space-y-2"></div>
+                </div>
+
                 <div class="adm-card overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
                         <h2 class="text-lg font-semibold text-brandDark">Pedidos Recibidos</h2>
@@ -1463,7 +1472,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     });
 
     async function cargarTodoElPanel() {
-        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones(), cargarCarruseles(), cargarMenuSitio(), cargarCategoriasDisponibles(), cargarEstadosMunicipios(), cargarRecordatorios()]);
+        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones(), cargarCarruseles(), cargarMenuSitio(), cargarCategoriasDisponibles(), cargarEstadosMunicipios(), cargarRecordatorios(), cargarFacturasPendientes()]);
         if (usuarioActual && usuarioActual.rol === 'admin') {
             await Promise.all([cargarUsuarios(), cargarConfiguracion(), cargarBitacora()]);
         }
@@ -2698,6 +2707,50 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         if (proxima < hoy) proxima = new Date(hoy.getFullYear() + 1, original.getMonth(), original.getDate());
         return proxima;
     }
+    // Solicitudes de factura que el negocio todavía no atiende -- cada una
+    // se resuelve subiendo el PDF/XML ya generado por fuera (esto no emite
+    // un CFDI real, solo guarda el archivo para que el cliente lo descargue).
+    async function cargarFacturasPendientes() {
+        const tarjeta = document.getElementById('tarjeta-facturas-pendientes');
+        const cont = document.getElementById('lista-facturas-pendientes');
+        if (!tarjeta || !cont) return;
+        try {
+            const solicitudes = await jsonOError(await fetch('/api/admin/facturas-pendientes'));
+            tarjeta.classList.toggle('hidden', solicitudes.length === 0);
+            cont.innerHTML = solicitudes.map(o => `
+                <div class="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2.5 text-xs">
+                    <div class="min-w-0">
+                        <p class="font-medium text-brandDark">Pedido #${o.id} · ${escaparHtmlAdmin(o.factura_razon_social)}</p>
+                        <p class="text-gray-500">RFC ${escaparHtmlAdmin(o.factura_rfc)} · CP ${escaparHtmlAdmin(o.factura_cp)} · Uso ${escaparHtmlAdmin(o.factura_uso_cfdi)}</p>
+                    </div>
+                    <label class="shrink-0 cursor-pointer bg-gray-100 hover:bg-gray-200 text-brandDark font-semibold px-3 py-1.5 rounded-full">
+                        Subir archivo
+                        <input type="file" accept=".pdf,.xml" class="hidden" onchange="subirArchivoFactura(${o.id}, this)">
+                    </label>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error cargando facturas pendientes', error);
+        }
+    }
+
+    async function subirArchivoFactura(id, input) {
+        const archivo = input.files?.[0];
+        if (!archivo) return;
+        const formData = new FormData();
+        formData.append('archivo', archivo);
+        try {
+            const r = await fetch(`/api/admin/ordenes/${id}/factura`, { method: 'POST', body: formData });
+            const datos = await r.json();
+            if (!r.ok) throw new Error(datos.error || 'No se pudo subir el archivo.');
+            mostrarToast('Factura guardada. Ya se le avisó al cliente.');
+            cargarFacturasPendientes();
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+        }
+    }
+    window.subirArchivoFactura = subirArchivoFactura;
+
     async function cargarRecordatorios() {
         const cont = document.getElementById('lista-recordatorios');
         if (!cont) return;

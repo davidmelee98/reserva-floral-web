@@ -197,6 +197,20 @@ const subirImagen = multer({
   }
 });
 
+// Para cuando el negocio sube el PDF (y opcionalmente el XML) de una factura ya
+// generada por su cuenta -- acepta PDF y XML, nunca imágenes ni ejecutables.
+const TIPOS_FACTURA_VALIDOS = new Set(['application/pdf', 'text/xml', 'application/xml']);
+const subirFactura = multer({
+  storage: storageSubidas,
+  limits: { fileSize: 6 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!TIPOS_FACTURA_VALIDOS.has(file.mimetype)) {
+      return cb(new Error('Sube un archivo PDF o XML.'));
+    }
+    cb(null, true);
+  }
+});
+
 // ---------------------------------------------------------------------------
 // URLs limpias (sin ".html"): cada página también se sirve en su ruta corta.
 // Los enlaces del sitio ya usan estas rutas; el ".html" de toda la vida
@@ -385,6 +399,8 @@ async function inicializarDB() {
       email VARCHAR(150) UNIQUE NOT NULL,
       telefono VARCHAR(20),
       password_hash TEXT,
+      reset_token_hash TEXT,
+      reset_token_expira TIMESTAMP,
       carrito_guardado JSONB,
       carrito_actualizado_en TIMESTAMP,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -551,9 +567,20 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS mp_payment_id VARCHAR(100)',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS cupon_codigo VARCHAR(50)',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descuento DECIMAL(10,2) DEFAULT 0',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS factura_estado VARCHAR(20)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS factura_rfc VARCHAR(13)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS factura_razon_social VARCHAR(255)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS factura_uso_cfdi VARCHAR(10)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS factura_cp VARCHAR(10)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS factura_email VARCHAR(150)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS factura_solicitada_en TIMESTAMP',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS factura_archivo_url TEXT',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS factura_atendida_en TIMESTAMP',
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS puntos_canjeados INTEGER DEFAULT 0',
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS google_id VARCHAR(100)',
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS carrito_guardado JSONB',
+    'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS reset_token_hash TEXT',
+    'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS reset_token_expira TIMESTAMP',
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS carrito_actualizado_en TIMESTAMP',
     'ALTER TABLE clientes_cuenta ALTER COLUMN password_hash DROP NOT NULL',
     'ALTER TABLE zonas_cobertura ADD COLUMN IF NOT EXISTS estado VARCHAR(100)'
@@ -981,6 +1008,93 @@ app.post('/api/cuenta/logout', (req, res) => {
   res.json({ exito: true });
 });
 
+// El token se manda por correo en texto plano, pero en la base de datos solo
+// se guarda su hash -- así, ni con acceso a la base de datos alguien podría
+// usar un token ajeno para entrar a restablecer la contraseña de otra
+// persona. Es un hash simple (no bcrypt): el token ya es aleatorio y de
+// alta entropía por sí mismo, así que no hace falta el costo extra de
+// bcrypt (pensado para contraseñas cortas que alguien podría adivinar).
+function hashTokenRF(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+app.post('/api/cuenta/recuperar-password', limitadorLogin, async (req, res) => {
+  const { email } = req.body || {};
+  if (!email?.trim()) return res.status(400).json({ error: 'Ingresa tu correo electrónico.' });
+  // La respuesta es siempre la misma exista o no la cuenta -- si dijera
+  // "ese correo no existe", cualquiera podría usar esto para averiguar qué
+  // correos sí tienen cuenta en el sitio.
+  const respuestaGenerica = { exito: true, mensaje: 'Si ese correo tiene una cuenta, te mandamos instrucciones para restablecer tu contraseña.' };
+  try {
+    const resultado = await pool.query('SELECT * FROM clientes_cuenta WHERE lower(email) = lower($1)', [email.trim()]);
+    const cliente = resultado.rows[0];
+    if (!cliente) return res.json(respuestaGenerica);
+
+    if (!cliente.password_hash) {
+      // Cuenta creada con Google -- no tiene una contraseña que restablecer.
+      // Se le avisa por correo (no en la respuesta, para no revelar por esta
+      // vía si la cuenta existe o no) para que sepa cómo entrar de verdad.
+      if (resendClient) {
+        const cuerpo = `
+          <h2 style="font-size:16px;margin:0 0 8px;">Tu cuenta usa Google para entrar</h2>
+          <p style="font-size:13px;color:#666;">Vimos que pediste restablecer tu contraseña, pero tu cuenta en Reserva Floral se creó con Google -- no tiene una contraseña propia. Usa el botón "Continuar con Google" para iniciar sesión.</p>
+        `;
+        resendClient.emails.send({
+          from: CORREO_REMITENTE, to: cliente.email, subject: 'Tu cuenta usa Google para entrar',
+          html: await plantillaBaseCorreo('Inicia sesión con Google', cuerpo)
+        }).catch(err => console.error('No se pudo avisar sobre cuenta de Google:', err?.message || err));
+      }
+      return res.json(respuestaGenerica);
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expira = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+    await pool.query('UPDATE clientes_cuenta SET reset_token_hash=$1, reset_token_expira=$2 WHERE id=$3', [hashTokenRF(token), expira, cliente.id]);
+
+    if (resendClient) {
+      const enlace = `${URL_SITIO}/cuenta?restablecer=${token}`;
+      const cuerpo = `
+        <h2 style="font-size:16px;margin:0 0 8px;">Restablece tu contraseña</h2>
+        <p style="font-size:13px;color:#666;margin:0 0 16px;">Alguien (probablemente tú) pidió restablecer la contraseña de tu cuenta en Reserva Floral. Si no fuiste tú, puedes ignorar este correo -- tu contraseña actual sigue funcionando igual.</p>
+        <p style="margin:0 0 16px;"><a href="${enlace}" style="background:#c2185b;color:#fff;padding:10px 24px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:600;">Elegir una nueva contraseña</a></p>
+        <p style="font-size:12px;color:#999;">Este enlace vale por 1 hora.</p>
+      `;
+      await resendClient.emails.send({
+        from: CORREO_REMITENTE, to: cliente.email, subject: 'Restablece tu contraseña — Reserva Floral',
+        html: await plantillaBaseCorreo('Restablece tu contraseña', cuerpo)
+      });
+    }
+    res.json(respuestaGenerica);
+  } catch (error) {
+    console.error('POST /api/cuenta/recuperar-password:', error);
+    // Aun si algo falla, no conviene revelar detalles del error por esta vía.
+    res.json(respuestaGenerica);
+  }
+});
+
+app.post('/api/cuenta/restablecer-password', limitadorLogin, async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token?.trim() || !password || password.length < 8) {
+    return res.status(400).json({ error: 'Ingresa una contraseña de al menos 8 caracteres.' });
+  }
+  try {
+    const resultado = await pool.query(
+      'SELECT * FROM clientes_cuenta WHERE reset_token_hash=$1 AND reset_token_expira > NOW()',
+      [hashTokenRF(token.trim())]
+    );
+    const cliente = resultado.rows[0];
+    if (!cliente) {
+      return res.status(400).json({ error: 'Este enlace ya venció o no es válido. Pide uno nuevo.' });
+    }
+    const hash = await bcrypt.hash(password, 12);
+    await pool.query('UPDATE clientes_cuenta SET password_hash=$1, reset_token_hash=NULL, reset_token_expira=NULL WHERE id=$2', [hash, cliente.id]);
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('POST /api/cuenta/restablecer-password:', error);
+    res.status(500).json({ error: 'No se pudo restablecer la contraseña.' });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Inicio de sesión con Google
 // Variables de entorno necesarias:
@@ -1155,6 +1269,35 @@ app.patch('/api/cuenta/pedidos/:id/cancelar', requireClienteAuth, async (req, re
 // ---------------------------------------------------------------------------
 // Direcciones de envío guardadas (libreta de direcciones del cliente)
 // ---------------------------------------------------------------------------
+// Solicitar factura para un pedido propio -- el negocio la genera por su
+// cuenta con estos datos (no se emite un CFDI real aquí, eso requiere un
+// proveedor autorizado por el SAT) y luego sube el archivo ya listo.
+const RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
+app.post('/api/cuenta/pedidos/:id/solicitar-factura', requireClienteAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const { rfc, razonSocial, usoCfdi, codigoPostal, email } = req.body || {};
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  if (!rfc?.trim() || !RFC_REGEX.test(rfc.trim().toUpperCase())) {
+    return res.status(400).json({ error: 'Ingresa un RFC válido.' });
+  }
+  if (!razonSocial?.trim() || !usoCfdi?.trim() || !codigoPostal?.trim() || !email?.trim()) {
+    return res.status(400).json({ error: 'Completa todos los campos para solicitar tu factura.' });
+  }
+  try {
+    const resultado = await pool.query(
+      `UPDATE ordenes SET factura_estado='pendiente', factura_rfc=$1, factura_razon_social=$2,
+        factura_uso_cfdi=$3, factura_cp=$4, factura_email=$5, factura_solicitada_en=NOW()
+       WHERE id=$6 AND cliente_cuenta_id=$7 RETURNING *`,
+      [rfc.trim().toUpperCase(), razonSocial.trim(), usoCfdi.trim(), codigoPostal.trim(), email.trim(), id, req.session.clienteId]
+    );
+    if (resultado.rowCount === 0) return res.status(404).json({ error: 'No se encontró ese pedido en tu cuenta.' });
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('POST /api/cuenta/pedidos/:id/solicitar-factura:', error);
+    res.status(500).json({ error: 'No se pudo enviar tu solicitud de factura.' });
+  }
+});
+
 app.get('/api/cuenta/direcciones', requireClienteAuth, async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM direcciones_cliente WHERE cliente_cuenta_id=$1 ORDER BY id DESC', [req.session.clienteId]);
@@ -1618,7 +1761,39 @@ app.get('/api/catalogo/:id', async (req, res) => {
   }
 });
 
-// API: Crear producto. Requiere sesión.
+// "También te puede interesar" en la vista de producto -- otros productos
+// que comparten al menos una categoría con este, para no dejar la vista de
+// producto como un callejón sin salida.
+app.get('/api/catalogo/:id/relacionados', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID de producto inválido.' });
+  }
+  try {
+    const categoriasProducto = await pool.query(`
+      SELECT DISTINCT categoria FROM producto_categorias WHERE producto_id = $1
+      UNION SELECT categoria FROM arreglos_florales WHERE id = $1 AND categoria IS NOT NULL
+    `, [id]);
+    const categorias = categoriasProducto.rows.map(r => r.categoria);
+    if (categorias.length === 0) return res.json([]);
+
+    const resultado = await pool.query(`
+      SELECT DISTINCT a.* FROM arreglos_florales a
+      LEFT JOIN producto_categorias pc ON pc.producto_id = a.id
+      WHERE a.id != $1 AND COALESCE(a.disponible, true) = true
+        AND (pc.categoria = ANY($2::text[]) OR a.categoria = ANY($2::text[]))
+      ORDER BY a.id DESC
+      LIMIT 8
+    `, [id, categorias]);
+    // De los que sí comparten categoría, se muestran hasta 6 al azar (para
+    // que no salgan siempre los mismos en cada visita).
+    const mezclados = resultado.rows.sort(() => Math.random() - 0.5).slice(0, 6);
+    res.json(await adjuntarClasificaciones(mezclados));
+  } catch (error) {
+    console.error('GET /api/catalogo/:id/relacionados:', error);
+    res.status(500).json({ error: 'No se pudieron cargar productos relacionados.' });
+  }
+});
 app.post('/api/catalogo', requireAuth, async (req, res) => {
   if (!productoValido(req.body)) {
     return res.status(400).json({ error: 'Nombre y precio válido son obligatorios.' });
@@ -2529,6 +2704,57 @@ app.patch('/api/admin/ordenes/:id/estado', requireAuth, async (req, res) => {
 
 // Notas internas de un pedido -- nunca las ve el cliente, son para que el
 // equipo se deje avisos entre sí (ej. "cliente pidió cambiar la hora").
+// Solicitudes de factura pendientes de atender -- para que el negocio sepa
+// a quién le falta generar y subir su comprobante fiscal.
+app.get('/api/admin/facturas-pendientes', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT id, cliente_nombre, total, factura_rfc, factura_razon_social, factura_uso_cfdi, factura_cp, factura_email, factura_solicitada_en
+       FROM ordenes WHERE factura_estado='pendiente' ORDER BY factura_solicitada_en ASC`
+    );
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/admin/facturas-pendientes:', error);
+    res.status(500).json({ error: 'No se pudieron cargar las solicitudes de factura.' });
+  }
+});
+
+// El negocio sube aquí el PDF (y si quiere, el XML) de la factura que ya
+// generó por su cuenta -- esto NO emite un CFDI real, solo guarda el
+// archivo para que el cliente lo pueda descargar desde "Mis pedidos".
+app.post('/api/admin/ordenes/:id/factura', requireAuth, (req, res) => {
+  subirFactura.single('archivo')(req, res, async (error) => {
+    if (error) return res.status(400).json({ error: error.message || 'No se pudo subir el archivo.' });
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+    if (!req.file) return res.status(400).json({ error: 'Sube el archivo de la factura (PDF o XML).' });
+    try {
+      const url = `/uploads/${req.file.filename}`;
+      const resultado = await pool.query(
+        `UPDATE ordenes SET factura_estado='lista', factura_archivo_url=$1, factura_atendida_en=NOW() WHERE id=$2 RETURNING *`,
+        [url, id]
+      );
+      if (resultado.rowCount === 0) return res.status(404).json({ error: 'Pedido no encontrado.' });
+      const orden = resultado.rows[0];
+      if (resendClient && orden.factura_email) {
+        const cuerpo = `
+          <h2 style="font-size:16px;margin:0 0 8px;">🧾 Tu factura ya está lista</h2>
+          <p style="font-size:13px;color:#666;">La factura de tu pedido <strong>#${orden.id}</strong> ya está disponible. Puedes descargarla desde "Mis pedidos" en tu cuenta.</p>
+          <p style="margin-top:16px;"><a href="${URL_SITIO}/cuenta#pedidos" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver mi factura</a></p>
+        `;
+        resendClient.emails.send({
+          from: CORREO_REMITENTE, to: orden.factura_email, subject: `Tu factura está lista — Pedido #${orden.id}`,
+          html: await plantillaBaseCorreo('Tu factura está lista', cuerpo)
+        }).catch(err => console.error('No se pudo avisar que la factura esta lista:', err?.message || err));
+      }
+      res.json({ exito: true });
+    } catch (error) {
+      console.error('POST /api/admin/ordenes/:id/factura:', error);
+      res.status(500).json({ error: 'No se pudo guardar la factura.' });
+    }
+  });
+});
+
 app.get('/api/admin/ordenes/:id/notas', requireAuth, async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM pedido_notas WHERE orden_id = $1 ORDER BY creado_en ASC', [req.params.id]);
