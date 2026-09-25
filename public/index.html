@@ -810,7 +810,15 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             <div id="rf-categoria-encabezado">
                 <h1 id="rf-categoria-titulo" class="text-2xl sm:text-3xl font-serif font-semibold text-brandDark mb-2"></h1>
                 <p id="rf-categoria-descripcion" class="text-sm text-gray-500 mb-6"></p>
-                <p id="rf-categoria-contador" class="text-xs text-gray-400 mb-4"></p>
+                <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+                    <p id="rf-categoria-contador" class="text-xs text-gray-400"></p>
+                    <select id="rf-categoria-orden" onchange="reordenarGridCategoriaRF(this.value)" class="text-xs border border-gray-200 rounded-full px-3 py-1.5 bg-white focus:outline-none focus:border-brandFuchsia">
+                        <option value="relevancia">Más relevantes</option>
+                        <option value="reciente">Más recientes</option>
+                        <option value="precio_asc">Precio: menor a mayor</option>
+                        <option value="precio_desc">Precio: mayor a menor</option>
+                    </select>
+                </div>
             </div>
             <div id="rf-grid-categoria" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"></div>
 
@@ -1543,11 +1551,17 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         // Cuadrícula de la vista de categoría: a diferencia del carrusel del
         // inicio, aquí se muestran TODOS los productos que coinciden (sin
         // límite de 12 ni scroll horizontal), en un acomodo que se ajusta solo.
-        function renderGridCategoriaRF(arreglos) {
+        let productosCategoriaActualRF = [];
+        function renderGridCategoriaRF(arreglos, mantenerOrden) {
             const grid = document.getElementById('rf-grid-categoria');
             const contador = document.getElementById('rf-categoria-contador');
             if (!grid) return;
             grid.innerHTML = '';
+            if (!mantenerOrden) {
+                productosCategoriaActualRF = arreglos;
+                const selectorOrden = document.getElementById('rf-categoria-orden');
+                if (selectorOrden) selectorOrden.value = 'relevancia';
+            }
 
             if (contador) contador.innerText = arreglos.length === 1 ? '1 producto' : `${arreglos.length} productos`;
 
@@ -1577,6 +1591,19 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             });
             actualizarUI();
         }
+
+        // El menú de "ordenar por" no vuelve a pedir nada al servidor -- solo
+        // reacomoda lo que ya se cargó para esta categoría, así responde al
+        // instante.
+        function reordenarGridCategoriaRF(criterio) {
+            const copia = [...productosCategoriaActualRF];
+            if (criterio === 'reciente') copia.sort((a, b) => b.id - a.id);
+            else if (criterio === 'precio_asc') copia.sort((a, b) => Number(a.precio) - Number(b.precio));
+            else if (criterio === 'precio_desc') copia.sort((a, b) => Number(b.precio) - Number(a.precio));
+            // 'relevancia' no reordena -- se queda en el orden original.
+            renderGridCategoriaRF(criterio === 'relevancia' ? productosCategoriaActualRF : copia, true);
+        }
+        window.reordenarGridCategoriaRF = reordenarGridCategoriaRF;
 
         // Se muestra en vez de la cuadrícula cuando la categoría elegida no
         // tiene ni un solo producto disponible para la ciudad actual.
@@ -1800,6 +1827,42 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
         }
 
+        // Cuando un producto se queda sin existencia, en vez de solo desactivar
+        // el botón, se ofrece dejar el correo para avisar en cuanto vuelva a
+        // haber -- así no se pierde el interés de quien llegó justo cuando no había.
+        function mostrarAvisoAgotadoRF(producto, botonAgregarRF) {
+            const wrap = document.createElement('div');
+            wrap.id = 'aviso-agotado-wrap';
+            wrap.className = 'bg-gray-50 border border-gray-200 rounded-lg px-3 py-3 mb-3';
+            wrap.innerHTML = `
+                <p class="text-xs text-gray-600 font-medium mb-2">Por ahora no hay existencia de este producto.</p>
+                <div id="avisame-formulario-${producto.id}" class="flex gap-2">
+                    <input type="email" id="avisame-email-${producto.id}" placeholder="Tu correo" class="flex-1 min-w-0 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-brandFuchsia">
+                    <button type="button" onclick="suscribirseAvisameRF(${producto.id})" class="shrink-0 bg-brandDark text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Avísame</button>
+                </div>
+            `;
+            botonAgregarRF.parentElement.insertBefore(wrap, botonAgregarRF);
+        }
+
+        async function suscribirseAvisameRF(productoId) {
+            const input = document.getElementById(`avisame-email-${productoId}`);
+            const email = input?.value.trim();
+            if (!email) return;
+            const contenedor = document.getElementById(`avisame-formulario-${productoId}`);
+            try {
+                const r = await fetch(`/api/catalogo/${productoId}/avisarme`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const datos = await r.json();
+                if (!r.ok) throw new Error(datos.error || 'No se pudo guardar tu correo.');
+                contenedor.innerHTML = '<p class="text-xs text-green-700">✓ Listo, te avisamos en cuanto vuelva a haber.</p>';
+            } catch (error) {
+                mostrarNotificacionRF(error.message, 'error');
+            }
+        }
+        window.suscribirseAvisameRF = suscribirseAvisameRF;
+
         function mostrarProducto(productoActual) {
             productoDescripcionActual = productoActual;
             rfScrollAntesProducto = window.scrollY || document.documentElement.scrollTop || 0;
@@ -1820,16 +1883,25 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
             // Si es un combo, su disponibilidad real depende de que TODOS sus
             // componentes sigan disponibles y con stock -- si a alguno le
-            // falta, se avisa y no se deja agregar al carrito.
+            // falta, se avisa y no se deja agregar al carrito. Si NO es un
+            // combo, se revisa su propio stock -- antes esto no se revisaba
+            // aquí y el botón se quedaba activo aunque ya no hubiera ni una
+            // pieza, fallando hasta el checkout en vez de avisar de una vez.
             const componentesFaltantes = (productoActual.es_combo ? (productoActual.combo_items || []) : [])
                 .filter(c => c.disponible === false || Number(c.stock) <= 0);
+            const propioAgotado = !productoActual.es_combo && Number.isFinite(Number(productoActual.stock)) && Number(productoActual.stock) <= 0;
             document.getElementById('aviso-combo-incompleto')?.remove();
+            document.getElementById('aviso-agotado-wrap')?.remove();
             if (componentesFaltantes.length > 0) {
                 const aviso = document.createElement('div');
                 aviso.id = 'aviso-combo-incompleto';
                 aviso.className = 'bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-lg px-3 py-2 mb-3';
                 aviso.innerText = `Este combo no se puede agregar por ahora: "${componentesFaltantes.map(c => c.nombre).join('", "')}" ya no está disponible.`;
                 botonAgregarRF.parentElement.insertBefore(aviso, botonAgregarRF);
+                botonAgregarRF.disabled = true;
+                botonAgregarRF.classList.add('opacity-50', 'cursor-not-allowed');
+            } else if (propioAgotado) {
+                mostrarAvisoAgotadoRF(productoActual, botonAgregarRF);
                 botonAgregarRF.disabled = true;
                 botonAgregarRF.classList.add('opacity-50', 'cursor-not-allowed');
             } else {

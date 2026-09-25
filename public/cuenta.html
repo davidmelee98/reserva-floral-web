@@ -773,7 +773,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                         <button type="button" onclick="volverAPedir(${o.id})" class="text-brandFuchsia text-xs font-semibold hover:underline">Volver a pedir</button>
                         ${puedeCancelar ? `<button type="button" onclick="cancelarMiPedido(${o.id})" class="text-red-500 text-xs font-semibold hover:underline">Cancelar pedido</button>` : ''}
                         ${!o.factura_estado ? `<button type="button" onclick="abrirModalFactura(${o.id})" class="text-gray-500 text-xs font-semibold hover:underline flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>Solicitar factura</button>` : ''}
-                        ${o.factura_estado === 'pendiente' ? `<span class="text-amber-600 text-xs font-medium flex items-center gap-1">🧾 Factura en trámite</span>` : ''}
+                        ${o.factura_estado === 'pendiente' ? `<span class="text-amber-600 text-xs font-medium flex items-center gap-1">🧾 Factura en trámite</span><button type="button" onclick="cancelarSolicitudFactura(${o.id})" class="text-gray-400 text-xs hover:underline">Cancelar</button>` : ''}
                         ${o.factura_estado === 'lista' ? `<a href="${escaparHtml(o.factura_archivo_url)}" target="_blank" class="text-green-600 text-xs font-semibold hover:underline flex items-center gap-1">🧾 Descargar factura</a>` : ''}
                     </div>
                 </div>`;
@@ -822,6 +822,22 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         modal.classList.remove('hidden'); modal.classList.add('flex');
     }
     window.abrirModalFactura = abrirModalFactura;
+
+    async function cancelarSolicitudFactura(id) {
+        if (!confirm('¿Cancelar tu solicitud de factura para este pedido?')) return;
+        try {
+            const r = await fetch(`/api/cuenta/pedidos/${id}/solicitar-factura`, { method: 'DELETE' });
+            const datos = await r.json();
+            if (!r.ok) throw new Error(datos.error || 'No se pudo cancelar la solicitud.');
+            const o = misPedidos.find(x => x.id === id);
+            if (o) o.factura_estado = null;
+            renderMisPedidos();
+            mostrarNotificacionRF('Solicitud cancelada.');
+        } catch (error) {
+            mostrarNotificacionRF(error.message, 'error');
+        }
+    }
+    window.cancelarSolicitudFactura = cancelarSolicitudFactura;
 
     function cerrarModalFactura() {
         const modal = document.getElementById('modal-factura');

@@ -444,6 +444,7 @@ async function inicializarDB() {
       usos_maximos INTEGER,
       usos_actuales INTEGER DEFAULT 0,
       cliente_cuenta_id INTEGER REFERENCES clientes_cuenta(id) ON DELETE CASCADE,
+      fecha_inicio DATE,
       fecha_expiracion DATE,
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -511,6 +512,17 @@ async function inicializarDB() {
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_bitacora_fecha ON bitacora_admin(creado_en DESC);
+
+    -- Quien deja su correo en un producto agotado, se le avisa una sola vez
+    -- en cuanto vuelva a haber existencia (o se vuelva a activar).
+    CREATE TABLE IF NOT EXISTS avisos_restock (
+      id SERIAL PRIMARY KEY,
+      producto_id INTEGER NOT NULL REFERENCES arreglos_florales(id) ON DELETE CASCADE,
+      email VARCHAR(150) NOT NULL,
+      avisado BOOLEAN DEFAULT false,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(producto_id, email)
+    );
 
     -- Carritos que alguien dejó a medias (ya escribió su correo pero no
     -- terminó de pagar) -- para poder recordarle por correo más tarde.
@@ -583,7 +595,8 @@ async function inicializarDB() {
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS reset_token_expira TIMESTAMP',
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS carrito_actualizado_en TIMESTAMP',
     'ALTER TABLE clientes_cuenta ALTER COLUMN password_hash DROP NOT NULL',
-    'ALTER TABLE zonas_cobertura ADD COLUMN IF NOT EXISTS estado VARCHAR(100)'
+    'ALTER TABLE zonas_cobertura ADD COLUMN IF NOT EXISTS estado VARCHAR(100)',
+    'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS fecha_inicio DATE'
   ];
 
   for (const query of alterQueries) {
@@ -757,9 +770,22 @@ function estaBloqueado(email) {
   return false;
 }
 
+// El panel tiene mucho más poder que una cuenta de cliente (cambia precios,
+// ve datos de todos los pedidos) -- por eso, aparte de la cookie de sesión
+// de 7 días, se cierra sola tras 8 horas sin actividad en el panel, aunque
+// el navegador siga con la cookie vigente.
+const INACTIVIDAD_MAXIMA_ADMIN_MS = 8 * 60 * 60 * 1000;
 function requireAuth(req, res, next) {
-  if (req.session && req.session.usuarioId) return next();
-  res.status(401).json({ error: 'Debes iniciar sesión.' });
+  if (!req.session || !req.session.usuarioId) {
+    return res.status(401).json({ error: 'Debes iniciar sesión.' });
+  }
+  const ahora = Date.now();
+  if (req.session.ultimaActividadAdmin && (ahora - req.session.ultimaActividadAdmin) > INACTIVIDAD_MAXIMA_ADMIN_MS) {
+    req.session.destroy(() => {});
+    return res.status(401).json({ error: 'Tu sesión expiró por inactividad. Vuelve a iniciar sesión.' });
+  }
+  req.session.ultimaActividadAdmin = ahora;
+  next();
 }
 function requireAdmin(req, res, next) {
   if (req.session && req.session.usuarioId && req.session.rol === 'admin') return next();
@@ -1291,10 +1317,56 @@ app.post('/api/cuenta/pedidos/:id/solicitar-factura', requireClienteAuth, async 
       [rfc.trim().toUpperCase(), razonSocial.trim(), usoCfdi.trim(), codigoPostal.trim(), email.trim(), id, req.session.clienteId]
     );
     if (resultado.rowCount === 0) return res.status(404).json({ error: 'No se encontró ese pedido en tu cuenta.' });
+    // Le avisamos a los administradores por correo -- si no, la solicitud
+    // solo se ve al abrir el panel, y podría pasar desapercibida un buen rato.
+    if (resendClient) {
+      try {
+        const admins = await pool.query("SELECT email FROM usuarios_admin WHERE rol='admin' AND activo=true");
+        if (admins.rows.length) {
+          const cuerpo = `
+            <h2 style="font-size:16px;margin:0 0 8px;">🧾 Nueva solicitud de factura</h2>
+            <p style="font-size:13px;color:#666;">El pedido <strong>#${id}</strong> tiene una solicitud de factura nueva, pendiente de subir.</p>
+            <p style="font-size:13px;margin:4px 0;"><strong>RFC:</strong> ${rfc.trim().toUpperCase()}</p>
+            <p style="font-size:13px;margin:4px 0;"><strong>Razón social:</strong> ${razonSocial.trim()}</p>
+            <p style="margin-top:16px;"><a href="${URL_SITIO}/admin" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver en el panel</a></p>
+          `;
+          const htmlCorreo = await plantillaBaseCorreo('Nueva solicitud de factura', cuerpo);
+          await Promise.all(admins.rows.map(a => resendClient.emails.send({
+            from: CORREO_REMITENTE, to: a.email, subject: `Nueva solicitud de factura — Pedido #${id}`,
+            html: htmlCorreo
+          }).catch(err => console.error('No se pudo avisar al admin de la solicitud de factura:', err?.message || err))));
+        }
+      } catch (err) {
+        console.error('No se pudo notificar a los administradores sobre la solicitud de factura:', err?.message || err);
+      }
+    }
     res.json({ exito: true });
   } catch (error) {
     console.error('POST /api/cuenta/pedidos/:id/solicitar-factura:', error);
     res.status(500).json({ error: 'No se pudo enviar tu solicitud de factura.' });
+  }
+});
+
+// Cancelar una solicitud de factura que sigue pendiente -- por si el
+// cliente se equivocó al escribir el RFC o algún otro dato. Si ya está
+// "lista" (con el archivo ya subido), ya no se puede cancelar.
+app.delete('/api/cuenta/pedidos/:id/solicitar-factura', requireClienteAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const resultado = await pool.query(
+      `UPDATE ordenes SET factura_estado=NULL, factura_rfc=NULL, factura_razon_social=NULL,
+        factura_uso_cfdi=NULL, factura_cp=NULL, factura_email=NULL, factura_solicitada_en=NULL
+       WHERE id=$1 AND cliente_cuenta_id=$2 AND factura_estado='pendiente' RETURNING id`,
+      [id, req.session.clienteId]
+    );
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ error: 'No se encontró una solicitud pendiente para cancelar.' });
+    }
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/cuenta/pedidos/:id/solicitar-factura:', error);
+    res.status(500).json({ error: 'No se pudo cancelar la solicitud.' });
   }
 });
 
@@ -1794,6 +1866,30 @@ app.get('/api/catalogo/:id/relacionados', async (req, res) => {
     res.status(500).json({ error: 'No se pudieron cargar productos relacionados.' });
   }
 });
+
+// Pedir que le avisen cuando un producto agotado (o desactivado) vuelva a
+// estar disponible -- se limita a 1 por correo y producto (si ya se había
+// suscrito, no truena, solo confirma de nuevo).
+app.post('/api/catalogo/:id/avisarme', limitadorGeneral, async (req, res) => {
+  const id = Number(req.params.id);
+  const { email } = req.body || {};
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID de producto inválido.' });
+  if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return res.status(400).json({ error: 'Ingresa un correo electrónico válido.' });
+  }
+  try {
+    await pool.query(
+      `INSERT INTO avisos_restock (producto_id, email) VALUES ($1, $2)
+       ON CONFLICT (producto_id, email) DO UPDATE SET avisado=false`,
+      [id, email.trim().toLowerCase()]
+    );
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('POST /api/catalogo/:id/avisarme:', error);
+    res.status(500).json({ error: 'No se pudo guardar tu solicitud.' });
+  }
+});
+
 app.post('/api/catalogo', requireAuth, async (req, res) => {
   if (!productoValido(req.body)) {
     return res.status(400).json({ error: 'Nombre y precio válido son obligatorios.' });
@@ -1844,6 +1940,12 @@ app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
   const p = normalizarProducto(req.body);
   const primera = req.body.clasificaciones.find(c => c?.categoria) || {};
   try {
+    // Para saber si el producto "volvió a estar disponible" (y avisarle a
+    // quien lo esperaba), hace falta el estado de ANTES de esta edición --
+    // RETURNING * del UPDATE solo da el de después.
+    const antes = await pool.query('SELECT stock, disponible FROM arreglos_florales WHERE id=$1', [id]);
+    const estabaAgotado = antes.rows[0] && (antes.rows[0].disponible === false || Number(antes.rows[0].stock) <= 0);
+
     const result = await pool.query(`
       UPDATE arreglos_florales
       SET nombre=$1, descripcion=$2, especificaciones=$3, precio=$4, imagen_url=$5, imagenes=$6,
@@ -1858,6 +1960,9 @@ app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Producto no encontrado.' });
     }
+
+    const yaHayDeNuevo = p.disponible !== false && Number(p.stock) > 0;
+    if (estabaAgotado && yaHayDeNuevo) avisarRestockRF(id, result.rows[0].nombre);
 
     await sincronizarClasificacionesProducto(id, req.body.clasificaciones);
     if (req.body.es_combo) await sincronizarComboProducto(id, req.body.combo_items);
@@ -2124,6 +2229,29 @@ async function enviarCorreoCarritoAbandonado(carritoAbandonado) {
   }
 }
 
+// Le avisa a quien pidió que le avisaran cuando este producto volviera a
+// estar disponible -- una sola vez por persona (se marca "avisado" para no
+// mandarle el mismo correo de nuevo si el stock sube y baja varias veces).
+async function avisarRestockRF(productoId, nombreProducto) {
+  if (!resendClient) return;
+  try {
+    const espera = await pool.query('SELECT id, email FROM avisos_restock WHERE producto_id=$1 AND avisado=false', [productoId]);
+    if (espera.rows.length === 0) return;
+    const cuerpo = `
+      <h2 style="font-size:16px;margin:0 0 8px;">🌸 ¡Ya volvió a haber!</h2>
+      <p style="font-size:13px;color:#666;">"${nombreProducto}" ya está disponible de nuevo -- por si todavía te interesa, aquí tienes el enlace directo antes de que se vuelva a agotar.</p>
+      <p style="margin-top:16px;"><a href="${URL_SITIO}/producto/${productoId}" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver el producto</a></p>
+    `;
+    const html = await plantillaBaseCorreo('Ya volvió a haber', cuerpo);
+    await Promise.all(espera.rows.map(a => resendClient.emails.send({
+      from: CORREO_REMITENTE, to: a.email, subject: `Ya volvió a haber: ${nombreProducto} 🌸`, html
+    }).catch(err => console.error('No se pudo avisar restock a', a.email, err?.message || err))));
+    await pool.query('UPDATE avisos_restock SET avisado=true WHERE producto_id=$1 AND avisado=false', [productoId]);
+  } catch (error) {
+    console.error('No se pudo procesar los avisos de restock:', error?.message || error);
+  }
+}
+
 // Cada cierto tiempo revisa si hay carritos abandonados hace más de 2 horas
 // a los que todavía no se les ha mandado el recordatorio, y se los manda --
 // una sola vez por carrito.
@@ -2159,6 +2287,7 @@ app.post('/api/cupones/validar', limitadorPedidos, async (req, res) => {
     const cupon = resultado.rows[0];
     if (!cupon) return res.status(404).json({ error: 'El cupón no existe.' });
     if (!cupon.activo) return res.status(400).json({ error: 'Este cupón ya no está activo.' });
+    if (cupon.fecha_inicio && new Date(cupon.fecha_inicio) > new Date()) return res.status(400).json({ error: 'Este cupón todavía no está disponible.' });
     if (cupon.fecha_expiracion && new Date(cupon.fecha_expiracion) < new Date()) return res.status(400).json({ error: 'Este cupón ya venció.' });
     if (cupon.usos_maximos !== null && cupon.usos_actuales >= cupon.usos_maximos) return res.status(400).json({ error: 'Este cupón ya alcanzó su límite de usos.' });
     if (Number(cupon.monto_minimo) > subtotalNum) return res.status(400).json({ error: `Este cupón requiere una compra mínima de $${Number(cupon.monto_minimo).toFixed(2)}.` });
@@ -2369,6 +2498,7 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       const cupon = resultadoCupon.rows[0];
       if (!cupon) throw Object.assign(new Error('El cupón no existe.'), { statusCode: 400 });
       if (!cupon.activo) throw Object.assign(new Error('Este cupón ya no está activo.'), { statusCode: 400 });
+      if (cupon.fecha_inicio && new Date(cupon.fecha_inicio) > new Date()) throw Object.assign(new Error('Este cupón todavía no está disponible.'), { statusCode: 400 });
       if (cupon.fecha_expiracion && new Date(cupon.fecha_expiracion) < new Date()) throw Object.assign(new Error('Este cupón ya venció.'), { statusCode: 400 });
       if (cupon.usos_maximos !== null && cupon.usos_actuales >= cupon.usos_maximos) throw Object.assign(new Error('Este cupón ya alcanzó su límite de usos.'), { statusCode: 400 });
       if (Number(cupon.monto_minimo) > subtotal) throw Object.assign(new Error(`Este cupón requiere una compra mínima de $${Number(cupon.monto_minimo).toFixed(2)}.`), { statusCode: 400 });
@@ -2716,6 +2846,21 @@ app.get('/api/admin/facturas-pendientes', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('GET /api/admin/facturas-pendientes:', error);
     res.status(500).json({ error: 'No se pudieron cargar las solicitudes de factura.' });
+  }
+});
+
+// Historial de facturas ya atendidas -- para consultarlas después (si el
+// cliente perdió el archivo, o para tu propia contabilidad).
+app.get('/api/admin/facturas-historial', requireAuth, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT id, cliente_nombre, total, factura_rfc, factura_razon_social, factura_uso_cfdi, factura_cp, factura_email, factura_archivo_url, factura_atendida_en
+       FROM ordenes WHERE factura_estado='lista' ORDER BY factura_atendida_en DESC LIMIT 100`
+    );
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('GET /api/admin/facturas-historial:', error);
+    res.status(500).json({ error: 'No se pudo cargar el historial de facturas.' });
   }
 });
 
@@ -3374,20 +3519,24 @@ app.get('/api/admin/cupones', requireAuth, async (req, res) => {
 });
 
 app.post('/api/admin/cupones', requireAuth, async (req, res) => {
-  const { codigo, tipo, valor, montoMinimo, usosMaximos, fechaExpiracion } = req.body || {};
+  const { codigo, tipo, valor, montoMinimo, usosMaximos, fechaInicio, fechaExpiracion } = req.body || {};
   if (!codigo?.trim()) return res.status(400).json({ error: 'El código es obligatorio.' });
   if (!['monto_fijo', 'porcentaje'].includes(tipo)) return res.status(400).json({ error: 'Tipo de cupón inválido.' });
   const valorNum = Number(valor);
   if (!Number.isFinite(valorNum) || valorNum <= 0) return res.status(400).json({ error: 'El valor debe ser un número mayor a 0.' });
   if (tipo === 'porcentaje' && valorNum > 100) return res.status(400).json({ error: 'Un descuento por porcentaje no puede ser mayor a 100.' });
+  if (fechaInicio && fechaExpiracion && new Date(fechaInicio) > new Date(fechaExpiracion)) {
+    return res.status(400).json({ error: 'La fecha de inicio no puede ser posterior a la de vencimiento.' });
+  }
   try {
     const resultado = await pool.query(
-      `INSERT INTO cupones (codigo, tipo, valor, monto_minimo, usos_maximos, fecha_expiracion)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      `INSERT INTO cupones (codigo, tipo, valor, monto_minimo, usos_maximos, fecha_inicio, fecha_expiracion)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
       [
         codigo.trim().toUpperCase(), tipo, valorNum,
         Number.isFinite(Number(montoMinimo)) ? Number(montoMinimo) : 0,
         Number.isFinite(Number(usosMaximos)) && Number(usosMaximos) > 0 ? Number(usosMaximos) : null,
+        fechaInicio || null,
         fechaExpiracion || null
       ]
     );
@@ -3405,6 +3554,7 @@ app.patch('/api/admin/cupones/:id', requireAuth, async (req, res) => {
   const campos = []; const valores = []; let i = 1;
   if (typeof req.body.activo === 'boolean') { campos.push(`activo=$${i++}`); valores.push(req.body.activo); }
   if (Number.isFinite(Number(req.body.valor)) && Number(req.body.valor) > 0) { campos.push(`valor=$${i++}`); valores.push(Number(req.body.valor)); }
+  if (req.body.fechaInicio !== undefined) { campos.push(`fecha_inicio=$${i++}`); valores.push(req.body.fechaInicio || null); }
   if (req.body.fechaExpiracion !== undefined) { campos.push(`fecha_expiracion=$${i++}`); valores.push(req.body.fechaExpiracion || null); }
   if (campos.length === 0) return res.status(400).json({ error: 'No hay cambios para guardar.' });
   valores.push(id);

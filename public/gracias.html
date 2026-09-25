@@ -493,6 +493,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, c => c.toUpperCase());
     }
 
+    let pedidoParaAnaliticaRF = null;
     const raw = sessionStorage.getItem('rf_ultimo_pedido');
     if (!raw) {
         document.getElementById('contenido-sin-pedido').classList.remove('hidden');
@@ -502,6 +503,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         if (!pedido) {
             document.getElementById('contenido-sin-pedido').classList.remove('hidden');
         } else {
+            pedidoParaAnaliticaRF = pedido;
             const itemsHtml = (pedido.items || []).map(item => {
                 const cantidad = Math.max(1, Number(item.cantidad) || 1);
                 return `
@@ -624,6 +626,36 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     (function(){
         fetch("/api/configuracion-publica").then(r => r.json()).then(cfg => {
             inicializarAnaliticaRF(cfg);
+            // El evento de "compra" se manda una sola vez por pedido -- si la
+            // persona recarga esta página, no debe volver a contar la misma
+            // venta dos veces en las estadísticas de Analytics/Meta Pixel.
+            if (pedidoParaAnaliticaRF) {
+                const marcador = 'rf_compra_registrada_' + pedidoParaAnaliticaRF.id;
+                if (!sessionStorage.getItem(marcador)) {
+                    const items = (pedidoParaAnaliticaRF.items || []).map(it => ({
+                        item_id: String(it.id), item_name: it.nombre, price: Number(it.precio) || 0, quantity: Math.max(1, Number(it.cantidad) || 1)
+                    }));
+                    if (cfg.google_analytics_id && typeof window.gtag === 'function') {
+                        window.gtag('event', 'purchase', {
+                            transaction_id: String(pedidoParaAnaliticaRF.id),
+                            value: Number(pedidoParaAnaliticaRF.total) || 0,
+                            currency: 'MXN',
+                            shipping: Number(pedidoParaAnaliticaRF.envio) || 0,
+                            items
+                        });
+                    }
+                    if (cfg.meta_pixel_id && typeof window.fbq === 'function') {
+                        window.fbq('track', 'Purchase', {
+                            value: Number(pedidoParaAnaliticaRF.total) || 0,
+                            currency: 'MXN',
+                            content_ids: items.map(it => it.item_id),
+                            content_type: 'product',
+                            num_items: items.reduce((s, it) => s + it.quantity, 0)
+                        });
+                    }
+                    sessionStorage.setItem(marcador, 'true');
+                }
+            }
             const btn = document.getElementById("boton-whatsapp-flotante");
             const numero = (cfg.whatsapp_numero || "").replace(/\D/g, "");
             if (btn && numero) {

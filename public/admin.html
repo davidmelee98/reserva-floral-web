@@ -498,7 +498,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     <div class="adm-card overflow-hidden flex flex-col lg:col-span-2">
                         <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
                             <h2 class="text-lg font-semibold text-brandDark">Catálogo Actual</h2>
-                            <p id="conteo-catalogo" class="text-xs text-gray-400"></p>
+                            <div class="flex items-center gap-3">
+                                <p id="conteo-catalogo" class="text-xs text-gray-400"></p>
+                                <button type="button" onclick="exportarCatalogoCSV()" class="text-xs font-semibold text-brandFuchsia hover:underline flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                    Exportar CSV
+                                </button>
+                            </div>
                         </div>
                         <div class="px-6 py-3 border-b border-gray-100 flex flex-wrap gap-2 bg-gray-50/60">
                             <div class="relative flex-1 min-w-[180px]">
@@ -587,6 +593,11 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     <div id="lista-facturas-pendientes" class="space-y-2"></div>
                 </div>
 
+                <details class="adm-card p-5 mb-6" id="detalle-historial-facturas">
+                    <summary class="text-sm font-semibold text-brandDark cursor-pointer select-none">Historial de facturas ya atendidas</summary>
+                    <div id="lista-facturas-historial" class="space-y-2 mt-3"></div>
+                </details>
+
                 <div class="adm-card overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
                         <h2 class="text-lg font-semibold text-brandDark">Pedidos Recibidos</h2>
@@ -669,7 +680,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 <div class="adm-card overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
                         <h2 class="text-lg font-semibold text-brandDark">Clientes</h2>
-                        <p id="conteo-clientes" class="text-xs text-gray-400"></p>
+                        <div class="flex items-center gap-3">
+                            <p id="conteo-clientes" class="text-xs text-gray-400"></p>
+                            <button type="button" onclick="exportarClientesCSV()" class="text-xs font-semibold text-brandFuchsia hover:underline flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                Exportar CSV
+                            </button>
+                        </div>
                     </div>
                     <div class="px-6 py-3 border-b border-gray-100 bg-gray-50/60">
                         <div class="relative max-w-sm">
@@ -828,6 +845,10 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             <div>
                                 <label class="adm-label">Usos máximos (opcional, en blanco = ilimitado)</label>
                                 <input type="number" id="cupon_usos_maximos" min="1" step="1" class="adm-input" placeholder="Ilimitado">
+                            </div>
+                            <div>
+                                <label class="adm-label">Fecha de inicio (opcional -- el cupón no funciona antes de esta fecha)</label>
+                                <input type="date" id="cupon_fecha_inicio" class="adm-input">
                             </div>
                             <div>
                                 <label class="adm-label">Fecha de expiración (opcional)</label>
@@ -1272,6 +1293,14 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     }
     async function jsonOError(respuesta) {
         const datos = await respuesta.json().catch(() => ({}));
+        if (respuesta.status === 401) {
+            // La sesión venció (por inactividad o porque cerraste sesión en
+            // otra pestaña) -- se muestra la pantalla de login limpiamente,
+            // en vez de dejar que cada acción tire su propio error suelto.
+            document.getElementById('app-admin')?.classList.add('hidden');
+            document.getElementById('pantalla-login')?.classList.remove('hidden');
+            document.getElementById('pantalla-login')?.classList.add('flex');
+        }
         if (!respuesta.ok) throw new Error(datos.error || 'Ocurrió un error inesperado.');
         return datos;
     }
@@ -2257,6 +2286,9 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById('titulo-formulario').innerText = 'Agregar Nuevo Arreglo';
         document.getElementById('subtitulo-formulario').innerText = `Copia de "${p.nombre}" -- revisa los datos antes de guardar.`;
         cargarProductoEnFormulario({ ...p, id: null, nombre: p.nombre + ' (copia)' });
+        // La copia todavía no existe en la tienda -- si el enlace se quedara
+        // visible, apuntaría al producto ORIGINAL y confundiría.
+        document.getElementById('link-ver-tienda')?.classList.add('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
         document.getElementById('nombre').focus();
     }
@@ -2652,6 +2684,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     }
     window.exportarPedidosCSV = exportarPedidosCSV;
 
+
     // Reporte de Finanzas descargable -- resumen del periodo, ventas por día
     // y los productos más vendidos, listo para abrir en Excel.
     function descargarReporteFinanzas() {
@@ -2684,6 +2717,46 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         URL.revokeObjectURL(enlace.href);
     }
     window.descargarReporteFinanzas = descargarReporteFinanzas;
+
+    // Exportar el catálogo y la lista de clientes a CSV -- para respaldo
+    // propio, o para subirlos a otra herramienta (una lista de correos para
+    // marketing, por ejemplo). Reutiliza el mismo patrón que el reporte de
+    // finanzas: arma el CSV con lo que ya está cargado, sin pedir nada nuevo
+    // al servidor.
+    function descargarCSVGenericoRF(filas, nombreArchivo) {
+        const csv = '\uFEFF' + filas.join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const enlace = document.createElement('a');
+        enlace.href = URL.createObjectURL(blob);
+        enlace.download = nombreArchivo;
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+        URL.revokeObjectURL(enlace.href);
+    }
+
+    function exportarCatalogoCSV() {
+        if (!catalogo.length) { mostrarToast('Todavía no hay productos que exportar.', 'error'); return; }
+        const escaparCelda = (valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+        const filas = [['ID', 'Nombre', 'Precio', 'Stock', 'Disponible', 'Categoría', 'Es combo'].map(escaparCelda).join(',')];
+        catalogo.forEach(p => {
+            const categoriaTexto = (p.clasificaciones || []).map(c => c.categoria).filter(Boolean).join(' / ') || p.categoria || '';
+            filas.push([p.id, p.nombre, p.precio, p.stock ?? '', p.disponible === false ? 'No' : 'Sí', categoriaTexto, p.es_combo ? 'Sí' : 'No'].map(escaparCelda).join(','));
+        });
+        descargarCSVGenericoRF(filas, `catalogo-reserva-floral-${fechaLocalRF()}.csv`);
+    }
+    window.exportarCatalogoCSV = exportarCatalogoCSV;
+
+    function exportarClientesCSV() {
+        if (!clientes.length) { mostrarToast('Todavía no hay clientes que exportar.', 'error'); return; }
+        const escaparCelda = (valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+        const filas = [['Nombre', 'Teléfono', 'Correo', 'Última dirección', 'Pedidos', 'Total gastado', 'Último pedido', 'Tiene cuenta'].map(escaparCelda).join(',')];
+        clientes.forEach(c => {
+            filas.push([c.nombre, c.telefono, c.email || '', c.ultima_direccion || '', c.pedidos, c.total_gastado, formatearFechaAdmin(c.ultimo_pedido), c.tiene_cuenta ? 'Sí' : 'No'].map(escaparCelda).join(','));
+        });
+        descargarCSVGenericoRF(filas, `clientes-reserva-floral-${fechaLocalRF()}.csv`);
+    }
+    window.exportarClientesCSV = exportarClientesCSV;
 
     // =======================================================================
     // CLIENTES
@@ -2750,6 +2823,30 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         }
     }
     window.subirArchivoFactura = subirArchivoFactura;
+
+    // El historial se carga solo la primera vez que se abre el detalle, no
+    // de entrada -- así no se gasta una petición si nunca lo consultas.
+    let historialFacturasCargado = false;
+    document.getElementById('detalle-historial-facturas')?.addEventListener('toggle', async (e) => {
+        if (!e.target.open || historialFacturasCargado) return;
+        historialFacturasCargado = true;
+        const cont = document.getElementById('lista-facturas-historial');
+        try {
+            const historial = await jsonOError(await fetch('/api/admin/facturas-historial'));
+            cont.innerHTML = historial.length ? historial.map(o => `
+                <div class="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2.5 text-xs">
+                    <div class="min-w-0">
+                        <p class="font-medium text-brandDark">Pedido #${o.id} · ${escaparHtmlAdmin(o.factura_razon_social)}</p>
+                        <p class="text-gray-500">RFC ${escaparHtmlAdmin(o.factura_rfc)} · atendida el ${new Date(o.factura_atendida_en).toLocaleDateString('es-MX')}</p>
+                    </div>
+                    <a href="${escaparHtmlAdmin(o.factura_archivo_url)}" target="_blank" class="shrink-0 text-brandFuchsia font-semibold hover:underline">Ver archivo</a>
+                </div>
+            `).join('') : '<p class="text-xs text-gray-400 text-center py-4">Aún no has atendido ninguna factura.</p>';
+        } catch (error) {
+            cont.innerHTML = `<p class="text-xs text-red-500 text-center py-4">${error.message}</p>`;
+            historialFacturasCargado = false;
+        }
+    });
 
     async function cargarRecordatorios() {
         const cont = document.getElementById('lista-recordatorios');
@@ -2998,6 +3095,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         cont.innerHTML = cupones.length ? cupones.map(c => {
             const agotado = c.usos_maximos !== null && c.usos_actuales >= c.usos_maximos;
             const vencido = c.fecha_expiracion && new Date(c.fecha_expiracion) < new Date();
+            const programado = c.fecha_inicio && new Date(c.fecha_inicio) > new Date();
             const etiquetaValor = c.tipo === 'porcentaje' ? `${Number(c.valor)}%` : `$${Number(c.valor).toFixed(2)}`;
             return `
             <div class="px-6 py-3 flex items-center justify-between gap-3">
@@ -3007,11 +3105,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         <span class="adm-badge bg-gray-100 text-gray-600">${etiquetaValor}</span>
                         ${agotado ? '<span class="adm-badge bg-gray-100 text-gray-500">Agotado</span>' : ''}
                         ${vencido ? '<span class="adm-badge bg-red-50 text-red-600">Vencido</span>' : ''}
+                        ${programado ? '<span class="adm-badge bg-blue-50 text-blue-600">Programado</span>' : ''}
                         ${c.cliente_cuenta_id ? `<span class="adm-badge bg-blue-50 text-blue-600">${escaparHtmlAdmin(c.cliente_nombre || '')} ${escaparHtmlAdmin(c.cliente_apellido || '')}</span>` : ''}
                     </p>
                     <p class="text-[11px] text-gray-400">
                         ${c.usos_actuales} usado${c.usos_actuales === 1 ? '' : 's'}${c.usos_maximos !== null ? ` de ${c.usos_maximos}` : ' (ilimitado)'}
                         ${Number(c.monto_minimo) > 0 ? ` · compra mínima $${Number(c.monto_minimo).toFixed(2)}` : ''}
+                        ${c.fecha_inicio ? ` · desde ${new Date(c.fecha_inicio).toLocaleDateString('es-MX')}` : ''}
                         ${c.fecha_expiracion ? ` · vence ${new Date(c.fecha_expiracion).toLocaleDateString('es-MX')}` : ''}
                     </p>
                 </div>
@@ -3033,6 +3133,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             valor: document.getElementById('cupon_valor').value,
             montoMinimo: document.getElementById('cupon_monto_minimo').value || 0,
             usosMaximos: document.getElementById('cupon_usos_maximos').value || null,
+            fechaInicio: document.getElementById('cupon_fecha_inicio').value || null,
             fechaExpiracion: document.getElementById('cupon_fecha_expiracion').value || null
         };
         try {
