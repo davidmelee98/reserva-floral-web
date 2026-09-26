@@ -629,7 +629,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             // El evento de "compra" se manda una sola vez por pedido -- si la
             // persona recarga esta página, no debe volver a contar la misma
             // venta dos veces en las estadísticas de Analytics/Meta Pixel.
-            if (pedidoParaAnaliticaRF) {
+            // Solo cuenta como "compra" si el pago ya está aprobado -- una ficha
+            // de OXXO o una transferencia SPEI todavía sin pagar no es una venta
+            // (mucha gente las genera y nunca paga), y contarlas inflaría el
+            // rendimiento aparente de los anuncios.
+            if (pedidoParaAnaliticaRF && pedidoParaAnaliticaRF.estadoPago === 'aprobado') {
                 const marcador = 'rf_compra_registrada_' + pedidoParaAnaliticaRF.id;
                 if (!sessionStorage.getItem(marcador)) {
                     const items = (pedidoParaAnaliticaRF.items || []).map(it => ({

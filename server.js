@@ -175,6 +175,12 @@ app.use((req, res, next) => {
 // ---------------------------------------------------------------------------
 const CARPETA_SUBIDAS = process.env.UPLOADS_DIR || path.join(__dirname, 'public', 'uploads');
 fs.mkdirSync(CARPETA_SUBIDAS, { recursive: true });
+// Las facturas traen datos fiscales del cliente (RFC, razón social) -- se
+// guardan en su propia subcarpeta, que NUNCA se sirve al público. Solo se
+// pueden descargar por las rutas con sesión (el dueño del pedido, o el panel).
+const CARPETA_FACTURAS = path.join(CARPETA_SUBIDAS, 'facturas');
+fs.mkdirSync(CARPETA_FACTURAS, { recursive: true });
+app.use('/uploads/facturas', (req, res) => res.status(404).end());
 app.use('/uploads', express.static(CARPETA_SUBIDAS));
 
 const storageSubidas = multer.diskStorage({
@@ -201,7 +207,13 @@ const subirImagen = multer({
 // generada por su cuenta -- acepta PDF y XML, nunca imágenes ni ejecutables.
 const TIPOS_FACTURA_VALIDOS = new Set(['application/pdf', 'text/xml', 'application/xml']);
 const subirFactura = multer({
-  storage: storageSubidas,
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, CARPETA_FACTURAS),
+    filename: (req, file, cb) => {
+      const ext = file.mimetype === 'application/pdf' ? '.pdf' : '.xml';
+      cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`);
+    }
+  }),
   limits: { fileSize: 6 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!TIPOS_FACTURA_VALIDOS.has(file.mimetype)) {
@@ -596,7 +608,8 @@ async function inicializarDB() {
     'ALTER TABLE clientes_cuenta ADD COLUMN IF NOT EXISTS carrito_actualizado_en TIMESTAMP',
     'ALTER TABLE clientes_cuenta ALTER COLUMN password_hash DROP NOT NULL',
     'ALTER TABLE zonas_cobertura ADD COLUMN IF NOT EXISTS estado VARCHAR(100)',
-    'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS fecha_inicio DATE'
+    'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS fecha_inicio DATE',
+    'ALTER TABLE carritos_abandonados ADD COLUMN IF NOT EXISTS ultimo_correo_en TIMESTAMP'
   ];
 
   for (const query of alterQueries) {
@@ -1277,18 +1290,32 @@ app.get('/api/cuenta/pedidos', requireClienteAuth, async (req, res) => {
 app.patch('/api/cuenta/pedidos/:id/cancelar', requireClienteAuth, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  const client = await pool.connect();
+  let reabastecidos = [];
   try {
-    const resultado = await pool.query(
-      `UPDATE ordenes SET estado='Cancelado' WHERE id=$1 AND cliente_cuenta_id=$2 AND estado='Pendiente' RETURNING *`,
+    await client.query('BEGIN');
+    const actual = await client.query(
+      `SELECT * FROM ordenes WHERE id=$1 AND cliente_cuenta_id=$2 AND estado='Pendiente' FOR UPDATE`,
       [id, req.session.clienteId]
     );
-    if (resultado.rowCount === 0) {
+    if (actual.rowCount === 0) {
+      await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Este pedido ya no se puede cancelar (puede que ya esté en preparación o no te pertenezca).' });
     }
+    // Antes el cliente podía cancelar pero el stock NUNCA regresaba al
+    // inventario (y si después el admin lo marcaba como cancelado, tampoco,
+    // porque ya estaba cancelado).
+    reabastecidos = await restaurarStockDeOrdenRF(client, actual.rows[0]);
+    const resultado = await client.query(`UPDATE ordenes SET estado='Cancelado' WHERE id=$1 RETURNING *`, [id]);
+    await client.query('COMMIT');
+    reabastecidos.forEach(p => avisarRestockRF(p.id, p.nombre));
     res.json(resultado.rows[0]);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('PATCH /api/cuenta/pedidos/:id/cancelar:', error);
     res.status(500).json({ error: 'No se pudo cancelar el pedido.' });
+  } finally {
+    client.release();
   }
 });
 
@@ -2042,6 +2069,60 @@ const ENVIO_FIJO = 80;
 const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const CORREO_REMITENTE = process.env.RESEND_FROM || 'Reserva Floral <hey@reservafloral.com>';
 
+// Mismo formato que entiende la tienda: JSON [{nombre, precio}] o el formato
+// viejo "12 rosas:720, 24 rosas:1200".
+function parsearTamanosRF(raw) {
+  const texto = String(raw || '').trim();
+  if (!texto) return [];
+  try {
+    const parsed = JSON.parse(texto);
+    if (Array.isArray(parsed)) return parsed.map(t => ({ nombre: String(t.nombre || '').trim(), precio: Number(t.precio) })).filter(t => t.nombre && Number.isFinite(t.precio));
+  } catch (_) {}
+  return texto.split(',').map(par => {
+    const [nombre, precio] = par.split(':').map(s => (s || '').trim());
+    return { nombre: nombre || '', precio: Number(precio) };
+  }).filter(t => t.nombre && Number.isFinite(t.precio));
+}
+
+// El precio real de un artículo del carrito: si el cliente eligió un tamaño
+// ("Tamaño: 24 rosas" dentro de la variante), se cobra el precio de ESE
+// tamaño según la base de datos -- nunca el que diga el navegador. Antes se
+// cobraba siempre el precio base aunque el tamaño fuera más caro.
+// Devuelve null si el tamaño elegido ya no existe en el producto.
+function precioSegunTamanoRF(producto, variante) {
+  const base = Number(producto.precio);
+  const coincidencia = /Tamaño:\s*([^|]+)/i.exec(String(variante || ''));
+  if (!coincidencia) return base;
+  const tamanos = parsearTamanosRF(producto.tamanos);
+  if (tamanos.length === 0) return base;
+  const elegido = coincidencia[1].trim().toLowerCase();
+  const tamano = tamanos.find(t => t.nombre.toLowerCase() === elegido);
+  return tamano ? tamano.precio : null;
+}
+
+// Las fechas de cupones son "de calendario" (sin hora). Se comparan contra
+// el día de HOY en hora de México -- antes se comparaban contra la hora UTC
+// del servidor, y un cupón que "vencía el 14" dejaba de funcionar a las 6 pm
+// del 13 (y uno que "iniciaba el 10" arrancaba a las 6 pm del 9).
+function hoyMexicoRF() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+function fechaCalendarioRF(valor) {
+  if (!valor) return null;
+  if (valor instanceof Date) {
+    return `${valor.getFullYear()}-${String(valor.getMonth() + 1).padStart(2, '0')}-${String(valor.getDate()).padStart(2, '0')}`;
+  }
+  return String(valor).slice(0, 10);
+}
+function problemaFechasCuponRF(cupon) {
+  const hoy = hoyMexicoRF();
+  const inicio = fechaCalendarioRF(cupon.fecha_inicio);
+  const fin = fechaCalendarioRF(cupon.fecha_expiracion);
+  if (inicio && hoy < inicio) return 'Este cupón todavía no está disponible.';
+  if (fin && hoy > fin) return 'Este cupón ya venció.';
+  return null;
+}
+
 function formatearFechaCorreo(fecha) {
   if (!fecha) return '';
   const d = new Date(fecha + (String(fecha).length === 10 ? 'T00:00:00' : ''));
@@ -2260,11 +2341,17 @@ async function revisarCarritosAbandonadosRF() {
     const resultado = await pool.query(`
       SELECT * FROM carritos_abandonados
       WHERE recuperado = false AND correo_enviado = false
-        AND creado_en < NOW() - INTERVAL '2 hours'
+        AND actualizado_en < NOW() - INTERVAL '2 hours'
+        AND (ultimo_correo_en IS NULL OR ultimo_correo_en < NOW() - INTERVAL '7 days')
     `);
+    // Las 2 horas se cuentan desde la ÚLTIMA vez que la persona tocó su
+    // carrito (antes era desde la primera vez que escribió su correo, así
+    // que alguien que regresaba días después podía recibir "se te quedó
+    // algo" en plena compra). Y máximo un recordatorio cada 7 días por
+    // correo, para no mandarle uno en cada visita.
     for (const carrito of resultado.rows) {
       await enviarCorreoCarritoAbandonado(carrito);
-      await pool.query('UPDATE carritos_abandonados SET correo_enviado = true WHERE id = $1', [carrito.id]);
+      await pool.query('UPDATE carritos_abandonados SET correo_enviado = true, ultimo_correo_en = NOW() WHERE id = $1', [carrito.id]);
     }
   } catch (error) {
     console.error('No se pudo revisar carritos abandonados:', error?.message || error);
@@ -2287,8 +2374,8 @@ app.post('/api/cupones/validar', limitadorPedidos, async (req, res) => {
     const cupon = resultado.rows[0];
     if (!cupon) return res.status(404).json({ error: 'El cupón no existe.' });
     if (!cupon.activo) return res.status(400).json({ error: 'Este cupón ya no está activo.' });
-    if (cupon.fecha_inicio && new Date(cupon.fecha_inicio) > new Date()) return res.status(400).json({ error: 'Este cupón todavía no está disponible.' });
-    if (cupon.fecha_expiracion && new Date(cupon.fecha_expiracion) < new Date()) return res.status(400).json({ error: 'Este cupón ya venció.' });
+    const problemaFechas = problemaFechasCuponRF(cupon);
+    if (problemaFechas) return res.status(400).json({ error: problemaFechas });
     if (cupon.usos_maximos !== null && cupon.usos_actuales >= cupon.usos_maximos) return res.status(400).json({ error: 'Este cupón ya alcanzó su límite de usos.' });
     if (Number(cupon.monto_minimo) > subtotalNum) return res.status(400).json({ error: `Este cupón requiere una compra mínima de $${Number(cupon.monto_minimo).toFixed(2)}.` });
     if (cupon.cliente_cuenta_id && cupon.cliente_cuenta_id !== clienteIdSesion) return res.status(400).json({ error: 'Este cupón no está disponible para tu cuenta.' });
@@ -2412,7 +2499,7 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     await client.query('BEGIN');
 
     const productos = await client.query(`
-      SELECT id, nombre, precio, imagen_url, stock, es_combo
+      SELECT id, nombre, precio, imagen_url, stock, es_combo, tamanos
       FROM arreglos_florales
       WHERE id = ANY($1::int[]) AND COALESCE(disponible, true) = true
       FOR UPDATE
@@ -2471,10 +2558,14 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     const carritoConfirmado = carrito.map(item => {
       const producto = porId.get(Number(item.id));
       const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
+      const precioReal = precioSegunTamanoRF(producto, item.variante);
+      if (precioReal === null) {
+        throw Object.assign(new Error(`El tamaño que elegiste de "${producto.nombre}" ya no está disponible. Quítalo del carrito y vuelve a agregarlo.`), { statusCode: 409 });
+      }
       return {
         id: producto.id,
         nombre: producto.nombre,
-        precio: Number(producto.precio),
+        precio: precioReal,
         cantidad,
         imagen: producto.imagen_url || null,
         variante: typeof item.variante === 'string' ? item.variante.trim() || null : null
@@ -2498,8 +2589,8 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       const cupon = resultadoCupon.rows[0];
       if (!cupon) throw Object.assign(new Error('El cupón no existe.'), { statusCode: 400 });
       if (!cupon.activo) throw Object.assign(new Error('Este cupón ya no está activo.'), { statusCode: 400 });
-      if (cupon.fecha_inicio && new Date(cupon.fecha_inicio) > new Date()) throw Object.assign(new Error('Este cupón todavía no está disponible.'), { statusCode: 400 });
-      if (cupon.fecha_expiracion && new Date(cupon.fecha_expiracion) < new Date()) throw Object.assign(new Error('Este cupón ya venció.'), { statusCode: 400 });
+      const problemaFechas = problemaFechasCuponRF(cupon);
+      if (problemaFechas) throw Object.assign(new Error(problemaFechas), { statusCode: 400 });
       if (cupon.usos_maximos !== null && cupon.usos_actuales >= cupon.usos_maximos) throw Object.assign(new Error('Este cupón ya alcanzó su límite de usos.'), { statusCode: 400 });
       if (Number(cupon.monto_minimo) > subtotal) throw Object.assign(new Error(`Este cupón requiere una compra mínima de $${Number(cupon.monto_minimo).toFixed(2)}.`), { statusCode: 400 });
       if (cupon.cliente_cuenta_id && cupon.cliente_cuenta_id !== clienteIdSesion) throw Object.assign(new Error('Este cupón no está disponible para tu cuenta.'), { statusCode: 400 });
@@ -2618,6 +2709,7 @@ app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {
     const orden = resultado.rows[0];
     if (!orden) return res.status(404).json({ error: 'Pedido no encontrado.' });
     if (orden.estado_pago === 'aprobado') return res.status(409).json({ error: 'Este pedido ya fue pagado.' });
+    if (orden.estado === 'Cancelado') return res.status(409).json({ error: 'Este pedido se canceló porque el pago no se completó a tiempo. Vuelve a hacer tu pedido desde el carrito.' });
 
     // Estos campos vienen tal cual del "formData" que entrega el Payment Brick
     // en su onSubmit -- son exactamente lo que pide la API de Pagos.
@@ -2685,6 +2777,7 @@ app.post('/api/pagos/crear-preferencia', limitadorPagos, async (req, res) => {
     const orden = resultado.rows[0];
     if (!orden) return res.status(404).json({ error: 'Pedido no encontrado.' });
     if (orden.estado_pago === 'aprobado') return res.status(409).json({ error: 'Este pedido ya fue pagado.' });
+    if (orden.estado === 'Cancelado') return res.status(409).json({ error: 'Este pedido se canceló porque el pago no se completó a tiempo. Vuelve a hacer tu pedido desde el carrito.' });
 
     const items = Array.isArray(orden.carrito) ? orden.carrito : JSON.parse(orden.carrito || '[]');
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -2750,7 +2843,16 @@ app.post('/api/pagos/webhook', async (req, res) => {
     const yaEstabaAprobado = anterior.rows[0]?.estado_pago === 'aprobado';
 
     const actualizada = await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3 RETURNING *', [estadoPago, String(pago.id), ordenId]);
-    if (estadoPago === 'aprobado' && !yaEstabaAprobado) enviarCorreoPagoConfirmado(actualizada.rows[0]);
+    if (estadoPago === 'aprobado' && !yaEstabaAprobado) {
+      enviarCorreoPagoConfirmado(actualizada.rows[0]);
+      // Caso raro pero posible: alguien paga en OXXO después de que el pedido
+      // ya se canceló por falta de pago. Se deja una nota bien visible para
+      // que el negocio lo resuelva (entregar o reembolsar).
+      if (actualizada.rows[0]?.estado === 'Cancelado') {
+        await pool.query('INSERT INTO pedido_notas (orden_id, autor, nota) VALUES ($1, $2, $3)',
+          [ordenId, 'Sistema', '⚠️ Se recibió el PAGO de este pedido después de que se canceló. Revisa si hay existencia para entregarlo o reembólsalo desde Mercado Pago.']);
+      }
+    }
   } catch (error) {
     console.error('POST /api/pagos/webhook:', error);
   }
@@ -2759,6 +2861,88 @@ app.post('/api/pagos/webhook', async (req, res) => {
 // ---------------------------------------------------------------------------
 // Panel de administración: pedidos
 // ---------------------------------------------------------------------------
+// Regresa al inventario lo que se descontó al crear el pedido (los combos se
+// expanden a sus componentes, igual que al comprar). Debe llamarse dentro
+// de una transacción, ANTES de marcar el pedido como cancelado. Devuelve los
+// productos que pasaron de "sin existencia" a "con existencia", para avisar
+// a quien pidió "avísame cuando vuelva a haber".
+async function restaurarStockDeOrdenRF(client, orden) {
+  const carritoOriginal = Array.isArray(orden.carrito) ? orden.carrito : JSON.parse(orden.carrito || '[]');
+  const idsCarrito = [...new Set(carritoOriginal.map(item => Number(item.id)).filter(Number.isInteger))];
+  if (idsCarrito.length === 0) return [];
+  const productosInfo = await client.query('SELECT id, es_combo FROM arreglos_florales WHERE id = ANY($1::int[])', [idsCarrito]);
+  const esComboPorId = new Map(productosInfo.rows.map(p => [p.id, p.es_combo]));
+  const idsCombo = idsCarrito.filter(pid => esComboPorId.get(pid));
+  const comboItems = idsCombo.length
+    ? (await client.query('SELECT producto_id, componente_id, cantidad FROM producto_combo_items WHERE producto_id = ANY($1::int[])', [idsCombo])).rows
+    : [];
+
+  const restaurarPorId = new Map();
+  const sumar = (pid, cant) => restaurarPorId.set(pid, (restaurarPorId.get(pid) || 0) + cant);
+  for (const item of carritoOriginal) {
+    const pid = Number(item.id);
+    const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
+    if (esComboPorId.get(pid)) {
+      comboItems.filter(ci => ci.producto_id === pid).forEach(ci => sumar(ci.componente_id, cantidad * ci.cantidad));
+    } else {
+      sumar(pid, cantidad);
+    }
+  }
+  const reabastecidos = [];
+  for (const [pid, cantidad] of restaurarPorId) {
+    const r = await client.query('UPDATE arreglos_florales SET stock = stock + $1 WHERE id = $2 RETURNING id, nombre, stock, disponible', [cantidad, pid]);
+    const fila = r.rows[0];
+    if (fila && fila.disponible !== false && Number(fila.stock) > 0 && Number(fila.stock) - cantidad <= 0) reabastecidos.push(fila);
+  }
+  return reabastecidos;
+}
+
+// El stock se descuenta al CREAR el pedido (antes de pagar), para que dos
+// personas no compren la última pieza al mismo tiempo. Pero si el pago nunca
+// se completa, esas piezas se quedaban apartadas para siempre. Esto cancela
+// solo los pedidos que siguen en "Pendiente" (nunca los que tú ya moviste a
+// otro estado) y cuyo pago no se aprobó:
+//   - sin ningún intento de pago, o con pago rechazado: tras 2 horas
+//   - con pago en espera (OXXO / SPEI): tras 72 horas
+async function liberarPedidosSinPagarRF() {
+  try {
+    const candidatos = await pool.query(`
+      SELECT id FROM ordenes
+      WHERE estado = 'Pendiente' AND COALESCE(estado_pago, 'pendiente') <> 'aprobado'
+        AND (
+          ((mp_payment_id IS NULL OR estado_pago = 'rechazado') AND creado_en < NOW() - INTERVAL '2 hours')
+          OR creado_en < NOW() - INTERVAL '72 hours'
+        )
+    `);
+    for (const { id } of candidatos.rows) {
+      const client = await pool.connect();
+      let reabastecidos = [];
+      try {
+        await client.query('BEGIN');
+        const actual = await client.query('SELECT * FROM ordenes WHERE id=$1 FOR UPDATE', [id]);
+        const orden = actual.rows[0];
+        // Se vuelve a revisar ya con el pedido bloqueado, por si justo en este
+        // momento se aprobó el pago o alguien lo movió de estado.
+        if (!orden || orden.estado !== 'Pendiente' || orden.estado_pago === 'aprobado') { await client.query('ROLLBACK'); continue; }
+        reabastecidos = await restaurarStockDeOrdenRF(client, orden);
+        await client.query("UPDATE ordenes SET estado='Cancelado' WHERE id=$1", [id]);
+        await client.query('INSERT INTO pedido_notas (orden_id, autor, nota) VALUES ($1, $2, $3)',
+          [id, 'Sistema', 'Cancelado automáticamente: el pago no se completó a tiempo. El stock se regresó al inventario.']);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        console.error(`No se pudo liberar el pedido #${id}:`, error?.message || error);
+        continue;
+      } finally {
+        client.release();
+      }
+      reabastecidos.forEach(p => avisarRestockRF(p.id, p.nombre));
+    }
+  } catch (error) {
+    console.error('No se pudieron revisar los pedidos sin pagar:', error?.message || error);
+  }
+}
+
 const ESTADOS_ORDEN_VALIDOS = ['Pendiente', 'Confirmado', 'En preparación', 'En camino', 'Entregado', 'Cancelado'];
 
 app.get('/api/admin/ordenes', requireAuth, async (req, res) => {
@@ -2793,33 +2977,14 @@ app.patch('/api/admin/ordenes/:id/estado', requireAuth, async (req, res) => {
     // Si se cancela un pedido que no estaba cancelado, se le regresa al
     // inventario el stock que se le había descontado (expandiendo combos a
     // sus componentes, igual que al momento de comprar).
+    let reabastecidos = [];
     if (estado === 'Cancelado' && ordenAnterior.estado !== 'Cancelado') {
-      const carritoOriginal = Array.isArray(ordenAnterior.carrito) ? ordenAnterior.carrito : JSON.parse(ordenAnterior.carrito || '[]');
-      const idsCarrito = [...new Set(carritoOriginal.map(item => Number(item.id)))];
-      const productosInfo = await client.query('SELECT id, es_combo FROM arreglos_florales WHERE id = ANY($1::int[])', [idsCarrito]);
-      const esComboPorId = new Map(productosInfo.rows.map(p => [p.id, p.es_combo]));
-      const comboItems = await client.query(`
-        SELECT producto_id, componente_id, cantidad FROM producto_combo_items WHERE producto_id = ANY($1::int[])
-      `, [idsCarrito.filter(pid => esComboPorId.get(pid))]);
-
-      const restaurarPorId = new Map();
-      const sumar = (pid, cant) => restaurarPorId.set(pid, (restaurarPorId.get(pid) || 0) + cant);
-      for (const item of carritoOriginal) {
-        const pid = Number(item.id);
-        const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
-        if (esComboPorId.get(pid)) {
-          comboItems.rows.filter(c => c.producto_id === pid).forEach(c => sumar(c.componente_id, cantidad * c.cantidad));
-        } else {
-          sumar(pid, cantidad);
-        }
-      }
-      for (const [pid, cantidad] of restaurarPorId) {
-        await client.query('UPDATE arreglos_florales SET stock = stock + $1 WHERE id = $2', [cantidad, pid]);
-      }
+      reabastecidos = await restaurarStockDeOrdenRF(client, ordenAnterior);
     }
 
     const result = await client.query('UPDATE ordenes SET estado=$1 WHERE id=$2 RETURNING *', [estado, id]);
     await client.query('COMMIT');
+    reabastecidos.forEach(p => avisarRestockRF(p.id, p.nombre));
     await enviarCorreoEstadoActualizado(result.rows[0], estado);
     await registrarBitacora(req, 'Cambió el estado de un pedido', `Pedido #${id} → ${estado}`);
     res.json(result.rows[0]);
@@ -2849,6 +3014,50 @@ app.get('/api/admin/facturas-pendientes', requireAuth, async (req, res) => {
   }
 });
 
+// Ubica el archivo de una factura en disco. Las nuevas se guardan como
+// "facturas/<archivo>" (privadas); las que se subieron antes de este cambio
+// como "/uploads/<archivo>" -- se siguen encontrando igual. path.basename
+// evita que un valor manipulado pueda salir de la carpeta.
+function rutaArchivoFacturaRF(valor) {
+  const texto = String(valor || '');
+  if (!texto) return null;
+  const nombre = path.basename(texto);
+  return texto.startsWith('facturas/') ? path.join(CARPETA_FACTURAS, nombre) : path.join(CARPETA_SUBIDAS, nombre);
+}
+function enviarArchivoFacturaRF(res, orden) {
+  const ruta = rutaArchivoFacturaRF(orden.factura_archivo_url);
+  if (!ruta || !fs.existsSync(ruta)) return res.status(404).json({ error: 'No se encontró el archivo de la factura.' });
+  res.download(ruta, `factura-pedido-${orden.id}${path.extname(ruta)}`);
+}
+
+// Descarga para el cliente: solo el dueño del pedido.
+app.get('/api/cuenta/pedidos/:id/factura', requireClienteAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const r = await pool.query(`SELECT id, factura_archivo_url FROM ordenes WHERE id=$1 AND cliente_cuenta_id=$2 AND factura_estado='lista'`, [id, req.session.clienteId]);
+    if (r.rowCount === 0) return res.status(404).json({ error: 'No se encontró la factura de ese pedido.' });
+    enviarArchivoFacturaRF(res, r.rows[0]);
+  } catch (error) {
+    console.error('GET /api/cuenta/pedidos/:id/factura:', error);
+    res.status(500).json({ error: 'No se pudo descargar la factura.' });
+  }
+});
+
+// Descarga para el panel.
+app.get('/api/admin/ordenes/:id/factura', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
+  try {
+    const r = await pool.query(`SELECT id, factura_archivo_url FROM ordenes WHERE id=$1 AND factura_archivo_url IS NOT NULL`, [id]);
+    if (r.rowCount === 0) return res.status(404).json({ error: 'Ese pedido no tiene factura.' });
+    enviarArchivoFacturaRF(res, r.rows[0]);
+  } catch (error) {
+    console.error('GET /api/admin/ordenes/:id/factura:', error);
+    res.status(500).json({ error: 'No se pudo descargar la factura.' });
+  }
+});
+
 // Historial de facturas ya atendidas -- para consultarlas después (si el
 // cliente perdió el archivo, o para tu propia contabilidad).
 app.get('/api/admin/facturas-historial', requireAuth, async (req, res) => {
@@ -2874,7 +3083,7 @@ app.post('/api/admin/ordenes/:id/factura', requireAuth, (req, res) => {
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
     if (!req.file) return res.status(400).json({ error: 'Sube el archivo de la factura (PDF o XML).' });
     try {
-      const url = `/uploads/${req.file.filename}`;
+      const url = `facturas/${req.file.filename}`;
       const resultado = await pool.query(
         `UPDATE ordenes SET factura_estado='lista', factura_archivo_url=$1, factura_atendida_en=NOW() WHERE id=$2 RETURNING *`,
         [url, id]
@@ -3667,6 +3876,7 @@ async function iniciar() {
     // Revisa carritos abandonados cada 30 minutos mientras el servidor esté
     // corriendo (no hace falta un servicio aparte para esto).
     setInterval(revisarCarritosAbandonadosRF, 30 * 60 * 1000);
+    setInterval(liberarPedidosSinPagarRF, 15 * 60 * 1000);
   } catch (error) {
     console.error('No se pudo inicializar la aplicación:', error);
     process.exit(1);

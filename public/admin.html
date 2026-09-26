@@ -2839,7 +2839,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         <p class="font-medium text-brandDark">Pedido #${o.id} · ${escaparHtmlAdmin(o.factura_razon_social)}</p>
                         <p class="text-gray-500">RFC ${escaparHtmlAdmin(o.factura_rfc)} · atendida el ${new Date(o.factura_atendida_en).toLocaleDateString('es-MX')}</p>
                     </div>
-                    <a href="${escaparHtmlAdmin(o.factura_archivo_url)}" target="_blank" class="shrink-0 text-brandFuchsia font-semibold hover:underline">Ver archivo</a>
+                    <a href="/api/admin/ordenes/${o.id}/factura" class="shrink-0 text-brandFuchsia font-semibold hover:underline">Ver archivo</a>
                 </div>
             `).join('') : '<p class="text-xs text-gray-400 text-center py-4">Aún no has atendido ninguna factura.</p>';
         } catch (error) {
@@ -3094,8 +3094,15 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const cont = document.getElementById('lista-cupones');
         cont.innerHTML = cupones.length ? cupones.map(c => {
             const agotado = c.usos_maximos !== null && c.usos_actuales >= c.usos_maximos;
-            const vencido = c.fecha_expiracion && new Date(c.fecha_expiracion) < new Date();
-            const programado = c.fecha_inicio && new Date(c.fecha_inicio) > new Date();
+            // Fechas de calendario (sin hora): se comparan como texto AAAA-MM-DD
+            // contra el día de hoy -- con new Date() se recorrían un día en
+            // México y el cupón se veía vencido un día antes.
+            const hoyCupon = fechaLocalRF();
+            const finCupon = c.fecha_expiracion ? String(c.fecha_expiracion).slice(0, 10) : null;
+            const inicioCupon = c.fecha_inicio ? String(c.fecha_inicio).slice(0, 10) : null;
+            const formatoCupon = iso => iso.split('-').reverse().join('/');
+            const vencido = finCupon && hoyCupon > finCupon;
+            const programado = inicioCupon && hoyCupon < inicioCupon;
             const etiquetaValor = c.tipo === 'porcentaje' ? `${Number(c.valor)}%` : `$${Number(c.valor).toFixed(2)}`;
             return `
             <div class="px-6 py-3 flex items-center justify-between gap-3">
@@ -3111,8 +3118,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     <p class="text-[11px] text-gray-400">
                         ${c.usos_actuales} usado${c.usos_actuales === 1 ? '' : 's'}${c.usos_maximos !== null ? ` de ${c.usos_maximos}` : ' (ilimitado)'}
                         ${Number(c.monto_minimo) > 0 ? ` · compra mínima $${Number(c.monto_minimo).toFixed(2)}` : ''}
-                        ${c.fecha_inicio ? ` · desde ${new Date(c.fecha_inicio).toLocaleDateString('es-MX')}` : ''}
-                        ${c.fecha_expiracion ? ` · vence ${new Date(c.fecha_expiracion).toLocaleDateString('es-MX')}` : ''}
+                        ${inicioCupon ? ` · desde ${formatoCupon(inicioCupon)}` : ''}
+                        ${finCupon ? ` · vence ${formatoCupon(finCupon)}` : ''}
                     </p>
                 </div>
                 <div class="flex items-center gap-3">

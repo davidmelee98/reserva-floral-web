@@ -877,6 +877,53 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             return grupos;
         }
 
+        function obtenerTamanos(producto) {
+            const raw = String(producto.tamanos || '').trim();
+            if (!raw) return [];
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    return parsed.map(t => ({ nombre: String(t.nombre || ''), precio: Number(t.precio) || 0 })).filter(t => t.nombre);
+                }
+            } catch (_) {}
+            // Formato de antes (por si algún producto viejo lo trae así): "12 rosas:720, 24 rosas:1200"
+            return raw.split(',').map(par => {
+                const [nombre, precio] = par.split(':').map(s => (s || '').trim());
+                return { nombre: nombre || '', precio: Number(precio) || 0 };
+            }).filter(t => t.nombre);
+        }
+
+        let productoTamanoSeleccionado = null;
+        function prepararTamanos(producto, onCambio) {
+            const bloque = document.getElementById('modal-tamanos');
+            const tamanos = obtenerTamanos(producto);
+            productoTamanoSeleccionado = null;
+            if (!tamanos.length) {
+                bloque.classList.add('hidden');
+                bloque.innerHTML = '<h4 class="font-medium text-sm text-brandDark mb-3">Elige un tamaño</h4><div id="modal-tamanos-opciones" class="flex flex-wrap gap-3"></div>';
+                return null;
+            }
+            bloque.classList.remove('hidden');
+            const cont = document.getElementById('modal-tamanos-opciones');
+            cont.innerHTML = '';
+            const activeClass = 'px-4 py-2 border-2 border-brandFuchsia text-brandFuchsia font-medium rounded-full text-sm';
+            const normalClass = 'px-4 py-2 border border-gray-300 rounded-full text-sm hover:border-brandFuchsia transition';
+            tamanos.forEach((tamano, index) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = index === 0 ? activeClass : normalClass;
+                button.innerHTML = `${escaparHtml(tamano.nombre)} <span class="opacity-70">· $${formatearPrecio(tamano.precio)}</span>`;
+                button.onclick = () => {
+                    productoTamanoSeleccionado = tamano;
+                    cont.querySelectorAll('button').forEach(b => b.className = b === button ? activeClass : normalClass);
+                    if (onCambio) onCambio(tamano);
+                };
+                cont.appendChild(button);
+            });
+            productoTamanoSeleccionado = tamanos[0];
+            return () => productoTamanoSeleccionado;
+        }
+
         function prepararVariantes(producto) {
             const bloque = document.getElementById('modal-variantes');
             const variante = obtenerVariantes(producto);
@@ -1385,11 +1432,23 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             cargarProductosRelacionadosRF(productoActual.id);
             actualizarUbicacionProductoRF();
             productoVariantesSeleccionadas = {};
+            // Mismo comportamiento que la página principal: el precio mostrado
+            // y el que se agrega al carrito dependen del tamaño elegido.
+            function actualizarPrecioMostradoRF() {
+                const precioEfectivo = productoTamanoSeleccionado ? productoTamanoSeleccionado.precio : productoActual.precio;
+                document.getElementById('modal-precio').innerText = '$' + formatearPrecio(precioEfectivo);
+                if (!botonAgregarRF.disabled) botonAgregarRF.innerHTML = `Agregar al carrito <span class="ml-1 font-normal">$${formatearPrecio(precioEfectivo)} <small class="text-[0.7em]">mxn</small></span>`;
+            }
+            prepararTamanos(productoActual, actualizarPrecioMostradoRF);
+            actualizarPrecioMostradoRF();
             const obtenerSeleccion = prepararVariantes(productoActual);
             botonAgregarRF.onclick = () => {
-                const variante = obtenerSeleccion ? obtenerSeleccion() : null;
+                const notaVariante = obtenerSeleccion ? obtenerSeleccion() : '';
+                const notaTamano = productoTamanoSeleccionado ? `Tamaño: ${productoTamanoSeleccionado.nombre}` : '';
+                const variante = [notaTamano, notaVariante].filter(Boolean).join(' | ') || null;
+                const precioEfectivo = productoTamanoSeleccionado ? productoTamanoSeleccionado.precio : productoActual.precio;
                 ejecutarConUbicacionRF(() => {
-                    agregarAlCarrito(productoActual.id, productoActual.nombre, productoActual.precio, urlImagen, variante);
+                    agregarAlCarrito(productoActual.id, productoActual.nombre, precioEfectivo, urlImagen, variante);
                 });
             };
             const modal = document.getElementById('modal-producto');
@@ -2562,6 +2621,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 </div>
 
                 <div class="space-y-6 flex-1">
+                    <!-- Tamaños / cantidades: cada botón trae su propio precio. -->
+                    <div id="modal-tamanos" class="hidden">
+                        <h4 class="font-medium text-sm text-brandDark mb-3">Elige un tamaño</h4>
+                        <div id="modal-tamanos-opciones" class="flex flex-wrap gap-3"></div>
+                    </div>
+
                     <!-- Variante dinámica -->
                     <div id="modal-variantes" class="hidden">
                         <h4 id="modal-variante-titulo" class="font-medium text-sm text-brandDark mb-3"></h4>
