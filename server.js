@@ -9,7 +9,7 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
-const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { Resend } = require('resend');
 const { OAuth2Client } = require('google-auth-library');
 
@@ -610,7 +610,8 @@ async function inicializarDB() {
     'ALTER TABLE zonas_cobertura ADD COLUMN IF NOT EXISTS estado VARCHAR(100)',
     'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS fecha_inicio DATE',
     'ALTER TABLE carritos_abandonados ADD COLUMN IF NOT EXISTS ultimo_correo_en TIMESTAMP',
-    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS token_invitado VARCHAR(64)'
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS token_invitado VARCHAR(64)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS correo_confirmacion_enviado BOOLEAN DEFAULT false'
   ];
 
   for (const query of alterQueries) {
@@ -795,7 +796,10 @@ function requireAuth(req, res, next) {
   }
   const ahora = Date.now();
   if (req.session.ultimaActividadAdmin && (ahora - req.session.ultimaActividadAdmin) > INACTIVIDAD_MAXIMA_ADMIN_MS) {
-    req.session.destroy(() => {});
+    // Solo se cierra la sesión del PANEL -- si en este navegador también hay
+    // una cuenta de cliente iniciada, esa sigue abierta.
+    delete req.session.usuarioId; delete req.session.nombre; delete req.session.email;
+    delete req.session.rol; delete req.session.ultimaActividadAdmin;
     return res.status(401).json({ error: 'Tu sesión expiró por inactividad. Vuelve a iniciar sesión.' });
   }
   req.session.ultimaActividadAdmin = ahora;
@@ -1395,6 +1399,40 @@ function escaparHtmlServidorRF(texto) {
 
 app.post('/api/cuenta/pedidos/:id/solicitar-factura', requireClienteAuth, (req, res) =>
   procesarSolicitudFacturaRF(req, res, 'cliente_cuenta_id=$7', req.session.clienteId));
+
+// Cuando el cliente corrige algo en el checkout (reabre un paso o cambia el
+// cupón) después de que ya se creó su pedido, el checkout crea uno nuevo. El
+// anterior se cancela aquí de inmediato, devolviendo su stock y su cupón --
+// antes se quedaba apartando todo 2 horas, y si era la última pieza (o un
+// cupón de un solo uso) el cliente ya no podía volver a pedirlo.
+app.post('/api/ordenes/:id/descartar', async (req, res) => {
+  const id = Number(req.params.id);
+  const token = req.body?.token;
+  if (!Number.isInteger(id) || id <= 0 || !tokenValidoRF(token)) return res.status(404).json({ error: 'No se encontró ese pedido.' });
+  const client = await pool.connect();
+  let reabastecidos = [];
+  try {
+    await client.query('BEGIN');
+    const actual = await client.query(
+      `SELECT * FROM ordenes WHERE id=$1 AND token_invitado=$2 AND estado='Pendiente' AND COALESCE(estado_pago, 'pendiente') <> 'aprobado' FOR UPDATE`,
+      [id, token]
+    );
+    if (actual.rowCount === 0) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Este pedido ya no se puede descartar.' }); }
+    reabastecidos = await restaurarStockDeOrdenRF(client, actual.rows[0]);
+    await client.query(`UPDATE ordenes SET estado='Cancelado' WHERE id=$1`, [id]);
+    await client.query('INSERT INTO pedido_notas (orden_id, autor, nota) VALUES ($1, $2, $3)',
+      [id, 'Sistema', 'Descartado: el cliente corrigió sus datos antes de pagar y se generó un pedido nuevo. El stock y el cupón se devolvieron.']);
+    await client.query('COMMIT');
+    reabastecidos.forEach(p => avisarRestockRF(p.id, p.nombre));
+    res.json({ exito: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/ordenes/:id/descartar:', error);
+    res.status(500).json({ error: 'No se pudo descartar el pedido.' });
+  } finally {
+    client.release();
+  }
+});
 
 // ---- Factura para quien compró SIN cuenta (con la clave secreta del pedido) ----
 function tokenValidoRF(token) {
@@ -2183,6 +2221,25 @@ function fechaCalendarioRF(valor) {
   }
   return String(valor).slice(0, 10);
 }
+function horaMexicoRF() {
+  return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Mexico_City', hour: '2-digit', hourCycle: 'h23' }).format(new Date()));
+}
+// Día de calendario en México de un momento dado (la fecha/hora de un pedido).
+function fechaMexicoRF(momento) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(momento));
+}
+function sumarDiasRF(fechaISO, dias) {
+  const d = new Date(`${fechaISO}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+// Un pedido cuenta como VENTA si no está cancelado y ya se pagó -- o si tú
+// ya lo avanzaste de "Pendiente" (por ejemplo, porque se pagó por fuera).
+// Antes contaba cualquier pedido no cancelado, aunque nadie lo hubiera pagado.
+function esVentaRF(o) {
+  return o.estado !== 'Cancelado' && (o.estado_pago === 'aprobado' || (o.estado || 'Pendiente') !== 'Pendiente');
+}
+
 function problemaFechasCuponRF(cupon) {
   const hoy = hoyMexicoRF();
   const inicio = fechaCalendarioRF(cupon.fecha_inicio);
@@ -2315,6 +2372,17 @@ function construirCorreoCarritoAbandonado(carritoAbandonado) {
     <p style="margin-top:20px;"><a href="${URL_SITIO}/carrito" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Terminar mi compra</a></p>
   `;
   return { titulo: 'Tu carrito te espera', asunto: 'Se te quedó algo en el carrito 🌸', cuerpo };
+}
+
+// Manda el "Recibimos tu pedido" UNA sola vez por pedido, aunque se llame
+// varias veces (al pagar, desde el aviso de Mercado Pago, etc.).
+async function enviarConfirmacionUnaVezRF(ordenId) {
+  try {
+    const r = await pool.query('UPDATE ordenes SET correo_confirmacion_enviado=true WHERE id=$1 AND COALESCE(correo_confirmacion_enviado, false)=false RETURNING *', [ordenId]);
+    if (r.rows[0]) enviarCorreoConfirmacionPedido(r.rows[0]);
+  } catch (error) {
+    console.error('No se pudo registrar el correo de confirmación:', error?.message || error);
+  }
 }
 
 async function enviarCorreoConfirmacionPedido(orden) {
@@ -2582,11 +2650,15 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
   // día) y no "hace 24 horas exactas" (una ventana que se recorre) -- así
   // cubre bien el caso de que el cliente esté en una zona horaria detrás de
   // UTC, donde su "hoy" real cae en la fecha de "ayer" para el servidor.
-  const inicioHoyUTC = new Date(); inicioHoyUTC.setUTCHours(0, 0, 0, 0);
-  const limiteFechaMs = inicioHoyUTC.getTime() - 24 * 60 * 60 * 1000;
-  const fechaEntregaMs = Date.parse(`${fecha}T00:00:00Z`);
-  if (!Number.isFinite(fechaEntregaMs) || fechaEntregaMs < limiteFechaMs) {
+  // Todas las reglas de fecha se revisan con el día y la hora de MÉXICO.
+  const hoyMx = hoyMexicoRF();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha)) || !Number.isFinite(Date.parse(`${fecha}T12:00:00Z`)) || fecha < hoyMx) {
     return res.status(400).json({ error: 'La fecha de entrega no es válida.' });
+  }
+  // Corte de las 2:00 pm para entregas del mismo día -- antes solo lo
+  // revisaba el navegador (y con la página abierta desde antes se colaba).
+  if (fecha === hoyMx && horaMexicoRF() >= 14) {
+    return res.status(400).json({ error: 'Ya pasó la hora límite (2:00 pm) para entregas de hoy. Elige otra fecha de entrega.' });
   }
 
   const idsCarrito = carrito.map(item => Number(item.id));
@@ -2600,7 +2672,7 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     await client.query('BEGIN');
 
     const productos = await client.query(`
-      SELECT id, nombre, precio, imagen_url, stock, es_combo, tamanos
+      SELECT id, nombre, precio, imagen_url, stock, es_combo, tamanos, tiempo_entrega_dias
       FROM arreglos_florales
       WHERE id = ANY($1::int[]) AND COALESCE(disponible, true) = true
       FOR UPDATE
@@ -2653,6 +2725,18 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       const stockDisponible = Number(porId.get(id)?.stock ?? (comboItems.rows.find(c => c.componente_id === id)?.componente_stock ?? 0));
       if (stockDisponible < info.cantidad) {
         throw Object.assign(new Error(`Ya no hay suficiente existencia de "${info.nombre}" (quedan ${stockDisponible}).`), { statusCode: 409 });
+      }
+    }
+
+    // Tiempo mínimo de preparación de cada producto -- antes el checkout solo
+    // avisaba y se podían registrar pedidos imposibles de cumplir a tiempo.
+    for (const producto of porId.values()) {
+      const dias = Math.max(0, Number(producto.tiempo_entrega_dias) || 0);
+      if (dias === 0) continue;
+      const fechaMinima = sumarDiasRF(hoyMx, dias);
+      if (fecha < fechaMinima) {
+        const [a, m, d] = fechaMinima.split('-');
+        throw Object.assign(new Error(`"${producto.nombre}" necesita ${dias} día${dias === 1 ? '' : 's'} de preparación. La fecha más próxima para recibirlo es el ${d}/${m}/${a}.`), { statusCode: 400 });
       }
     }
 
@@ -2748,7 +2832,11 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     res.status(201).json({ exito: true, orden: result.rows[0] });
     // El correo se manda después de responder -- si Resend tarda o falla, no
     // hace que el cliente espere ni que la compra truene.
-    enviarCorreoConfirmacionPedido(result.rows[0]);
+    // Con cobro en línea, el "Recibimos tu pedido" se manda hasta que el
+    // cliente paga (o genera su ficha de OXXO/SPEI) -- si se manda al crear el
+    // pedido, llega uno por cada pedido que se descarta al corregir datos.
+    // Sin cobro en línea (se cobra por fuera), se manda de una vez.
+    if (!mpClient) enviarConfirmacionUnaVezRF(result.rows[0].id);
     // Si esta persona tenía un carrito guardado como "abandonado" con este
     // mismo correo, ya no hace falta recordarle nada -- sí terminó comprando.
     pool.query('UPDATE carritos_abandonados SET recuperado = true WHERE email = $1', [emailContacto.trim().toLowerCase()]).catch(() => {});
@@ -2853,6 +2941,7 @@ app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {
 
     const estadoPago = { approved: 'aprobado', pending: 'pendiente', in_process: 'pendiente', rejected: 'rechazado', cancelled: 'rechazado' }[pago.status] || 'pendiente';
     await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3', [estadoPago, String(pago.id), orden.id]);
+    if (estadoPago !== 'rechazado') await enviarConfirmacionUnaVezRF(orden.id);
     if (estadoPago === 'aprobado') enviarCorreoPagoConfirmado({ ...orden, estado_pago: estadoPago });
 
     // Para OXXO/SPEI, Mercado Pago regresa la liga a la ficha (o los datos de
@@ -2877,57 +2966,6 @@ app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {
   }
 });
 
-app.post('/api/pagos/crear-preferencia', limitadorPagos, async (req, res) => {
-  if (!mpClient) return res.status(503).json({ error: 'El cobro con tarjeta todavía no está configurado.' });
-  const ordenId = Number(req.body?.ordenId);
-  if (!Number.isInteger(ordenId) || ordenId <= 0) return res.status(400).json({ error: 'Pedido inválido.' });
-
-  try {
-    const resultado = await pool.query('SELECT * FROM ordenes WHERE id=$1', [ordenId]);
-    const orden = resultado.rows[0];
-    if (!orden) return res.status(404).json({ error: 'Pedido no encontrado.' });
-    if (orden.estado_pago === 'aprobado') return res.status(409).json({ error: 'Este pedido ya fue pagado.' });
-    if (orden.estado === 'Cancelado') return res.status(409).json({ error: 'Este pedido se canceló porque el pago no se completó a tiempo. Vuelve a hacer tu pedido desde el carrito.' });
-
-    const items = Array.isArray(orden.carrito) ? orden.carrito : JSON.parse(orden.carrito || '[]');
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-    const preference = new Preference(mpClient);
-    const respuestaMp = await preference.create({
-      body: {
-        items: [
-          ...items.map(it => ({
-            title: String(it.nombre || 'Producto').slice(0, 250),
-            quantity: Math.max(1, Number(it.cantidad) || 1),
-            currency_id: 'MXN',
-            unit_price: Number(it.precio) || 0
-          })),
-          ...(Number(orden.envio) > 0 ? [{ title: 'Envío', quantity: 1, currency_id: 'MXN', unit_price: Number(orden.envio) }] : [])
-        ],
-        payer: orden.email_contacto ? { email: orden.email_contacto } : undefined,
-        external_reference: String(orden.id),
-        notification_url: `${baseUrl}/api/pagos/webhook`,
-        back_urls: {
-          success: `${baseUrl}/gracias.html?pedido=${orden.id}`,
-          pending: `${baseUrl}/gracias.html?pedido=${orden.id}`,
-          failure: `${baseUrl}/checkout.html?pago=fallido&pedido=${orden.id}`
-        },
-        auto_return: 'approved'
-      }
-    });
-
-    await pool.query('UPDATE ordenes SET mp_preference_id=$1 WHERE id=$2', [respuestaMp.id, orden.id]);
-
-    const enModoPrueba = String(process.env.MP_MODO_PRUEBA).toLowerCase() === 'true';
-    res.json({
-      preferenceId: respuestaMp.id,
-      initPoint: enModoPrueba ? respuestaMp.sandbox_init_point : respuestaMp.init_point
-    });
-  } catch (error) {
-    console.error('POST /api/pagos/crear-preferencia:', error);
-    res.status(500).json({ error: 'No se pudo iniciar el pago.' });
-  }
-});
 
 app.post('/api/pagos/webhook', async (req, res) => {
   // Mercado Pago espera un 200 rápido -- respondemos siempre OK y procesamos
@@ -2954,6 +2992,7 @@ app.post('/api/pagos/webhook', async (req, res) => {
 
     const actualizada = await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3 RETURNING *', [estadoPago, String(pago.id), ordenId]);
     if (estadoPago === 'aprobado' && !yaEstabaAprobado) {
+      await enviarConfirmacionUnaVezRF(ordenId);
       enviarCorreoPagoConfirmado(actualizada.rows[0]);
       // Caso raro pero posible: alguien paga en OXXO después de que el pedido
       // ya se canceló por falta de pago. Se deja una nota bien visible para
@@ -3059,7 +3098,9 @@ async function liberarPedidosSinPagarRF() {
         client.release();
       }
       reabastecidos.forEach(p => avisarRestockRF(p.id, p.nombre));
-      enviarCorreoCancelacionPorPagoRF(ordenCancelada);
+      // Solo se avisa a quien sí recibió el "Recibimos tu pedido" (generó su
+      // ficha de pago) -- si nunca intentó pagar, no tiene caso escribirle.
+      if (ordenCancelada && ordenCancelada.correo_confirmacion_enviado) enviarCorreoCancelacionPorPagoRF(ordenCancelada);
     }
   } catch (error) {
     console.error('No se pudieron revisar los pedidos sin pagar:', error?.message || error);
@@ -3316,15 +3357,18 @@ app.get('/api/admin/dashboard', requireAuth, async (req, res) => {
       pool.query(`SELECT id, nombre, stock FROM arreglos_florales WHERE COALESCE(disponible,true)=true AND COALESCE(stock,1) <= 2 ORDER BY stock ASC LIMIT 10`)
     ]);
 
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    const inicioSemana = new Date(hoy); inicioSemana.setDate(hoy.getDate() - 6);
-    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    // "Hoy", "esta semana" y "este mes" en días de calendario de MÉXICO --
+    // antes se usaba la hora del servidor (UTC), y una venta de ayer a las
+    // 8 pm aparecía como venta de hoy.
+    const hoy = hoyMexicoRF();
+    const inicioSemana = sumarDiasRF(hoy, -6);
+    const inicioMes = hoy.slice(0, 8) + '01';
 
-    const ordenesActivas = ordenesRecientes.rows.filter(o => o.estado !== 'Cancelado');
+    const ordenesActivas = ordenesRecientes.rows.filter(esVentaRF);
     const sumaEnRango = (desde) => ordenesActivas
-      .filter(o => new Date(o.creado_en) >= desde)
+      .filter(o => fechaMexicoRF(o.creado_en) >= desde)
       .reduce((s, o) => s + Number(o.total || 0), 0);
-    const contarEnRango = (desde) => ordenesActivas.filter(o => new Date(o.creado_en) >= desde).length;
+    const contarEnRango = (desde) => ordenesActivas.filter(o => fechaMexicoRF(o.creado_en) >= desde).length;
 
     const conteoProductos = {};
     for (const orden of ordenesActivas) {
@@ -3374,17 +3418,21 @@ app.get('/api/admin/dashboard', requireAuth, async (req, res) => {
 app.get('/api/admin/finanzas', requireAuth, async (req, res) => {
   const dias = Math.min(Math.max(Number(req.query.dias) || 30, 7), 180);
   try {
-    const serieDiaria = await pool.query(`
-      SELECT DATE(creado_en) AS fecha, COALESCE(SUM(total),0) AS total, COUNT(*)::int AS pedidos
-      FROM ordenes
-      WHERE estado != 'Cancelado' AND creado_en >= NOW() - INTERVAL '${dias} days'
-      GROUP BY DATE(creado_en)
-      ORDER BY fecha ASC
-    `);
-
     const todas = await pool.query(`SELECT * FROM ordenes WHERE creado_en >= NOW() - INTERVAL '${dias} days'`);
-    const activas = todas.rows.filter(o => o.estado !== 'Cancelado');
-    const canceladas = todas.rows.length - activas.length;
+    // Solo cuentan como ingreso los pedidos pagados (o que tú ya avanzaste);
+    // un pedido esperando su pago en OXXO todavía no es una venta.
+    const activas = todas.rows.filter(esVentaRF);
+    const canceladas = todas.rows.filter(o => o.estado === 'Cancelado').length;
+    // Agrupado por día de calendario en MÉXICO (antes era por día UTC y las
+    // ventas de la noche se iban al día siguiente).
+    const porDia = new Map();
+    for (const o of activas) {
+      const fecha = fechaMexicoRF(o.creado_en);
+      const dia = porDia.get(fecha) || { fecha, total: 0, pedidos: 0 };
+      dia.total += Number(o.total || 0); dia.pedidos += 1;
+      porDia.set(fecha, dia);
+    }
+    const serieDiaria = { rows: [...porDia.values()].sort((a, b) => a.fecha.localeCompare(b.fecha)) };
 
     const ingresoPorProducto = {};
     for (const orden of activas) {
@@ -3436,7 +3484,7 @@ app.get('/api/admin/clientes', requireAuth, async (req, res) => {
         (array_agg(email_contacto ORDER BY creado_en DESC))[1] AS email,
         bool_or(cliente_cuenta_id IS NOT NULL) AS tiene_cuenta,
         COUNT(*)::int AS pedidos,
-        COALESCE(SUM(total) FILTER (WHERE estado != 'Cancelado'), 0) AS total_gastado,
+        COALESCE(SUM(total) FILTER (WHERE estado != 'Cancelado' AND (estado_pago = 'aprobado' OR estado <> 'Pendiente')), 0) AS total_gastado,
         MAX(creado_en) AS ultimo_pedido,
         MIN(creado_en) AS primer_pedido
       FROM ordenes

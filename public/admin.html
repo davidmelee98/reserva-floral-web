@@ -2945,7 +2945,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     function renderGraficoIngresos(serie) {
         const ctx = document.getElementById('grafico-ingresos');
         if (!ctx || typeof Chart === 'undefined') return;
-        const etiquetas = serie.map(f => new Date(f.fecha).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }));
+        // La fecha llega como día de calendario (AAAA-MM-DD). Se arma con año,
+        // mes y día locales -- con new Date('AAAA-MM-DD') el navegador la toma
+        // como medianoche UTC y en México se veía como el día anterior.
+        const etiquetas = serie.map(f => {
+            const [a, m, d] = String(f.fecha).slice(0, 10).split('-').map(Number);
+            return new Date(a, m - 1, d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+        });
         const valores = serie.map(f => Number(f.total));
         if (graficoIngresos) graficoIngresos.destroy();
         graficoIngresos = new Chart(ctx, {

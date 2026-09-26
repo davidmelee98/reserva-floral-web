@@ -1235,7 +1235,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             filaDescuento.classList.remove('flex');
         }
 
-        const total = Math.max(0, subtotal + (conEnvio ? ENVIO_FIJO : 0) - descuento);
+        // Si el pedido ya se creó, se muestra el total que calculó el servidor
+        // (el que se cobra); si no, el calculado aquí.
+        const total = totalConfirmadoServidorRF !== null ? totalConfirmadoServidorRF : Math.max(0, subtotal + (conEnvio ? ENVIO_FIJO : 0) - descuento);
         document.getElementById('resumen-total').innerHTML = `$${formatearPrecio(total)} <span class="text-[9px] align-top font-medium">mxn</span>`;
 
         const cont = document.getElementById('resumen-items');
@@ -1283,7 +1285,19 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // Descarta el pedido ya creado para que se cree uno nuevo y correcto: al
     // reabrir un paso (cambió la dirección, la dedicatoria...) o al cambiar
     // el cupón en el paso de pago (antes el cupón nuevo NO se cobraba).
+    let descarteEnCursoRF = null;
     function descartarPedidoCreadoRF() {
+        // Se avisa al servidor para que cancele el pedido anterior y devuelva
+        // su stock y su cupón -- si no, el cliente podía quedarse bloqueado por
+        // su propio pedido (por ejemplo, si era la última pieza).
+        const idDescartado = ordenCreadaId;
+        const tokenDescartado = datosResumenPedido && datosResumenPedido.tokenInvitado;
+        if (idDescartado && tokenDescartado) {
+            descarteEnCursoRF = fetch(`/api/ordenes/${idDescartado}/descartar`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: tokenDescartado }), keepalive: true
+            }).catch(() => {});
+        }
         ordenCreadaId = null;
         if (window._cardFormActual && typeof window._cardFormActual.unmount === 'function') {
             try { window._cardFormActual.unmount(); } catch (error) { /* nada que hacer si ya no existe */ }
@@ -1700,6 +1714,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // 3 días) -- esto NO limita qué se puede agregar al carrito ni en qué
     // categorías aparece, solo avisa aquí si la fecha elegida es más
     // próxima de lo que ese producto en particular tarda en llegar.
+    let productosConRetrasoRF = [];
     async function verificarTiempoEntregaRF() {
         const aviso = document.getElementById('aviso-tiempo-entrega');
         const fechaSeleccionada = document.getElementById('p3-fecha').value;
@@ -1710,16 +1725,23 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
             const fechaElegida = new Date(fechaSeleccionada + 'T00:00:00');
             const conRetraso = [];
+            let fechaMinima = null;
             carrito.forEach(item => {
                 const dias = tiempoPorId.get(Number(item.id)) || 0;
                 if (dias === 0) return;
                 const minimaLlegada = new Date(hoy); minimaLlegada.setDate(hoy.getDate() + dias);
-                if (minimaLlegada > fechaElegida) conRetraso.push(item.nombre);
+                if (minimaLlegada > fechaElegida) {
+                    conRetraso.push(item.nombre);
+                    if (!fechaMinima || minimaLlegada > fechaMinima) fechaMinima = minimaLlegada;
+                }
             });
+            productosConRetrasoRF = conRetraso;
             if (conRetraso.length) {
-                document.getElementById('aviso-tiempo-entrega-texto').innerText = conRetraso.length === 1
-                    ? `"${conRetraso[0]}" podría no llegar en la fecha elegida -- este producto necesita un poco más de tiempo.`
-                    : `Algunos de tus productos (${conRetraso.join(', ')}) podrían no llegar en la fecha elegida -- necesitan un poco más de tiempo.`;
+                const cuando = fechaMinima.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+                document.getElementById('aviso-tiempo-entrega-texto').innerText = (conRetraso.length === 1
+                    ? `"${conRetraso[0]}" necesita más tiempo de preparación y no alcanza a llegar en esta fecha.`
+                    : `Algunos de tus productos (${conRetraso.join(', ')}) necesitan más tiempo de preparación y no alcanzan a llegar en esta fecha.`)
+                    + ` Elige una fecha a partir del ${cuando}.`;
                 aviso.classList.remove('hidden');
             } else {
                 aviso.classList.add('hidden');
@@ -1736,9 +1758,22 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     }
     window.elegirHorario = elegirHorario;
 
-    function confirmarPaso3() {
+    async function confirmarPaso3() {
         if (!estado.entrega.fecha || !estado.entrega.horario) { marcarError('error-p3', true); return; }
         marcarError('error-p3', false);
+        // Corte de las 2 pm: se vuelve a revisar al confirmar, por si la página
+        // se quedó abierta desde antes de esa hora.
+        if (estado.entrega.fecha === fechaLocalRF() && new Date().getHours() >= 14) {
+            mostrarToast('Ya pasó la hora límite (2:00 pm) para entregas de hoy. Elige otra fecha.', 'error');
+            prellenarFechaGuardada();
+            return;
+        }
+        await verificarTiempoEntregaRF();
+        if (productosConRetrasoRF.length) {
+            mostrarToast('Algún producto necesita más días de preparación. Elige una fecha posterior.', 'error');
+            document.getElementById('aviso-tiempo-entrega').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
         document.getElementById('resumen-paso-3').innerHTML = `
             <p><strong class="text-brandDark">Fecha:</strong> ${document.getElementById('p3-fecha-texto').innerText}</p>
             <p><strong class="text-brandDark">Horario:</strong> ${escaparHtml(estado.entrega.horario)}</p>
@@ -1910,6 +1945,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // el formulario de pago embebido o el aviso de "cobro manual".
     async function iniciarPasoPago() {
         if (ordenCreadaId) return; // ya se creó antes, no duplicar
+        // Si se acaba de descartar un pedido, primero se espera a que el
+        // servidor libere su stock y su cupón, para que este nuevo sí los tome.
+        if (descarteEnCursoRF) { await descarteEnCursoRF; descarteEnCursoRF = null; }
 
         try {
             const respuesta = await fetch('/api/ordenes', {
