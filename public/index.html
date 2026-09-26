@@ -2016,9 +2016,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         function agregarItemCarrito(item) {
             const varianteReal = tieneVarianteCarrito(item.variante);
-            const existente = !varianteReal
-                ? carrito.find(x => String(x.id) === String(item.id) && !tieneVarianteCarrito(x.variante))
-                : null;
+            // Mismo producto con la MISMA variante/tamaño -> se suma la cantidad
+            // en el mismo renglón (antes cada vez creaba un renglón nuevo).
+            const varianteBuscada = varianteReal ? item.variante : null;
+            const existente = carrito.find(x => String(x.id) === String(item.id)
+                && (tieneVarianteCarrito(x.variante) ? x.variante : null) === varianteBuscada);
 
             if (existente) {
                 existente.cantidad = Math.max(1, Number(existente.cantidad) || 1) + 1;
@@ -2223,9 +2225,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             carrito.forEach(item => {
                 const limpio = { ...item, cantidad: Math.max(1, Number(item.cantidad) || 1) };
                 const varianteReal = tieneVarianteCarrito(limpio.variante);
-                const existente = !varianteReal
-                    ? normalizado.find(x => String(x.id) === String(limpio.id) && !tieneVarianteCarrito(x.variante))
-                    : null;
+                const varianteBuscada = varianteReal ? limpio.variante : null;
+                const existente = normalizado.find(x => String(x.id) === String(limpio.id)
+                    && (tieneVarianteCarrito(x.variante) ? x.variante : null) === varianteBuscada);
 
                 if (existente) {
                     existente.cantidad += limpio.cantidad;

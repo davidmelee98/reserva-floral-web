@@ -524,6 +524,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     </div>
                     <h1 class="text-2xl font-serif font-semibold text-brandDark">¡Gracias por tu compra!</h1>
                     <p class="text-sm text-gray-500 mt-1">Tu pedido <strong class="text-brandDark">#${escaparHtml(pedido.id)}</strong> fue registrado correctamente.</p>
+                    ${pedido.tokenInvitado ? `<p class="text-xs text-gray-500 mt-2">¿Necesitas factura? <a href="/cuenta?pedido=${encodeURIComponent(pedido.id)}&token=${encodeURIComponent(pedido.tokenInvitado)}" class="text-brandFuchsia font-medium hover:underline">Solicítala aquí</a>. También te dejamos el enlace en tu correo de confirmación.</p>` : ''}
                     ${pedido.estadoPago === 'aprobado'
                         ? `<p class="text-sm text-green-600 font-medium mt-1">✓ Tu pago ya fue confirmado.</p>`
                         : `<p class="text-sm text-gray-500 mt-1">Nos pondremos en contacto al <strong class="text-brandDark">${escaparHtml(pedido.telefono)}</strong>${pedido.email ? ` y a <strong class="text-brandDark">${escaparHtml(pedido.email)}</strong>` : ''} para confirmar tu pedido y el pago.</p>`

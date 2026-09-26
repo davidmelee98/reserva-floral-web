@@ -609,7 +609,8 @@ async function inicializarDB() {
     'ALTER TABLE clientes_cuenta ALTER COLUMN password_hash DROP NOT NULL',
     'ALTER TABLE zonas_cobertura ADD COLUMN IF NOT EXISTS estado VARCHAR(100)',
     'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS fecha_inicio DATE',
-    'ALTER TABLE carritos_abandonados ADD COLUMN IF NOT EXISTS ultimo_correo_en TIMESTAMP'
+    'ALTER TABLE carritos_abandonados ADD COLUMN IF NOT EXISTS ultimo_correo_en TIMESTAMP',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS token_invitado VARCHAR(64)'
   ];
 
   for (const query of alterQueries) {
@@ -1326,7 +1327,11 @@ app.patch('/api/cuenta/pedidos/:id/cancelar', requireClienteAuth, async (req, re
 // cuenta con estos datos (no se emite un CFDI real aquí, eso requiere un
 // proveedor autorizado por el SAT) y luego sube el archivo ya listo.
 const RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
-app.post('/api/cuenta/pedidos/:id/solicitar-factura', requireClienteAuth, async (req, res) => {
+// Lógica común para pedir factura -- la usan el cliente con cuenta (desde
+// "Mis pedidos") y quien compró sin cuenta (con la clave secreta de su pedido,
+// que le llega en el correo de confirmación). `condicion` es el filtro SQL
+// que prueba que la persona es dueña del pedido.
+async function procesarSolicitudFacturaRF(req, res, condicion, valorCondicion) {
   const id = Number(req.params.id);
   const { rfc, razonSocial, usoCfdi, codigoPostal, email } = req.body || {};
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
@@ -1337,13 +1342,21 @@ app.post('/api/cuenta/pedidos/:id/solicitar-factura', requireClienteAuth, async 
     return res.status(400).json({ error: 'Completa todos los campos para solicitar tu factura.' });
   }
   try {
+    // "factura_estado IS NULL": solo se puede pedir si no hay otra solicitud
+    // en curso ni una factura ya entregada -- antes una petición directa podía
+    // regresar a "pendiente" una factura que ya estaba lista.
     const resultado = await pool.query(
       `UPDATE ordenes SET factura_estado='pendiente', factura_rfc=$1, factura_razon_social=$2,
         factura_uso_cfdi=$3, factura_cp=$4, factura_email=$5, factura_solicitada_en=NOW()
-       WHERE id=$6 AND cliente_cuenta_id=$7 RETURNING *`,
-      [rfc.trim().toUpperCase(), razonSocial.trim(), usoCfdi.trim(), codigoPostal.trim(), email.trim(), id, req.session.clienteId]
+       WHERE id=$6 AND ${condicion} AND factura_estado IS NULL AND estado <> 'Cancelado' RETURNING *`,
+      [rfc.trim().toUpperCase(), razonSocial.trim(), usoCfdi.trim(), codigoPostal.trim(), email.trim(), id, valorCondicion]
     );
-    if (resultado.rowCount === 0) return res.status(404).json({ error: 'No se encontró ese pedido en tu cuenta.' });
+    if (resultado.rowCount === 0) {
+      const existe = await pool.query(`SELECT factura_estado, estado FROM ordenes WHERE id=$1 AND ${condicion.replace('$7', '$2')}`, [id, valorCondicion]);
+      if (existe.rowCount === 0) return res.status(404).json({ error: 'No se encontró ese pedido.' });
+      if (existe.rows[0].estado === 'Cancelado') return res.status(409).json({ error: 'Este pedido está cancelado, no se puede facturar.' });
+      return res.status(409).json({ error: 'Ya hay una solicitud de factura para este pedido.' });
+    }
     // Le avisamos a los administradores por correo -- si no, la solicitud
     // solo se ve al abrir el panel, y podría pasar desapercibida un buen rato.
     if (resendClient) {
@@ -1353,8 +1366,8 @@ app.post('/api/cuenta/pedidos/:id/solicitar-factura', requireClienteAuth, async 
           const cuerpo = `
             <h2 style="font-size:16px;margin:0 0 8px;">🧾 Nueva solicitud de factura</h2>
             <p style="font-size:13px;color:#666;">El pedido <strong>#${id}</strong> tiene una solicitud de factura nueva, pendiente de subir.</p>
-            <p style="font-size:13px;margin:4px 0;"><strong>RFC:</strong> ${rfc.trim().toUpperCase()}</p>
-            <p style="font-size:13px;margin:4px 0;"><strong>Razón social:</strong> ${razonSocial.trim()}</p>
+            <p style="font-size:13px;margin:4px 0;"><strong>RFC:</strong> ${escaparHtmlServidorRF(rfc.trim().toUpperCase())}</p>
+            <p style="font-size:13px;margin:4px 0;"><strong>Razón social:</strong> ${escaparHtmlServidorRF(razonSocial.trim())}</p>
             <p style="margin-top:16px;"><a href="${URL_SITIO}/admin" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver en el panel</a></p>
           `;
           const htmlCorreo = await plantillaBaseCorreo('Nueva solicitud de factura', cuerpo);
@@ -1369,8 +1382,50 @@ app.post('/api/cuenta/pedidos/:id/solicitar-factura', requireClienteAuth, async 
     }
     res.json({ exito: true });
   } catch (error) {
-    console.error('POST /api/cuenta/pedidos/:id/solicitar-factura:', error);
+    console.error('Solicitud de factura:', error);
     res.status(500).json({ error: 'No se pudo enviar tu solicitud de factura.' });
+  }
+}
+
+// La razón social la escribe el cliente -- se escapa antes de meterla al
+// correo que les llega a los administradores.
+function escaparHtmlServidorRF(texto) {
+  return String(texto ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+app.post('/api/cuenta/pedidos/:id/solicitar-factura', requireClienteAuth, (req, res) =>
+  procesarSolicitudFacturaRF(req, res, 'cliente_cuenta_id=$7', req.session.clienteId));
+
+// ---- Factura para quien compró SIN cuenta (con la clave secreta del pedido) ----
+function tokenValidoRF(token) {
+  return typeof token === 'string' && /^[a-f0-9]{48}$/.test(token);
+}
+app.post('/api/pedidos/:id/factura-invitado', (req, res) => {
+  if (!tokenValidoRF(req.body?.token)) return res.status(404).json({ error: 'No se encontró ese pedido.' });
+  return procesarSolicitudFacturaRF(req, res, 'token_invitado=$7', req.body.token);
+});
+app.get('/api/pedidos/:id/factura-invitado', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0 || !tokenValidoRF(req.query.token)) return res.status(404).json({ error: 'No se encontró ese pedido.' });
+  try {
+    const r = await pool.query('SELECT id, estado, total, fecha_entrega, factura_estado FROM ordenes WHERE id=$1 AND token_invitado=$2', [id, req.query.token]);
+    if (r.rowCount === 0) return res.status(404).json({ error: 'No se encontró ese pedido.' });
+    res.json(r.rows[0]);
+  } catch (error) {
+    console.error('GET /api/pedidos/:id/factura-invitado:', error);
+    res.status(500).json({ error: 'No se pudo consultar el pedido.' });
+  }
+});
+app.get('/api/pedidos/:id/factura-invitado/archivo', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0 || !tokenValidoRF(req.query.token)) return res.status(404).json({ error: 'No se encontró esa factura.' });
+  try {
+    const r = await pool.query(`SELECT id, factura_archivo_url FROM ordenes WHERE id=$1 AND token_invitado=$2 AND factura_estado='lista'`, [id, req.query.token]);
+    if (r.rowCount === 0) return res.status(404).json({ error: 'No se encontró esa factura.' });
+    enviarArchivoFacturaRF(res, r.rows[0]);
+  } catch (error) {
+    console.error('GET /api/pedidos/:id/factura-invitado/archivo:', error);
+    res.status(500).json({ error: 'No se pudo descargar la factura.' });
   }
 });
 
@@ -2055,7 +2110,21 @@ app.post('/api/admin/subir-imagen', requireAuth, (req, res) => {
 
 // API: Crear pedido.
 // El total se calcula en el servidor usando los precios de PostgreSQL.
-const ENVIO_FIJO = 80;
+const ENVIO_FIJO = 80; // valor por defecto si no se ha configurado otro en el panel
+// El costo de envío se puede cambiar desde el panel (Configuración). Si no
+// hay un valor válido guardado, se usa el de siempre.
+async function obtenerCostoEnvioRF() {
+  try {
+    const r = await pool.query("SELECT valor FROM configuracion WHERE clave='costo_envio'");
+    const texto = String(r.rows[0]?.valor ?? '').trim();
+    // Ojo: Number('') da 0 -- un campo vacío NO debe volverse envío gratis.
+    if (texto === '') return ENVIO_FIJO;
+    const valor = Number(texto);
+    return Number.isFinite(valor) && valor >= 0 ? valor : ENVIO_FIJO;
+  } catch (_) {
+    return ENVIO_FIJO;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Correos transaccionales (Resend) -- confirmación de pedido y de pago.
@@ -2197,6 +2266,7 @@ function construirCorreoConfirmacion(orden) {
     <p style="font-size:13px;margin:4px 0;"><strong>Total:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${orden.direccion_entrega}</p>
+    ${orden.token_invitado ? `<p style="font-size:12px;color:#888;margin:16px 0 0;">¿Necesitas factura? <a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#c2185b;">Solicítala aquí</a>.</p>` : ''}
   `;
   return { titulo: 'Confirmación de pedido', asunto: `Recibimos tu pedido #${orden.id} — Reserva Floral`, cuerpo };
 }
@@ -2275,6 +2345,28 @@ async function enviarCorreoPagoConfirmado(orden) {
     });
   } catch (error) {
     console.error('No se pudo enviar el correo de pago confirmado:', error?.message || error);
+  }
+}
+
+// Aviso específico para cuando el sistema cancela un pedido porque el pago
+// no llegó a tiempo -- con un texto claro (no el genérico de "cancelado"),
+// para que la persona sepa por qué y pueda volver a pedir si todavía quiere.
+async function enviarCorreoCancelacionPorPagoRF(orden) {
+  if (!orden || !resendClient || !orden.email_contacto || !(await correoTipoActivoRF('correo_estado_actualizado_activo'))) return;
+  try {
+    const cuerpo = `
+      <h2 style="font-size:16px;margin:0 0 8px;">Tu pedido #${orden.id} se canceló</h2>
+      <p style="font-size:13px;color:#666;margin:0 0 16px;">No recibimos el pago de tu pedido a tiempo, así que lo cancelamos para liberar los productos. No se te hizo ningún cargo por este pedido.</p>
+      <p style="font-size:13px;color:#666;margin:0 0 16px;">Si todavía quieres enviarlo, puedes volver a hacerlo cuando gustes.</p>
+      <p style="margin-top:8px;"><a href="${URL_SITIO}/" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Volver a la tienda</a></p>
+    `;
+    await resendClient.emails.send({
+      from: CORREO_REMITENTE, to: orden.email_contacto,
+      subject: `Tu pedido #${orden.id} se canceló — Reserva Floral`,
+      html: await plantillaBaseCorreo('Pedido cancelado', cuerpo)
+    });
+  } catch (error) {
+    console.error('No se pudo avisar la cancelación automática:', error?.message || error);
   }
 }
 
@@ -2398,7 +2490,7 @@ app.post('/api/carrito/validar', limitadorGeneral, async (req, res) => {
   if (carrito.length === 0) return res.json({ items: [] });
   try {
     const ids = [...new Set(carrito.map(item => Number(item.id)).filter(Number.isInteger))];
-    const productos = await pool.query('SELECT id, nombre, disponible, stock, es_combo, tiempo_entrega_dias FROM arreglos_florales WHERE id = ANY($1::int[])', [ids]);
+    const productos = await pool.query('SELECT id, nombre, precio, tamanos, disponible, stock, es_combo, tiempo_entrega_dias FROM arreglos_florales WHERE id = ANY($1::int[])', [ids]);
     const porId = new Map(productos.rows.map(p => [p.id, p]));
 
     const idsCombo = productos.rows.filter(p => p.es_combo).map(p => p.id);
@@ -2408,7 +2500,10 @@ app.post('/api/carrito/validar', limitadorGeneral, async (req, res) => {
       WHERE pci.producto_id = ANY($1::int[])
     `, [idsCombo])).rows : [];
 
-    const items = carrito.map(item => {
+    // Cada renglón se identifica por su posición (indice): el mismo producto
+    // puede venir dos veces con tamaños distintos, y cada uno tiene su precio.
+    const items = carrito.map((item, indice) => ({ indice, ...evaluarItemRF(item) }));
+    function evaluarItemRF(item) {
       const id = Number(item.id);
       const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
       const producto = porId.get(id);
@@ -2416,19 +2511,25 @@ app.post('/api/carrito/validar', limitadorGeneral, async (req, res) => {
       if (!producto || producto.disponible === false) {
         return { id, disponible: false, motivo: 'Ya no está disponible.', tiempoEntregaDias };
       }
+      // Precio vigente según la base de datos (y el tamaño elegido) -- el del
+      // carrito se guardó al agregar el producto y pudo haber cambiado.
+      const precioActual = precioSegunTamanoRF(producto, item.variante);
+      if (precioActual === null) {
+        return { id, disponible: false, motivo: 'El tamaño que elegiste ya no está disponible. Quítalo y vuelve a agregarlo.', tiempoEntregaDias };
+      }
       if (producto.es_combo) {
         const piezas = comboItems.filter(c => c.producto_id === id);
         const faltante = piezas.find(c => c.componente_disponible === false || Number(c.componente_stock) < cantidad * c.cantidad);
         if (faltante) {
           return { id, disponible: false, motivo: `"${faltante.componente_nombre}" (parte de este combo) ya no está disponible o no alcanza.`, tiempoEntregaDias };
         }
-        return { id, disponible: true, tiempoEntregaDias };
+        return { id, disponible: true, tiempoEntregaDias, precioActual };
       }
       if (Number(producto.stock) < cantidad) {
         return { id, disponible: false, motivo: `Ya no hay suficiente existencia (quedan ${producto.stock}).`, stockActual: Number(producto.stock), tiempoEntregaDias };
       }
-      return { id, disponible: true, tiempoEntregaDias };
-    });
+      return { id, disponible: true, tiempoEntregaDias, precioActual };
+    }
 
     res.json({ items });
   } catch (error) {
@@ -2573,7 +2674,7 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     });
 
     const subtotal = carritoConfirmado.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
-    const envio = conEnvio ? ENVIO_FIJO : 0;
+    const envio = conEnvio ? await obtenerCostoEnvioRF() : 0;
 
     // Cupón (opcional) -- se vuelve a validar aquí adentro, con los datos
     // reales de la base, nunca confiando en un descuento que mande el propio
@@ -2611,8 +2712,8 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       INSERT INTO ordenes
         (cliente_nombre, cliente_telefono, direccion_entrega, fecha_entrega, dedicatoria, carrito, total,
          destinatario_telefono, tipo_domicilio, notas_entrega, horario_entrega, lat, lng, firma, es_anonimo, envio, cliente_cuenta_id, email_contacto,
-         cupon_codigo, descuento)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+         cupon_codigo, descuento, token_invitado)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
       RETURNING *
     `, [
       cliente.trim(), telefono.trim(), direccion.trim(), fecha,
@@ -2631,7 +2732,10 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       req.session && req.session.clienteId ? req.session.clienteId : null,
       emailContacto.trim().toLowerCase(),
       cuponAplicado ? cuponAplicado.codigo : null,
-      descuento
+      descuento,
+      // Clave secreta del pedido: permite a quien compró SIN cuenta pedir y
+      // descargar su factura desde el enlace de su correo de confirmación.
+      crypto.randomBytes(24).toString('hex')
     ]);
 
     // Ya que el pedido se registró bien, se descuenta el stock de verdad --
@@ -2648,6 +2752,12 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     // Si esta persona tenía un carrito guardado como "abandonado" con este
     // mismo correo, ya no hace falta recordarle nada -- sí terminó comprando.
     pool.query('UPDATE carritos_abandonados SET recuperado = true WHERE email = $1', [emailContacto.trim().toLowerCase()]).catch(() => {});
+    // Lo que se acaba de comprar ya no debe seguir en el carrito guardado de
+    // la cuenta -- antes se quedaba ahí y reaparecía la siguiente vez que el
+    // cliente entraba a la tienda (con riesgo de que lo pagara dos veces).
+    if (req.session && req.session.clienteId) {
+      pool.query("UPDATE clientes_cuenta SET carrito_guardado='[]'::jsonb, carrito_actualizado_en=NOW() WHERE id=$1", [req.session.clienteId]).catch(() => {});
+    }
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('POST /api/ordenes:', error);
@@ -2867,6 +2977,12 @@ app.post('/api/pagos/webhook', async (req, res) => {
 // productos que pasaron de "sin existencia" a "con existencia", para avisar
 // a quien pidió "avísame cuando vuelva a haber".
 async function restaurarStockDeOrdenRF(client, orden) {
+  // Si el pedido usó un cupón, su uso se devuelve -- si no, un cupón de un
+  // solo uso (como el que se canjea con puntos) se perdía aunque el pedido
+  // se cancelara porque el pago falló.
+  if (orden.cupon_codigo) {
+    await client.query('UPDATE cupones SET usos_actuales = GREATEST(usos_actuales - 1, 0) WHERE UPPER(codigo) = UPPER($1)', [orden.cupon_codigo]);
+  }
   const carritoOriginal = Array.isArray(orden.carrito) ? orden.carrito : JSON.parse(orden.carrito || '[]');
   const idsCarrito = [...new Set(carritoOriginal.map(item => Number(item.id)).filter(Number.isInteger))];
   if (idsCarrito.length === 0) return [];
@@ -2905,6 +3021,10 @@ async function restaurarStockDeOrdenRF(client, orden) {
 //   - sin ningún intento de pago, o con pago rechazado: tras 2 horas
 //   - con pago en espera (OXXO / SPEI): tras 72 horas
 async function liberarPedidosSinPagarRF() {
+  // Si Mercado Pago no está configurado, los pedidos se registran sin cobro
+  // en línea (se cobran por fuera) y NUNCA tendrán un pago en el sistema --
+  // cancelarlos automáticamente sería cancelar ventas reales.
+  if (!mpClient) return;
   try {
     const candidatos = await pool.query(`
       SELECT id FROM ordenes
@@ -2917,10 +3037,12 @@ async function liberarPedidosSinPagarRF() {
     for (const { id } of candidatos.rows) {
       const client = await pool.connect();
       let reabastecidos = [];
+      let ordenCancelada = null;
       try {
         await client.query('BEGIN');
         const actual = await client.query('SELECT * FROM ordenes WHERE id=$1 FOR UPDATE', [id]);
         const orden = actual.rows[0];
+        ordenCancelada = orden;
         // Se vuelve a revisar ya con el pedido bloqueado, por si justo en este
         // momento se aprobó el pago o alguien lo movió de estado.
         if (!orden || orden.estado !== 'Pendiente' || orden.estado_pago === 'aprobado') { await client.query('ROLLBACK'); continue; }
@@ -2937,6 +3059,7 @@ async function liberarPedidosSinPagarRF() {
         client.release();
       }
       reabastecidos.forEach(p => avisarRestockRF(p.id, p.nombre));
+      enviarCorreoCancelacionPorPagoRF(ordenCancelada);
     }
   } catch (error) {
     console.error('No se pudieron revisar los pedidos sin pagar:', error?.message || error);
@@ -3094,7 +3217,7 @@ app.post('/api/admin/ordenes/:id/factura', requireAuth, (req, res) => {
         const cuerpo = `
           <h2 style="font-size:16px;margin:0 0 8px;">🧾 Tu factura ya está lista</h2>
           <p style="font-size:13px;color:#666;">La factura de tu pedido <strong>#${orden.id}</strong> ya está disponible. Puedes descargarla desde "Mis pedidos" en tu cuenta.</p>
-          <p style="margin-top:16px;"><a href="${URL_SITIO}/cuenta#pedidos" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver mi factura</a></p>
+          <p style="margin-top:16px;"><a href="${orden.cliente_cuenta_id ? `${URL_SITIO}/cuenta#pedidos` : `${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}`}" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver mi factura</a></p>
         `;
         resendClient.emails.send({
           from: CORREO_REMITENTE, to: orden.factura_email, subject: `Tu factura está lista — Pedido #${orden.id}`,
@@ -3799,7 +3922,7 @@ app.get('/api/configuracion-publica', async (req, res) => {
   try {
     const resultado = await pool.query(
       `SELECT clave, valor FROM configuracion WHERE clave = ANY($1::text[])`,
-      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer', 'imagen_hero', 'imagen_categoria_no_disponible', 'instagram_url', 'facebook_url', 'tiktok_url', 'twitter_url', 'google_analytics_id', 'meta_pixel_id']]
+      [['whatsapp_numero', 'horario_atencion', 'tiempo_entrega', 'mensaje_footer', 'imagen_hero', 'imagen_categoria_no_disponible', 'instagram_url', 'facebook_url', 'tiktok_url', 'twitter_url', 'google_analytics_id', 'meta_pixel_id', 'costo_envio']]
     );
     const config = {};
     for (const fila of resultado.rows) config[fila.clave] = fila.valor;

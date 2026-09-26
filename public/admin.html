@@ -1098,6 +1098,11 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                             <input type="text" id="cfg_tiempo_entrega" placeholder="Mismo día si pides antes de las 2pm" class="adm-input">
                         </div>
                         <div>
+                            <label class="adm-label">Costo de envío (MXN)</label>
+                            <input type="number" id="cfg_costo_envio" min="0" step="1" placeholder="80" class="adm-input">
+                            <p class="text-[11px] text-gray-400 mt-1">Se cobra en cada pedido. Si lo dejas vacío, se usa $80.</p>
+                        </div>
+                        <div>
                             <label class="adm-label">Mensaje del pie de página</label>
                             <textarea id="cfg_mensaje_footer" rows="3" class="adm-input"></textarea>
                         </div>
@@ -3299,6 +3304,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             document.getElementById('cfg_whatsapp_numero').value = cfg.whatsapp_numero || '';
             document.getElementById('cfg_horario_atencion').value = cfg.horario_atencion || '';
             document.getElementById('cfg_tiempo_entrega').value = cfg.tiempo_entrega || '';
+            document.getElementById('cfg_costo_envio').value = cfg.costo_envio || '';
             document.getElementById('cfg_mensaje_footer').value = cfg.mensaje_footer || '';
             document.getElementById('cfg_instagram_url').value = cfg.instagram_url || '';
             document.getElementById('cfg_facebook_url').value = cfg.facebook_url || '';
@@ -3842,6 +3848,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     whatsapp_numero: document.getElementById('cfg_whatsapp_numero').value,
                     horario_atencion: document.getElementById('cfg_horario_atencion').value,
                     tiempo_entrega: document.getElementById('cfg_tiempo_entrega').value,
+                    costo_envio: document.getElementById('cfg_costo_envio').value,
                     mensaje_footer: document.getElementById('cfg_mensaje_footer').value,
                     instagram_url: document.getElementById('cfg_instagram_url').value,
                     facebook_url: document.getElementById('cfg_facebook_url').value,

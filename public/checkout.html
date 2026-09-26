@@ -1023,7 +1023,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         try {
             validacionCarritoCacheRF = await fetch('/api/carrito/validar', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ carrito: carrito.map(it => ({ id: it.id, cantidad: it.cantidad })) })
+                body: JSON.stringify({ carrito: carrito.map(it => ({ id: it.id, cantidad: it.cantidad, variante: it.variante || null })) })
             }).then(r => r.json());
         } catch (error) {
             console.error('No se pudo validar el carrito', error);
@@ -1031,12 +1031,35 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
         return validacionCarritoCacheRF;
     }
+    // Los precios del carrito se guardaron al agregar cada producto y pudieron
+    // cambiar desde entonces. Se actualizan con el precio vigente (según el
+    // tamaño elegido) ANTES de mostrar el total -- si no, el cliente veía un
+    // total y se le cobraba otro.
+    function actualizarPreciosDelCarritoRF(resultado) {
+        const cambiados = [];
+        (resultado.items || []).forEach(it => {
+            const renglon = carrito[it.indice];
+            if (!renglon || it.disponible === false || !Number.isFinite(Number(it.precioActual))) return;
+            if (Math.abs(Number(renglon.precio) - Number(it.precioActual)) > 0.009) {
+                cambiados.push(renglon.nombre);
+                renglon.precio = Number(it.precioActual);
+            }
+        });
+        if (cambiados.length) {
+            localStorage.setItem('carritoRF', JSON.stringify(carrito));
+            try { renderResumen(); } catch (_) {}
+            mostrarToast(cambiados.length === 1
+                ? `El precio de "${cambiados[0]}" cambió desde que lo agregaste. Ya actualizamos tu total.`
+                : `Cambió el precio de algunos productos (${cambiados.join(', ')}). Ya actualizamos tu total.`, 'exito');
+        }
+    }
     (async function validarCarritoAlEntrarRF() {
         const resultado = await obtenerValidacionCarritoRF();
+        actualizarPreciosDelCarritoRF(resultado);
         const conProblema = (resultado.items || []).filter(it => it.disponible === false);
         if (conProblema.length === 0) return;
         const nombresConProblema = conProblema
-            .map(p => carrito.find(it => it.id === p.id)?.nombre)
+            .map(p => (carrito[p.indice] || carrito.find(it => it.id === p.id))?.nombre)
             .filter(Boolean);
         const mensaje = nombresConProblema.length === 1
             ? `"${nombresConProblema[0]}" ya no está disponible. Vuelve al carrito para quitarlo.`
@@ -1047,7 +1070,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
     let pasoAbierto = 1;
     const pasosCompletados = new Set();
-    const ENVIO_FIJO = 80;
+    let ENVIO_FIJO = 80; // se reemplaza con el costo configurado en el panel, si hay uno
 
     // Guarda una "foto" del carrito con el correo del cliente, para poder
     // recordarle por correo si lo deja a medias sin pagar -- nunca bloquea
@@ -1102,7 +1125,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // Único lugar que calcula el total real a cobrar -- así el monto que se
     // muestra, el que se manda a crear el pedido y el que de verdad se le
     // cobra a la tarjeta/OXXO/SPEI siempre coinciden entre sí.
-    function totalAPagar() { return Math.max(0, subtotalCarrito() + ENVIO_FIJO - (estado.cupon.descuento || 0)); }
+    // Una vez creado el pedido, el total que manda es el que calculó el
+    // servidor -- es exactamente el que Mercado Pago va a cobrar.
+    let totalConfirmadoServidorRF = null;
+    function totalAPagar() {
+        if (totalConfirmadoServidorRF !== null) return totalConfirmadoServidorRF;
+        return Math.max(0, subtotalCarrito() + ENVIO_FIJO - (estado.cupon.descuento || 0));
+    }
 
     async function aplicarCupon() {
         const input = document.getElementById('input-cupon');
@@ -1145,7 +1174,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         document.getElementById('cupon-aplicado-texto').innerText = datos.codigo;
         renderResumen();
         if (ordenCreadaId) {
-            mostrarToast('Cupón aplicado. Continúa hasta el pago para ver el nuevo total.', 'exito');
+            descartarPedidoCreadoRF();
+            iniciarPasoPago();
         }
     }
 
@@ -1174,6 +1204,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         document.getElementById('cupon-formulario-bloque').classList.remove('hidden');
         document.getElementById('cupon-aplicado-bloque').classList.add('hidden');
         document.getElementById('cupon-aplicado-bloque').classList.remove('flex');
+        if (ordenCreadaId) {
+            descartarPedidoCreadoRF();
+            iniciarPasoPago();
+        }
         renderResumen();
     }
     window.quitarCupon = quitarCupon;
@@ -1246,27 +1280,33 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         renderPasos();
         setTimeout(() => document.getElementById(`paso-${n}`).scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
     }
+    // Descarta el pedido ya creado para que se cree uno nuevo y correcto: al
+    // reabrir un paso (cambió la dirección, la dedicatoria...) o al cambiar
+    // el cupón en el paso de pago (antes el cupón nuevo NO se cobraba).
+    function descartarPedidoCreadoRF() {
+        ordenCreadaId = null;
+        if (window._cardFormActual && typeof window._cardFormActual.unmount === 'function') {
+            try { window._cardFormActual.unmount(); } catch (error) { /* nada que hacer si ya no existe */ }
+        }
+        window._cardFormActual = null;
+        document.getElementById('bloque-metodos-pago').classList.add('hidden');
+        document.getElementById('pago-no-disponible-bloque').classList.add('hidden');
+        document.getElementById('aviso-pago-error').classList.add('hidden');
+        // Deja todo listo para la próxima vez que se llegue a este paso:
+        // tarjeta como opción por defecto, otros medios ocultos de nuevo.
+        const radioTarjeta = document.querySelector('input[name="metodo-pago"][value="tarjeta"]');
+        if (radioTarjeta) radioTarjeta.checked = true;
+        cambiarMetodoPago('tarjeta');
+        totalConfirmadoServidorRF = null;
+    }
+
     function reabrirPaso(n) {
         pasosCompletados.delete(n);
         // Si reabres cualquier paso de 1 a 4 después de haber llegado al pago,
         // el pedido que ya se había creado quedaría desactualizado (dirección,
         // dedicatoria, etc. viejas) -- se descarta para que se cree uno nuevo
         // y correcto cuando vuelvan a llegar al paso 5.
-        if (n <= 4 && ordenCreadaId) {
-            ordenCreadaId = null;
-            if (window._cardFormActual && typeof window._cardFormActual.unmount === 'function') {
-                try { window._cardFormActual.unmount(); } catch (error) { /* nada que hacer si ya no existe */ }
-            }
-            window._cardFormActual = null;
-            document.getElementById('bloque-metodos-pago').classList.add('hidden');
-            document.getElementById('pago-no-disponible-bloque').classList.add('hidden');
-            document.getElementById('aviso-pago-error').classList.add('hidden');
-            // Deja todo listo para la próxima vez que se llegue a este paso:
-            // tarjeta como opción por defecto, otros medios ocultos de nuevo.
-            const radioTarjeta = document.querySelector('input[name="metodo-pago"][value="tarjeta"]');
-            if (radioTarjeta) radioTarjeta.checked = true;
-            cambiarMetodoPago('tarjeta');
-        }
+        if (n <= 4 && ordenCreadaId) descartarPedidoCreadoRF();
         // Si reabres un paso, los pasos posteriores ya confirmados siguen
         // completados -- no se pierden, solo se vuelve a mostrar este.
         irAPaso(n);
@@ -1885,6 +1925,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (sesionCliente) await guardarDireccionSiEsNueva();
 
             ordenCreadaId = datos.orden.id;
+            const totalServidor = Number(datos.orden.total);
+            if (Number.isFinite(totalServidor)) {
+                if (Math.abs(totalServidor - totalAPagar()) > 0.009) {
+                    mostrarToast(`Tu total se actualizó a $${formatearPrecio(totalServidor)} con los precios vigentes.`, 'exito');
+                }
+                totalConfirmadoServidorRF = totalServidor;
+                try { renderResumen(); } catch (_) {}
+            }
             datosResumenPedido = {
                 id: ordenCreadaId,
                 telefono: estado.telefono,
@@ -1900,7 +1948,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 envio: ENVIO_FIJO,
                 descuento: estado.cupon.descuento || 0,
                 cuponCodigo: estado.cupon.codigo || null,
-                total: totalAPagar()
+                total: totalAPagar(),
+                tokenInvitado: datos.orden.token_invitado || null
             };
         } catch (error) {
             mostrarToast('No fue posible conectar con el servidor. Intenta nuevamente.', 'error');
@@ -2002,6 +2051,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             urlComprobante: datosPago.urlComprobante || null
         }));
         localStorage.removeItem('carritoRF');
+        localStorage.removeItem('rf_cupon_aplicado'); // ya se usó en esta compra
         window.location.href = '/gracias';
     }
 
@@ -2111,6 +2161,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         btn.disabled = true; btn.classList.add('opacity-60'); btn.innerText = 'Procesando...';
         sessionStorage.setItem('rf_ultimo_pedido', JSON.stringify(datosResumenPedido));
         localStorage.removeItem('carritoRF');
+        localStorage.removeItem('rf_cupon_aplicado'); // ya se usó en esta compra
         window.location.href = '/gracias';
     }
     window.completarCompraSinCobroEnLinea = completarCompraSinCobroEnLinea;
@@ -2154,6 +2205,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     (function(){
         fetch("/api/configuracion-publica").then(r => r.json()).then(cfg => {
             inicializarAnaliticaRF(cfg);
+            const envioConfigurado = Number(cfg.costo_envio);
+            if (cfg.costo_envio !== undefined && cfg.costo_envio !== null && String(cfg.costo_envio).trim() !== '' && Number.isFinite(envioConfigurado) && envioConfigurado >= 0) {
+                ENVIO_FIJO = envioConfigurado;
+                try { renderResumen(); } catch (_) {}
+            }
             const btn = document.getElementById("boton-whatsapp-flotante");
             const numero = (cfg.whatsapp_numero || "").replace(/\D/g, "");
             if (btn && numero) {

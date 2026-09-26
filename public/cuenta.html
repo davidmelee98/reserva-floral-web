@@ -200,6 +200,15 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         <a href="/" class="inline-block mt-5 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-3 rounded-full text-sm transition">Volver al inicio</a>
     </div>
 
+    <!-- Factura para quien compró SIN cuenta: se llega aquí desde el enlace
+         del correo de confirmación (trae el número de pedido y su clave). -->
+    <div id="factura-invitado" class="hidden max-w-sm mx-auto py-20 px-4 text-center">
+        <h1 class="text-lg font-semibold text-brandDark mb-1">Factura de tu pedido <span id="fi-numero"></span></h1>
+        <p id="fi-mensaje" class="text-sm text-gray-500 mb-5">Cargando...</p>
+        <button type="button" id="fi-btn-solicitar" onclick="abrirModalFactura(facturaInvitado.id)" class="hidden bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Solicitar factura</button>
+        <a id="fi-btn-descargar" href="#" class="hidden inline-block bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">🧾 Descargar factura</a>
+    </div>
+
     <div id="restablecer-password" class="hidden max-w-sm mx-auto py-20 px-4">
         <h1 class="text-lg font-semibold text-brandDark mb-1">Elige una nueva contraseña</h1>
         <p class="text-sm text-gray-500 mb-5">Escribe tu nueva contraseña para tu cuenta en Reserva Floral.</p>
@@ -503,6 +512,20 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         // es justo para cuando no puedes entrar de la forma normal.
         const parametros = new URLSearchParams(window.location.search);
         const tokenRestablecer = parametros.get('restablecer');
+        const pedidoFactura = parametros.get('pedido');
+        const tokenFactura = parametros.get('token');
+        if (pedidoFactura && tokenFactura) {
+            facturaInvitado = { id: Number(pedidoFactura), token: tokenFactura };
+            document.getElementById('factura-invitado').classList.remove('hidden');
+            renderWidgetCuenta();
+            try {
+                const r = await fetch(`/api/pedidos/${facturaInvitado.id}/factura-invitado?token=${encodeURIComponent(tokenFactura)}`);
+                renderFacturaInvitadoRF(r.ok ? await r.json() : null);
+            } catch (error) {
+                renderFacturaInvitadoRF(null);
+            }
+            return;
+        }
         if (tokenRestablecer) {
             document.getElementById('restablecer-password').classList.remove('hidden');
             document.getElementById('form-restablecer-password').addEventListener('submit', async (e) => {
@@ -814,6 +837,27 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     window.cancelarMiPedido = cancelarMiPedido;
 
     let pedidoParaFacturaId = null;
+    // Si se llegó con el enlace del correo (sin cuenta), aquí va el pedido y su clave.
+    let facturaInvitado = null;
+    function renderFacturaInvitadoRF(datos) {
+        document.getElementById('fi-numero').innerText = '#' + facturaInvitado.id;
+        const mensaje = document.getElementById('fi-mensaje');
+        const btnSolicitar = document.getElementById('fi-btn-solicitar');
+        const btnDescargar = document.getElementById('fi-btn-descargar');
+        btnSolicitar.classList.add('hidden'); btnDescargar.classList.add('hidden');
+        if (!datos) { mensaje.innerText = 'No encontramos este pedido. Revisa que el enlace esté completo.'; return; }
+        if (datos.estado === 'Cancelado') { mensaje.innerText = 'Este pedido está cancelado, no se puede facturar.'; return; }
+        if (datos.factura_estado === 'lista') {
+            mensaje.innerText = 'Tu factura ya está lista.';
+            btnDescargar.href = `/api/pedidos/${facturaInvitado.id}/factura-invitado/archivo?token=${encodeURIComponent(facturaInvitado.token)}`;
+            btnDescargar.classList.remove('hidden');
+        } else if (datos.factura_estado === 'pendiente') {
+            mensaje.innerText = 'Ya recibimos tu solicitud. Te avisamos por correo en cuanto tu factura esté lista.';
+        } else {
+            mensaje.innerText = 'Escribe tus datos fiscales y generamos tu factura.';
+            btnSolicitar.classList.remove('hidden');
+        }
+    }
     function abrirModalFactura(id) {
         pedidoParaFacturaId = id;
         document.getElementById('fact-error').classList.add('hidden');
@@ -854,18 +898,27 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const btn = document.getElementById('fact-btn');
         btn.disabled = true; btn.innerText = 'Enviando...';
         try {
-            const r = await fetch(`/api/cuenta/pedidos/${pedidoParaFacturaId}/solicitar-factura`, {
+            const datosFiscales = {
+                rfc: document.getElementById('fact-rfc').value,
+                razonSocial: document.getElementById('fact-razon-social').value,
+                usoCfdi: document.getElementById('fact-uso-cfdi').value,
+                codigoPostal: document.getElementById('fact-cp').value,
+                email: document.getElementById('fact-email').value
+            };
+            const r = await fetch(facturaInvitado
+                ? `/api/pedidos/${pedidoParaFacturaId}/factura-invitado`
+                : `/api/cuenta/pedidos/${pedidoParaFacturaId}/solicitar-factura`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    rfc: document.getElementById('fact-rfc').value,
-                    razonSocial: document.getElementById('fact-razon-social').value,
-                    usoCfdi: document.getElementById('fact-uso-cfdi').value,
-                    codigoPostal: document.getElementById('fact-cp').value,
-                    email: document.getElementById('fact-email').value
-                })
+                body: JSON.stringify(facturaInvitado ? { ...datosFiscales, token: facturaInvitado.token } : datosFiscales)
             });
             const datos = await r.json();
             if (!r.ok) throw new Error(datos.error || 'No se pudo enviar tu solicitud.');
+            if (facturaInvitado) {
+                cerrarModalFactura();
+                renderFacturaInvitadoRF({ factura_estado: 'pendiente' });
+                mostrarNotificacionRF('Solicitud enviada. Te avisamos por correo cuando tu factura esté lista.');
+                return;
+            }
             const o = misPedidos.find(x => x.id === pedidoParaFacturaId);
             if (o) o.factura_estado = 'pendiente';
             cerrarModalFactura();

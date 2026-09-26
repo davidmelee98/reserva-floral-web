@@ -1532,9 +1532,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         function agregarItemCarrito(item) {
             const varianteReal = tieneVarianteCarrito(item.variante);
-            const existente = !varianteReal
-                ? carrito.find(x => String(x.id) === String(item.id) && !tieneVarianteCarrito(x.variante))
-                : null;
+            // Mismo producto con la MISMA variante/tamaño -> se suma la cantidad
+            // en el mismo renglón (antes cada vez creaba un renglón nuevo).
+            const varianteBuscada = varianteReal ? item.variante : null;
+            const existente = carrito.find(x => String(x.id) === String(item.id)
+                && (tieneVarianteCarrito(x.variante) ? x.variante : null) === varianteBuscada);
 
             if (existente) {
                 existente.cantidad = Math.max(1, Number(existente.cantidad) || 1) + 1;
@@ -1739,9 +1741,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             carrito.forEach(item => {
                 const limpio = { ...item, cantidad: Math.max(1, Number(item.cantidad) || 1) };
                 const varianteReal = tieneVarianteCarrito(limpio.variante);
-                const existente = !varianteReal
-                    ? normalizado.find(x => String(x.id) === String(limpio.id) && !tieneVarianteCarrito(x.variante))
-                    : null;
+                const varianteBuscada = varianteReal ? limpio.variante : null;
+                const existente = normalizado.find(x => String(x.id) === String(limpio.id)
+                    && (tieneVarianteCarrito(x.variante) ? x.variante : null) === varianteBuscada);
 
                 if (existente) {
                     existente.cantidad += limpio.cantidad;
@@ -1782,10 +1784,28 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             try {
                 const resultado = await fetch('/api/carrito/validar', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ carrito: carrito.map(it => ({ id: it.id, cantidad: it.cantidad })) })
+                    body: JSON.stringify({ carrito: carrito.map(it => ({ id: it.id, cantidad: it.cantidad, variante: it.variante || null })) })
                 }).then(r => r.json());
+                // Cada resultado corresponde a un RENGLÓN del carrito (el mismo
+                // producto puede estar dos veces con tamaños distintos).
                 validacionCarritoRF = {};
-                (resultado.items || []).forEach(it => { validacionCarritoRF[it.id] = it; });
+                const preciosCambiados = [];
+                (resultado.items || []).forEach(it => {
+                    validacionCarritoRF[it.indice] = it;
+                    // El precio se guardó al agregar el producto; si ya cambió,
+                    // se actualiza aquí para que el total coincida con el cobro.
+                    const renglon = carrito[it.indice];
+                    if (renglon && it.disponible !== false && Number.isFinite(Number(it.precioActual))
+                        && Math.abs(Number(renglon.precio) - Number(it.precioActual)) > 0.009) {
+                        renglon.precio = Number(it.precioActual);
+                        preciosCambiados.push(renglon.nombre);
+                    }
+                });
+                if (preciosCambiados.length) {
+                    mostrarNotificacionRF(preciosCambiados.length === 1
+                        ? `El precio de "${preciosCambiados[0]}" cambió desde que lo agregaste. Ya actualizamos tu total.`
+                        : `Cambió el precio de algunos productos (${preciosCambiados.join(', ')}). Ya actualizamos tu total.`);
+                }
                 // "true" = este re-render es SOLO para mostrar el resultado de
                 // la validación que acabamos de hacer -- si volviera a programar
                 // otra validación aquí, sería un ciclo infinito (valida ->
@@ -1899,7 +1919,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     contenedorPagina.innerHTML = carrito.map((item, index) => {
                         const cantidad = Math.max(1, Number(item.cantidad) || 1);
                         const sku = String(item.id ?? '').padStart(3, '0');
-                        const problema = validacionCarritoRF[item.id];
+                        const problema = validacionCarritoRF[index];
                         const avisoHtml = (problema && problema.disponible === false) ? `
                             <div class="mt-2 flex items-start gap-1.5 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
                                 <svg class="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
