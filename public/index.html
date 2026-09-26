@@ -220,6 +220,7 @@
 .rf-favorites-track::-webkit-scrollbar{display:none;}
 .rf-favorite-card{position:relative;flex:0 0 clamp(280px,20.5vw,395px);scroll-snap-align:start;background:#fff;border:1px solid #edf0f2;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
 .rf-favorite-card-image{aspect-ratio:1/1;overflow:hidden;background:#f7f7f7;position:relative;}
+.rf-etiqueta-agotado{position:absolute;top:8px;left:8px;z-index:2;background:rgba(255,255,255,.94);color:#6b7280;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.08);}
 .rf-favorito-btn{position:absolute;top:8px;right:8px;z-index:2;width:30px;height:30px;border-radius:999px;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);transition:transform .12s ease;}
 .rf-favorito-btn:hover{transform:scale(1.1);}
 .rf-favorito-btn svg{width:16px;height:16px;stroke:#9a9a9a;fill:none;transition:fill .15s ease, stroke .15s ease;}
@@ -1407,6 +1408,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                         <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
                             <div class="rf-favorite-card-image">
                                 <img src="${urlImagen}" alt="${arreglo.nombre}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                            ${etiquetaAgotadoHtmlRF(arreglo)}
                             ${botonFavoritoHtmlRF(arreglo.id)}
                             </div>
                             <div class="rf-favorite-card-body">
@@ -1531,6 +1533,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                         <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
                             <div class="rf-favorite-card-image">
                                 <img src="${urlImagen}" alt="${arreglo.nombre}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                            ${etiquetaAgotadoHtmlRF(arreglo)}
                             ${botonFavoritoHtmlRF(arreglo.id)}
                             </div>
                             <div class="rf-favorite-card-body">
@@ -1558,6 +1561,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (!grid) return;
             grid.innerHTML = '';
             if (!mantenerOrden) {
+                // Los agotados se muestran al final (siguen visibles, con su
+                // etiqueta, para que el cliente pueda pedir que le avisemos).
+                arreglos = [...arreglos.filter(p => !productoAgotadoRF(p)), ...arreglos.filter(p => productoAgotadoRF(p))];
                 productosCategoriaActualRF = arreglos;
                 const selectorOrden = document.getElementById('rf-categoria-orden');
                 if (selectorOrden) selectorOrden.value = 'relevancia';
@@ -1577,6 +1583,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
                         <div class="rf-favorite-card-image">
                             <img src="${urlImagen}" alt="${arreglo.nombre}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                            ${etiquetaAgotadoHtmlRF(arreglo)}
                             ${botonFavoritoHtmlRF(arreglo.id)}
                         </div>
                         <div class="rf-favorite-card-body">
@@ -1862,6 +1869,18 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
         }
         window.suscribirseAvisameRF = suscribirseAvisameRF;
+
+        // Un producto está agotado si no le queda existencia -- o, si es un
+        // combo, si le falta alguna de sus piezas. Se marca en las tarjetas
+        // para que el cliente lo sepa antes de abrirlo.
+        function productoAgotadoRF(p) {
+            if (!p) return false;
+            if (p.es_combo) return (p.combo_items || []).some(c => c.disponible === false || Number(c.stock) <= 0);
+            return Number.isFinite(Number(p.stock)) && p.stock !== null && Number(p.stock) <= 0;
+        }
+        function etiquetaAgotadoHtmlRF(p) {
+            return productoAgotadoRF(p) ? '<span class="rf-etiqueta-agotado">Agotado</span>' : '';
+        }
 
         function mostrarProducto(productoActual) {
             productoDescripcionActual = productoActual;

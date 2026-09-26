@@ -4,7 +4,13 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const { Pool } = require('pg');
+const { Pool, types: tiposPg } = require('pg');
+// Las columnas DATE (fecha de entrega, recordatorios, vigencia de cupones) son
+// fechas de CALENDARIO, sin hora. Por defecto la librería las convierte en
+// "medianoche UTC", y un navegador en México las mostraba como el día
+// ANTERIOR (un pedido para el 25 aparecía como del 24). Se entregan tal cual,
+// como texto AAAA-MM-DD, que no se puede malinterpretar.
+if (tiposPg && typeof tiposPg.setTypeParser === 'function') tiposPg.setTypeParser(1082, valor => valor);
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
@@ -611,7 +617,9 @@ async function inicializarDB() {
     'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS fecha_inicio DATE',
     'ALTER TABLE carritos_abandonados ADD COLUMN IF NOT EXISTS ultimo_correo_en TIMESTAMP',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS token_invitado VARCHAR(64)',
-    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS correo_confirmacion_enviado BOOLEAN DEFAULT false'
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS correo_confirmacion_enviado BOOLEAN DEFAULT false',
+    'ALTER TABLE recordatorios_cliente ADD COLUMN IF NOT EXISTS ultimo_aviso_para DATE',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descartado BOOLEAN DEFAULT false'
   ];
 
   for (const query of alterQueries) {
@@ -1281,7 +1289,9 @@ app.delete('/api/cuenta', requireClienteAuth, async (req, res) => {
 
 app.get('/api/cuenta/pedidos', requireClienteAuth, async (req, res) => {
   try {
-    const resultado = await pool.query('SELECT * FROM ordenes WHERE cliente_cuenta_id=$1 ORDER BY id DESC', [req.session.clienteId]);
+    // Los pedidos descartados (el cliente corrigió datos y se creó otro) no se
+    // muestran: nunca fueron un pedido real para él.
+    const resultado = await pool.query('SELECT * FROM ordenes WHERE cliente_cuenta_id=$1 AND NOT COALESCE(descartado, false) ORDER BY id DESC', [req.session.clienteId]);
     res.json(resultado.rows);
   } catch (error) {
     console.error('GET /api/cuenta/pedidos:', error);
@@ -1419,7 +1429,9 @@ app.post('/api/ordenes/:id/descartar', async (req, res) => {
     );
     if (actual.rowCount === 0) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Este pedido ya no se puede descartar.' }); }
     reabastecidos = await restaurarStockDeOrdenRF(client, actual.rows[0]);
-    await client.query(`UPDATE ordenes SET estado='Cancelado' WHERE id=$1`, [id]);
+    // "descartado" lo distingue de una cancelación real: no cuenta en las
+    // estadísticas ni aparece en "Mis pedidos" del cliente.
+    await client.query(`UPDATE ordenes SET estado='Cancelado', descartado=true WHERE id=$1`, [id]);
     await client.query('INSERT INTO pedido_notas (orden_id, autor, nota) VALUES ($1, $2, $3)',
       [id, 'Sistema', 'Descartado: el cliente corrigió sus datos antes de pagar y se generó un pedido nuevo. El stock y el cupón se devolvieron.']);
     await client.query('COMMIT');
@@ -1974,6 +1986,7 @@ app.get('/api/catalogo/:id/relacionados', async (req, res) => {
       LEFT JOIN producto_categorias pc ON pc.producto_id = a.id
       WHERE a.id != $1 AND COALESCE(a.disponible, true) = true
         AND (pc.categoria = ANY($2::text[]) OR a.categoria = ANY($2::text[]))
+        AND (COALESCE(a.es_combo, false) OR a.stock IS NULL OR a.stock > 0) -- no recomendar productos agotados
       ORDER BY a.id DESC
       LIMIT 8
     `, [id, categorias]);
@@ -2372,6 +2385,75 @@ function construirCorreoCarritoAbandonado(carritoAbandonado) {
     <p style="margin-top:20px;"><a href="${URL_SITIO}/carrito" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Terminar mi compra</a></p>
   `;
   return { titulo: 'Tu carrito te espera', asunto: 'Se te quedó algo en el carrito 🌸', cuerpo };
+}
+
+// ---------------------------------------------------------------------------
+// Recordatorios de fechas importantes del cliente (cumpleaños, aniversarios):
+// se le avisa por correo unos días antes, para que alcance a pedir su regalo.
+// ---------------------------------------------------------------------------
+const DIAS_AVISO_RECORDATORIO = 3;
+function esBisiestoRF(anio) { return (anio % 4 === 0 && anio % 100 !== 0) || anio % 400 === 0; }
+function diasEntreRF(desde, hasta) {
+  return Math.round((Date.parse(`${hasta}T12:00:00Z`) - Date.parse(`${desde}T12:00:00Z`)) / 86400000);
+}
+// Próxima vez que cae una fecha que se repite cada año (el 29 de febrero se
+// avisa el 28 en los años que no son bisiestos).
+function proximaOcurrenciaAnualRF(fechaOriginal, hoy) {
+  const mmdd = fechaOriginal.slice(5);
+  const enAnio = anio => (mmdd === '02-29' && !esBisiestoRF(anio)) ? `${anio}-02-28` : `${anio}-${mmdd}`;
+  const anioActual = Number(hoy.slice(0, 4));
+  const esteAnio = enAnio(anioActual);
+  return esteAnio >= hoy ? esteAnio : enAnio(anioActual + 1);
+}
+function construirCorreoRecordatorioRF(recordatorio, fechaEvento, dias, nombreCliente) {
+  const titulo = escaparHtmlServidorRF(recordatorio.titulo);
+  const cuando = dias === 0 ? 'es hoy' : dias === 1 ? 'es mañana' : `es en ${dias} días`;
+  const cuerpo = `
+    <h2 style="font-size:16px;margin:0 0 8px;">🎁 ${titulo} ${cuando}</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px;">${nombreCliente ? `Hola ${escaparHtmlServidorRF(nombreCliente)}, t` : 'T'}e recordamos que el <strong>${formatearFechaCorreo(fechaEvento)}</strong> es una fecha que guardaste en tu cuenta. ¿Ya tienes el regalo?</p>
+    <p style="font-size:12px;color:#888;margin:0 0 16px;">Para entregas el mismo día, haz tu pedido antes de las 2:00 pm.</p>
+    <p style="margin-top:8px;"><a href="${URL_SITIO}/" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Elegir un regalo</a></p>
+  `;
+  return { titulo: 'Recordatorio', asunto: `🎁 ${recordatorio.titulo} ${cuando} — Reserva Floral`, cuerpo };
+}
+async function revisarRecordatoriosClientesRF() {
+  if (!resendClient) return;
+  try {
+    if (!(await correoTipoActivoRF('correo_recordatorio_activo'))) return;
+    // Solo en horario razonable (9 am a 8 pm, hora de México).
+    const hora = horaMexicoRF();
+    if (hora < 9 || hora >= 20) return;
+    const hoy = hoyMexicoRF();
+    const resultado = await pool.query(`
+      SELECT r.*, c.email, c.nombre AS cliente_nombre
+      FROM recordatorios_cliente r JOIN clientes_cuenta c ON c.id = r.cliente_cuenta_id
+    `);
+    for (const rec of resultado.rows) {
+      const fechaOriginal = fechaCalendarioRF(rec.fecha);
+      if (!fechaOriginal || !rec.email) continue;
+      const fechaEvento = rec.repetir_anual ? proximaOcurrenciaAnualRF(fechaOriginal, hoy) : fechaOriginal;
+      if (fechaEvento < hoy) continue;
+      const dias = diasEntreRF(hoy, fechaEvento);
+      if (dias > DIAS_AVISO_RECORDATORIO) continue;
+      // Se marca ANTES de mandar y solo si nadie lo marcó ya: así cada fecha
+      // se avisa una sola vez, aunque esta tarea corra cada hora.
+      const marca = await pool.query(
+        'UPDATE recordatorios_cliente SET ultimo_aviso_para=$1 WHERE id=$2 AND ultimo_aviso_para IS DISTINCT FROM $1::date RETURNING id',
+        [fechaEvento, rec.id]
+      );
+      if (marca.rowCount === 0) continue;
+      const { titulo, asunto, cuerpo } = construirCorreoRecordatorioRF(rec, fechaEvento, dias, rec.cliente_nombre);
+      await resendClient.emails.send({ from: CORREO_REMITENTE, to: rec.email, subject: asunto, html: await plantillaBaseCorreo(titulo, cuerpo) })
+        .catch(err => console.error('No se pudo enviar un recordatorio:', err?.message || err));
+    }
+  } catch (error) {
+    console.error('No se pudieron revisar los recordatorios:', error?.message || error);
+  }
+}
+
+function marcarCarritoRecuperadoRF(email) {
+  if (!email) return;
+  pool.query('UPDATE carritos_abandonados SET recuperado = true WHERE email = $1', [String(email).trim().toLowerCase()]).catch(() => {});
 }
 
 // Manda el "Recibimos tu pedido" UNA sola vez por pedido, aunque se llame
@@ -2839,7 +2921,11 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     if (!mpClient) enviarConfirmacionUnaVezRF(result.rows[0].id);
     // Si esta persona tenía un carrito guardado como "abandonado" con este
     // mismo correo, ya no hace falta recordarle nada -- sí terminó comprando.
-    pool.query('UPDATE carritos_abandonados SET recuperado = true WHERE email = $1', [emailContacto.trim().toLowerCase()]).catch(() => {});
+    // El recordatorio de carrito abandonado se cancela hasta que la persona
+    // PAGA (o genera su ficha de OXXO/SPEI) -- antes se cancelaba al crear el
+    // pedido, y quien llegaba al pago y se iba sin pagar no recibía ningún
+    // seguimiento. Sin cobro en línea, crear el pedido ya es la compra.
+    if (!mpClient) marcarCarritoRecuperadoRF(emailContacto);
     // Lo que se acaba de comprar ya no debe seguir en el carrito guardado de
     // la cuenta -- antes se quedaba ahí y reaparecía la siguiente vez que el
     // cliente entraba a la tienda (con riesgo de que lo pagara dos veces).
@@ -2941,7 +3027,10 @@ app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {
 
     const estadoPago = { approved: 'aprobado', pending: 'pendiente', in_process: 'pendiente', rejected: 'rechazado', cancelled: 'rechazado' }[pago.status] || 'pendiente';
     await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3', [estadoPago, String(pago.id), orden.id]);
-    if (estadoPago !== 'rechazado') await enviarConfirmacionUnaVezRF(orden.id);
+    if (estadoPago !== 'rechazado') {
+      await enviarConfirmacionUnaVezRF(orden.id);
+      marcarCarritoRecuperadoRF(orden.email_contacto);
+    }
     if (estadoPago === 'aprobado') enviarCorreoPagoConfirmado({ ...orden, estado_pago: estadoPago });
 
     // Para OXXO/SPEI, Mercado Pago regresa la liga a la ficha (o los datos de
@@ -2993,6 +3082,7 @@ app.post('/api/pagos/webhook', async (req, res) => {
     const actualizada = await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3 RETURNING *', [estadoPago, String(pago.id), ordenId]);
     if (estadoPago === 'aprobado' && !yaEstabaAprobado) {
       await enviarConfirmacionUnaVezRF(ordenId);
+      marcarCarritoRecuperadoRF(actualizada.rows[0]?.email_contacto);
       enviarCorreoPagoConfirmado(actualizada.rows[0]);
       // Caso raro pero posible: alguien paga en OXXO después de que el pedido
       // ya se canceló por falta de pago. Se deja una nota bien visible para
@@ -3336,6 +3426,7 @@ app.get('/api/admin/correos/vista-previa/:tipo', requireAuth, async (req, res) =
     else if (req.params.tipo === 'pago') datos = construirCorreoPagoConfirmado(ORDEN_EJEMPLO_CORREO);
     else if (req.params.tipo === 'estado') datos = construirCorreoEstadoActualizado(ORDEN_EJEMPLO_CORREO, MENSAJES_ESTADO_CORREO[req.query.estado] ? req.query.estado : 'En camino');
     else if (req.params.tipo === 'carrito') datos = construirCorreoCarritoAbandonado({ nombre: 'Ana', email: 'ana@ejemplo.com', total: 850, items: ORDEN_EJEMPLO_CORREO.carrito });
+    else if (req.params.tipo === 'recordatorio') datos = construirCorreoRecordatorioRF({ titulo: 'Cumpleaños de mamá' }, sumarDiasRF(hoyMexicoRF(), 3), 3, 'Ana');
     else return res.status(400).send('Tipo de correo no reconocido.');
 
     res.set('Content-Type', 'text/html; charset=utf-8');
@@ -3353,7 +3444,7 @@ app.get('/api/admin/dashboard', requireAuth, async (req, res) => {
   try {
     const [productos, ordenesRecientes, stockBajo] = await Promise.all([
       pool.query('SELECT id, disponible, stock, categoria FROM arreglos_florales'),
-      pool.query('SELECT * FROM ordenes ORDER BY id DESC LIMIT 400'),
+      pool.query('SELECT * FROM ordenes WHERE NOT COALESCE(descartado, false) ORDER BY id DESC LIMIT 400'),
       pool.query(`SELECT id, nombre, stock FROM arreglos_florales WHERE COALESCE(disponible,true)=true AND COALESCE(stock,1) <= 2 ORDER BY stock ASC LIMIT 10`)
     ]);
 
@@ -3418,7 +3509,7 @@ app.get('/api/admin/dashboard', requireAuth, async (req, res) => {
 app.get('/api/admin/finanzas', requireAuth, async (req, res) => {
   const dias = Math.min(Math.max(Number(req.query.dias) || 30, 7), 180);
   try {
-    const todas = await pool.query(`SELECT * FROM ordenes WHERE creado_en >= NOW() - INTERVAL '${dias} days'`);
+    const todas = await pool.query(`SELECT * FROM ordenes WHERE creado_en >= NOW() - INTERVAL '${dias} days' AND NOT COALESCE(descartado, false)`);
     // Solo cuentan como ingreso los pedidos pagados (o que tú ya avanzaste);
     // un pedido esperando su pago en OXXO todavía no es una venta.
     const activas = todas.rows.filter(esVentaRF);
@@ -4048,6 +4139,7 @@ async function iniciar() {
     // corriendo (no hace falta un servicio aparte para esto).
     setInterval(revisarCarritosAbandonadosRF, 30 * 60 * 1000);
     setInterval(liberarPedidosSinPagarRF, 15 * 60 * 1000);
+    setInterval(revisarRecordatoriosClientesRF, 60 * 60 * 1000);
   } catch (error) {
     console.error('No se pudo inicializar la aplicación:', error);
     process.exit(1);

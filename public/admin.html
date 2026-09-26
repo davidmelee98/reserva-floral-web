@@ -1188,6 +1188,16 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                                         <label class="adm-switch"><input type="checkbox" id="cfg_correo_carrito_abandonado_activo" checked><span class="adm-switch-track"></span></label>
                                     </div>
                                 </div>
+                                <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2.5">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-semibold text-brandDark">Recordatorio de fechas importantes</p>
+                                        <p class="text-[11px] text-gray-400">Se manda 3 días antes de cada fecha que el cliente guardó en su cuenta (cumpleaños, aniversarios...).</p>
+                                    </div>
+                                    <div class="flex items-center gap-3 shrink-0">
+                                        <a href="/api/admin/correos/vista-previa/recordatorio" target="_blank" class="text-[11px] font-semibold text-brandFuchsia hover:underline">Ver ejemplo ↗</a>
+                                        <label class="adm-switch"><input type="checkbox" id="cfg_correo_recordatorio_activo" checked><span class="adm-switch-track"></span></label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -1293,7 +1303,17 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     }
     function formatearFechaAdmin(valor) {
         if (!valor) return '—';
-        try { return new Date(valor).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }); }
+        try {
+            // Una fecha de CALENDARIO (AAAA-MM-DD, como la de entrega o un
+            // recordatorio) se arma con año, mes y día locales. Con new Date()
+            // el navegador la toma como medianoche UTC y en México se mostraba
+            // como el día anterior. Las fechas con hora (creado_en) no cambian.
+            const soloFecha = /^\d{4}-\d{2}-\d{2}$/.exec(String(valor));
+            const fecha = soloFecha
+                ? new Date(Number(String(valor).slice(0, 4)), Number(String(valor).slice(5, 7)) - 1, Number(String(valor).slice(8, 10)))
+                : new Date(valor);
+            return fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
         catch (e) { return valor; }
     }
     async function jsonOError(respuesta) {
@@ -2379,7 +2399,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         else badge.classList.add('hidden');
     }
     function renderStatsPedidos() {
-        document.getElementById('stat-pedidos-total').innerText = ordenes.length;
+        document.getElementById('stat-pedidos-total').innerText = ordenes.filter(o => !o.descartado).length;
         document.getElementById('stat-pedidos-pendientes').innerText = ordenes.filter(o => o.estado === 'Pendiente').length;
         document.getElementById('stat-pedidos-proceso').innerText = ordenes.filter(o => ['En preparación', 'En camino', 'Confirmado'].includes(o.estado)).length;
         const ventas = ordenes.filter(o => o.estado === 'Entregado').reduce((s, o) => s + Number(o.total || 0), 0);
@@ -2389,6 +2409,10 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const texto = document.getElementById('filtro-pedido-busqueda').value.trim().toLowerCase();
         const estado = document.getElementById('filtro-pedido-estado').value;
         return ordenes.filter(o => {
+            // Los pedidos descartados (el cliente corrigió datos y se creó otro)
+            // solo se ven al filtrar por "Cancelado" -- salvo que les haya
+            // llegado un pago, que siempre debe estar a la vista.
+            if (o.descartado && o.estado_pago !== 'aprobado' && estado !== 'Cancelado') return false;
             if (estado && o.estado !== estado) return false;
             if (texto) {
                 const enNombre = String(o.cliente_nombre || '').toLowerCase().includes(texto);
@@ -2499,6 +2523,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                                 <p class="font-semibold text-brandDark text-sm">${escaparHtmlAdmin(o.cliente_nombre)}</p>
                                 <span class="adm-badge ${colorEstado}">${escaparHtmlAdmin(o.estado || 'Pendiente')}</span>
                                 <span class="adm-badge ${colorEstadoPago}">${etiquetaEstadoPago}</span>
+                                ${o.descartado ? '<span class="adm-badge bg-gray-100 text-gray-500" title="El cliente corrigió sus datos antes de pagar y se generó un pedido nuevo">Descartado</span>' : ''}
                             </div>
                             <p class="text-xs text-gray-500 mt-0.5">☎️ Contacto: ${escaparHtmlAdmin(o.cliente_telefono)}${o.email_contacto ? ` · ${escaparHtmlAdmin(o.email_contacto)}` : ''}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''} · Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</p>
                             <p class="text-xs text-gray-500 mt-0.5">${iconoTipo} ${escaparHtmlAdmin(o.direccion_entrega)}
@@ -2672,7 +2697,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             const subtotal = Number(o.total || 0) - envio;
             return [
                 o.id, o.cliente_nombre, o.cliente_telefono, o.email_contacto || '', o.direccion_entrega,
-                o.fecha_entrega ? new Date(o.fecha_entrega).toLocaleDateString('es-MX') : '', o.horario_entrega || '',
+                o.fecha_entrega ? String(o.fecha_entrega).slice(0, 10).split('-').reverse().join('/') : '', o.horario_entrega || '',
                 o.estado || 'Pendiente', o.estado_pago || 'pendiente', subtotal.toFixed(2), envio.toFixed(2), Number(o.total || 0).toFixed(2),
                 o.creado_en ? new Date(o.creado_en).toLocaleString('es-MX') : ''
             ].map(escaparCelda).join(',');
@@ -2778,7 +2803,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     // se repite cada año y la fecha de este año ya pasó, se usa la del año
     // que sigue.
     function proximaFechaRecordatorio(fechaIso, repiteAnual) {
-        const original = new Date(fechaIso + 'T00:00:00');
+        // Se toma solo AAAA-MM-DD, llegue como llegue la fecha.
+        const original = new Date(String(fechaIso).slice(0, 10) + 'T00:00:00');
         if (!repiteAnual) return original;
         const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
         let proxima = new Date(hoy.getFullYear(), original.getMonth(), original.getDate());
@@ -3322,6 +3348,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             document.getElementById('cfg_correo_pago_confirmado_activo').checked = cfg.correo_pago_confirmado_activo !== 'false';
             document.getElementById('cfg_correo_estado_actualizado_activo').checked = cfg.correo_estado_actualizado_activo !== 'false';
             document.getElementById('cfg_correo_carrito_abandonado_activo').checked = cfg.correo_carrito_abandonado_activo !== 'false';
+            document.getElementById('cfg_correo_recordatorio_activo').checked = cfg.correo_recordatorio_activo !== 'false';
 
             const previewHero = document.getElementById('ib-preview-hero');
             if (previewHero) {
@@ -3865,7 +3892,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                     correo_confirmacion_activo: String(document.getElementById('cfg_correo_confirmacion_activo').checked),
                     correo_pago_confirmado_activo: String(document.getElementById('cfg_correo_pago_confirmado_activo').checked),
                     correo_estado_actualizado_activo: String(document.getElementById('cfg_correo_estado_actualizado_activo').checked),
-                    correo_carrito_abandonado_activo: String(document.getElementById('cfg_correo_carrito_abandonado_activo').checked)
+                    correo_carrito_abandonado_activo: String(document.getElementById('cfg_correo_carrito_abandonado_activo').checked),
+                    correo_recordatorio_activo: String(document.getElementById('cfg_correo_recordatorio_activo').checked)
                 })
             }));
             mostrarToast('Configuración guardada.');

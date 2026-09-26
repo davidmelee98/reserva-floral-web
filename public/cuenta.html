@@ -396,7 +396,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                             </form>
                         </div>
                         <div id="lista-recordatorios" class="mt-4"></div>
-                        <p class="text-[11px] text-gray-400 mt-4 border-t border-gray-100 pt-3">Por ahora esto guarda tus fechas para que las tengas en un solo lugar. El aviso automático por correo antes de la fecha lo activaremos cuando conectemos un servicio de envío de correos.</p>
+                        <p class="text-[11px] text-gray-400 mt-4 border-t border-gray-100 pt-3">Te mandaremos un correo 3 días antes de cada fecha, para que alcances a elegir y enviar tu regalo a tiempo.</p>
                     </div>
                 </section>
 
@@ -465,7 +465,17 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     function formatearPrecio(valor) { return (Number(valor) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function formatearFecha(valor) {
         if (!valor) return '—';
-        try { return new Date(valor).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }); }
+        try {
+            // Una fecha de CALENDARIO (AAAA-MM-DD, como la de entrega o un
+            // recordatorio) se arma con año, mes y día locales. Con new Date()
+            // el navegador la toma como medianoche UTC y en México se mostraba
+            // como el día anterior. Las fechas con hora (creado_en) no cambian.
+            const soloFecha = /^\d{4}-\d{2}-\d{2}$/.exec(String(valor));
+            const fecha = soloFecha
+                ? new Date(Number(String(valor).slice(0, 4)), Number(String(valor).slice(5, 7)) - 1, Number(String(valor).slice(8, 10)))
+                : new Date(valor);
+            return fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
         catch (e) { return valor; }
     }
     const ESTADO_COLOR = {
