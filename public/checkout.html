@@ -728,6 +728,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 if (bloqueCorreo) bloqueCorreo.classList.add('hidden');
                 if (sesionCliente.email) document.getElementById('p1-email').value = sesionCliente.email;
                 cargarDireccionesGuardadas();
+                // Con sesión, el campo de correo está oculto y nunca se 'sale'
+                // de él -- se registra el carrito aquí, para que también le
+                // llegue el recordatorio si lo deja a medias. Va al final y
+                // protegido: esa función vive en un bloque de código posterior
+                // y puede no existir todavía si la sesión respondió muy rápido
+                // (para ese caso, ese bloque lo registra al cargarse).
+                if (typeof guardarCarritoTemporalRF === 'function') guardarCarritoTemporalRF();
             } else if (bloqueCorreo) {
                 bloqueCorreo.classList.remove('hidden');
             }
@@ -762,6 +769,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const d = direccionesGuardadas.find(x => x.id === id);
         if (!d) return;
         document.getElementById('p2-nombre').value = d.nombre_destinatario || '';
+        guardarCarritoTemporalRF(); // al elegir una dirección guardada no se 'sale' de ningún campo
         if (d.telefono_destinatario) {
             const soloDigitos = String(d.telefono_destinatario).replace(/\D/g, '').slice(-10);
             document.getElementById('p2-telefono').value = soloDigitos;
@@ -1091,6 +1099,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     }
 
     document.getElementById('p1-email')?.addEventListener('blur', guardarCarritoTemporalRF);
+    // Si la sesión ya llenó el correo antes de que este bloque se cargara.
+    if (document.getElementById('p1-email')?.value) guardarCarritoTemporalRF();
     document.getElementById('p2-nombre')?.addEventListener('blur', guardarCarritoTemporalRF);
 
     const estado = {

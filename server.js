@@ -619,7 +619,8 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS token_invitado VARCHAR(64)',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS correo_confirmacion_enviado BOOLEAN DEFAULT false',
     'ALTER TABLE recordatorios_cliente ADD COLUMN IF NOT EXISTS ultimo_aviso_para DATE',
-    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descartado BOOLEAN DEFAULT false'
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descartado BOOLEAN DEFAULT false',
+    'CREATE TABLE IF NOT EXISTS correos_bajas (email VARCHAR(150) PRIMARY KEY, origen VARCHAR(20), creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
   ];
 
   for (const query of alterQueries) {
@@ -1446,6 +1447,73 @@ app.post('/api/ordenes/:id/descartar', async (req, res) => {
   }
 });
 
+// Página para darse de baja (se llega desde el enlace del correo). Se pide
+// confirmar con un botón, en vez de dar de baja solo con abrir el enlace:
+// algunos programas de correo abren los enlaces solos para revisarlos.
+function paginaBajaRF(titulo, mensaje, formulario = '') {
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titulo} — Reserva Floral</title>
+  <style>body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f7eef2;margin:0;padding:40px 16px;color:#3a3a3a}.caja{max-width:420px;margin:0 auto;background:#fff;border-radius:20px;padding:32px 24px;text-align:center}img{height:44px}h1{font-size:18px;margin:20px 0 8px}p{font-size:14px;color:#666;line-height:1.5}button,a.btn{display:inline-block;margin-top:16px;background:#c2185b;color:#fff;border:0;padding:11px 24px;border-radius:999px;font-size:14px;cursor:pointer;text-decoration:none}</style></head>
+  <body><div class="caja"><img src="/logo-reserva-floral.png" alt="Reserva Floral"><h1>${titulo}</h1><p>${mensaje}</p>${formulario}</div></body></html>`;
+}
+function bajaValidaRF(email, firma) {
+  if (!email || !firma || typeof firma !== 'string') return false;
+  const esperada = firmaBajaRF(email);
+  return firma.length === esperada.length && crypto.timingSafeEqual(Buffer.from(firma), Buffer.from(esperada));
+}
+app.get('/baja', (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  if (!bajaValidaRF(email, req.query.firma)) {
+    return res.status(400).send(paginaBajaRF('Enlace no válido', 'Este enlace está incompleto o ya no es válido. Si quieres dejar de recibir nuestros correos, escríbenos y con gusto te ayudamos.'));
+  }
+  res.send(paginaBajaRF('Dejar de recibir avisos',
+    `¿Quieres dejar de recibir los recordatorios de Reserva Floral en <strong>${escaparHtmlServidorRF(email)}</strong>? Seguirás recibiendo los correos de tus pedidos (confirmación, pago y factura).`,
+    `<form method="POST" action="/baja"><input type="hidden" name="email" value="${escaparHtmlServidorRF(email)}"><input type="hidden" name="firma" value="${escaparHtmlServidorRF(req.query.firma)}"><button type="submit">Sí, dejar de recibirlos</button></form>`));
+});
+app.post('/baja', express.urlencoded({ extended: false }), async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!bajaValidaRF(email, req.body?.firma)) {
+    return res.status(400).send(paginaBajaRF('Enlace no válido', 'Este enlace está incompleto o ya no es válido.'));
+  }
+  try {
+    await pool.query(`INSERT INTO correos_bajas (email, origen) VALUES ($1, 'enlace') ON CONFLICT (email) DO NOTHING`, [email]);
+    res.send(paginaBajaRF('Listo', 'Ya no te mandaremos recordatorios. Los correos de tus pedidos te seguirán llegando normalmente.', `<a class="btn" href="/">Volver a la tienda</a>`));
+  } catch (error) {
+    console.error('POST /baja:', error);
+    res.status(500).send(paginaBajaRF('Algo salió mal', 'No pudimos procesar tu solicitud. Intenta de nuevo en un momento.'));
+  }
+});
+
+// Panel: ver y administrar las bajas (por si alguien lo pide por WhatsApp).
+app.get('/api/admin/correos/bajas', requireAuth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT email, origen, creado_en FROM correos_bajas ORDER BY creado_en DESC LIMIT 500');
+    res.json(r.rows);
+  } catch (error) {
+    console.error('GET /api/admin/correos/bajas:', error);
+    res.status(500).json({ error: 'No se pudo cargar la lista.' });
+  }
+});
+app.post('/api/admin/correos/bajas', requireAuth, async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Escribe un correo válido.' });
+  try {
+    await pool.query(`INSERT INTO correos_bajas (email, origen) VALUES ($1, 'panel') ON CONFLICT (email) DO NOTHING`, [email]);
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('POST /api/admin/correos/bajas:', error);
+    res.status(500).json({ error: 'No se pudo guardar.' });
+  }
+});
+app.delete('/api/admin/correos/bajas/:email', requireAuth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM correos_bajas WHERE email = $1', [String(req.params.email || '').trim().toLowerCase()]);
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/correos/bajas:', error);
+    res.status(500).json({ error: 'No se pudo quitar.' });
+  }
+});
+
 // ---- Factura para quien compró SIN cuenta (con la clave secreta del pedido) ----
 function tokenValidoRF(token) {
   return typeof token === 'string' && /^[a-f0-9]{48}$/.test(token);
@@ -2268,7 +2336,33 @@ function formatearFechaCorreo(fecha) {
   return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-async function plantillaBaseCorreo(tituloInterno, cuerpoHtml) {
+// ---------------------------------------------------------------------------
+// Bajas de correos automáticos (recordatorio de carrito y de fechas). El
+// enlace va firmado, para que nadie pueda dar de baja un correo ajeno.
+// Los correos de un pedido (confirmación, pago, factura...) siempre se mandan.
+// ---------------------------------------------------------------------------
+function firmaBajaRF(email) {
+  return crypto.createHmac('sha256', String(sessionSecret)).update('baja:' + String(email).trim().toLowerCase()).digest('hex').slice(0, 32);
+}
+function enlaceBajaRF(email) {
+  const e = String(email).trim().toLowerCase();
+  return `${URL_SITIO}/baja?email=${encodeURIComponent(e)}&firma=${firmaBajaRF(e)}`;
+}
+async function correoDadoDeBajaRF(email) {
+  try {
+    const r = await pool.query('SELECT 1 FROM correos_bajas WHERE email = $1', [String(email).trim().toLowerCase()]);
+    return r.rowCount > 0;
+  } catch (_) {
+    return false;
+  }
+}
+// Encabezados estándar: Gmail, Outlook, etc. muestran su propio botón de
+// "Cancelar suscripción" con esto, lo que además evita que te marquen como spam.
+function encabezadosBajaRF(email) {
+  return { 'List-Unsubscribe': `<${enlaceBajaRF(email)}>` };
+}
+
+async function plantillaBaseCorreo(tituloInterno, cuerpoHtml, opciones = {}) {
   const logoUrl = `${URL_SITIO}/logo-reserva-floral.png`;
   let whatsappBoton = '';
   try {
@@ -2299,7 +2393,8 @@ async function plantillaBaseCorreo(tituloInterno, cuerpoHtml) {
             </table>
           </td></tr>
         </table>
-        <p style="text-align:center;color:#b58f9c;font-size:11px;margin:16px 0 0;">© ${new Date().getFullYear()} Reserva Floral · reservafloral.com</p>
+        ${opciones.emailBaja ? `<p style="text-align:center;color:#b58f9c;font-size:11px;margin:16px 0 0;">¿No quieres recibir estos avisos? <a href="${enlaceBajaRF(opciones.emailBaja)}" style="color:#b58f9c;">Dejar de recibirlos</a></p>` : ''}
+        <p style="text-align:center;color:#b58f9c;font-size:11px;margin:${opciones.emailBaja ? '6px' : '16px'} 0 0;">© ${new Date().getFullYear()} Reserva Floral · reservafloral.com</p>
       </td></tr>
     </table>
   `;
@@ -2326,16 +2421,16 @@ function construirCorreoConfirmacion(orden) {
   const items = Array.isArray(orden.carrito) ? orden.carrito : JSON.parse(orden.carrito || '[]');
   const filas = items.map(it => `
     <tr>
-      <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">${it.nombre}${it.variante ? ` (${it.variante})` : ''} × ${it.cantidad}</td>
+      <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">${escaparHtmlServidorRF(it.nombre)}${it.variante ? ` (${escaparHtmlServidorRF(it.variante)})` : ''} × ${Number(it.cantidad) || 1}</td>
       <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;">$${(it.precio * it.cantidad).toFixed(2)}</td>
     </tr>`).join('');
   const cuerpo = `
-    <h2 style="font-size:16px;margin:0 0 8px;">¡Gracias por tu pedido, ${orden.cliente_nombre}!</h2>
+    <h2 style="font-size:16px;margin:0 0 8px;">¡Gracias por tu pedido, ${escaparHtmlServidorRF(orden.cliente_nombre)}!</h2>
     <p style="font-size:13px;color:#666;margin:0 0 16px;">Tu pedido <strong>#${orden.id}</strong> fue registrado correctamente.</p>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">${filas}</table>
     <p style="font-size:13px;margin:4px 0;"><strong>Total:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
-    <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
-    <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${orden.direccion_entrega}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${escaparHtmlServidorRF(orden.direccion_entrega)}</p>
     ${orden.token_invitado ? `<p style="font-size:12px;color:#888;margin:16px 0 0;">¿Necesitas factura? <a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#c2185b;">Solicítala aquí</a>.</p>` : ''}
   `;
   return { titulo: 'Confirmación de pedido', asunto: `Recibimos tu pedido #${orden.id} — Reserva Floral`, cuerpo };
@@ -2346,7 +2441,7 @@ function construirCorreoPagoConfirmado(orden) {
     <h2 style="font-size:16px;margin:0 0 8px;">✓ Tu pago fue confirmado</h2>
     <p style="font-size:13px;color:#666;margin:0 0 16px;">El pago de tu pedido <strong>#${orden.id}</strong> ya se acreditó. Empezaremos a prepararlo para la entrega.</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Total pagado:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
-    <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
   `;
   return { titulo: 'Pago confirmado', asunto: `Tu pago fue confirmado — Pedido #${orden.id}`, cuerpo };
 }
@@ -2366,8 +2461,8 @@ function construirCorreoEstadoActualizado(orden, estadoNuevo) {
     <h2 style="font-size:16px;margin:0 0 8px;">${mensaje.titulo}</h2>
     <p style="font-size:13px;color:#666;margin:0 0 16px;">${mensaje.texto}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Pedido:</strong> #${orden.id}</p>
-    <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${orden.horario_entrega}` : ''}</p>
-    <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${orden.direccion_entrega || ''}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${escaparHtmlServidorRF(orden.direccion_entrega || '')}</p>
   `;
   return { titulo: mensaje.titulo, asunto: `${mensaje.asunto} — Pedido #${orden.id}`, cuerpo };
 }
@@ -2375,11 +2470,11 @@ function construirCorreoEstadoActualizado(orden, estadoNuevo) {
 function construirCorreoCarritoAbandonado(carritoAbandonado) {
   const items = Array.isArray(carritoAbandonado.items) ? carritoAbandonado.items : JSON.parse(carritoAbandonado.items || '[]');
   const listaHtml = items.map(it => `
-    <p style="font-size:13px;margin:4px 0;">${Number(it.cantidad) || 1} × ${it.nombre || 'Producto'} — $${Number(it.precio || 0).toFixed(2)}</p>
+    <p style="font-size:13px;margin:4px 0;">${Number(it.cantidad) || 1} × ${escaparHtmlServidorRF(it.nombre || 'Producto')} — $${Number(it.precio || 0).toFixed(2)}</p>
   `).join('');
   const cuerpo = `
     <h2 style="font-size:16px;margin:0 0 8px;">🌸 Se te quedó algo en el carrito</h2>
-    <p style="font-size:13px;color:#666;margin:0 0 16px;">${carritoAbandonado.nombre ? `Hola ${carritoAbandonado.nombre}, v` : 'V'}imos que dejaste estos productos listos, pero no llegaste a terminar tu compra. Aquí siguen esperándote:</p>
+    <p style="font-size:13px;color:#666;margin:0 0 16px;">${carritoAbandonado.nombre ? `Hola ${escaparHtmlServidorRF(carritoAbandonado.nombre)}, v` : 'V'}imos que dejaste estos productos listos, pero no llegaste a terminar tu compra. Aquí siguen esperándote:</p>
     ${listaHtml}
     <p style="font-size:13px;margin:16px 0 4px;"><strong>Total: $${Number(carritoAbandonado.total || 0).toFixed(2)} MXN</strong></p>
     <p style="margin-top:20px;"><a href="${URL_SITIO}/carrito" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Terminar mi compra</a></p>
@@ -2433,6 +2528,7 @@ async function revisarRecordatoriosClientesRF() {
       if (!fechaOriginal || !rec.email) continue;
       const fechaEvento = rec.repetir_anual ? proximaOcurrenciaAnualRF(fechaOriginal, hoy) : fechaOriginal;
       if (fechaEvento < hoy) continue;
+      if (await correoDadoDeBajaRF(rec.email)) continue;
       const dias = diasEntreRF(hoy, fechaEvento);
       if (dias > DIAS_AVISO_RECORDATORIO) continue;
       // Se marca ANTES de mandar y solo si nadie lo marcó ya: así cada fecha
@@ -2443,7 +2539,7 @@ async function revisarRecordatoriosClientesRF() {
       );
       if (marca.rowCount === 0) continue;
       const { titulo, asunto, cuerpo } = construirCorreoRecordatorioRF(rec, fechaEvento, dias, rec.cliente_nombre);
-      await resendClient.emails.send({ from: CORREO_REMITENTE, to: rec.email, subject: asunto, html: await plantillaBaseCorreo(titulo, cuerpo) })
+      await resendClient.emails.send({ from: CORREO_REMITENTE, to: rec.email, subject: asunto, headers: encabezadosBajaRF(rec.email), html: await plantillaBaseCorreo(titulo, cuerpo, { emailBaja: rec.email }) })
         .catch(err => console.error('No se pudo enviar un recordatorio:', err?.message || err));
     }
   } catch (error) {
@@ -2540,12 +2636,14 @@ async function enviarCorreoEstadoActualizado(orden, estadoNuevo) {
 async function enviarCorreoCarritoAbandonado(carritoAbandonado) {
   if (!resendClient || !(await correoTipoActivoRF('correo_carrito_abandonado_activo'))) return;
   try {
+    if (await correoDadoDeBajaRF(carritoAbandonado.email)) return;
     const { titulo, asunto, cuerpo } = construirCorreoCarritoAbandonado(carritoAbandonado);
     await resendClient.emails.send({
       from: CORREO_REMITENTE,
       to: carritoAbandonado.email,
       subject: asunto,
-      html: await plantillaBaseCorreo(titulo, cuerpo)
+      headers: encabezadosBajaRF(carritoAbandonado.email),
+      html: await plantillaBaseCorreo(titulo, cuerpo, { emailBaja: carritoAbandonado.email })
     });
   } catch (error) {
     console.error('No se pudo enviar el correo de carrito abandonado:', error?.message || error);
@@ -2645,7 +2743,7 @@ app.post('/api/carrito/validar', limitadorGeneral, async (req, res) => {
 
     const idsCombo = productos.rows.filter(p => p.es_combo).map(p => p.id);
     const comboItems = idsCombo.length ? (await pool.query(`
-      SELECT pci.producto_id, pci.cantidad, a.id AS componente_id, a.nombre AS componente_nombre, a.disponible AS componente_disponible, a.stock AS componente_stock
+      SELECT pci.producto_id, pci.cantidad, a.id AS componente_id, a.nombre AS componente_nombre, a.disponible AS componente_disponible, a.stock AS componente_stock, a.tiempo_entrega_dias AS componente_tiempo
       FROM producto_combo_items pci JOIN arreglos_florales a ON a.id = pci.componente_id
       WHERE pci.producto_id = ANY($1::int[])
     `, [idsCombo])).rows : [];
@@ -2657,7 +2755,8 @@ app.post('/api/carrito/validar', limitadorGeneral, async (req, res) => {
       const id = Number(item.id);
       const cantidad = Math.max(1, Math.floor(Number(item.cantidad)) || 1);
       const producto = porId.get(id);
-      const tiempoEntregaDias = Number(producto?.tiempo_entrega_dias) || 0;
+      const tiempoEntregaDias = Math.max(Number(producto?.tiempo_entrega_dias) || 0,
+        ...(producto?.es_combo ? comboItems.filter(ci => ci.producto_id === id).map(ci => Number(ci.componente_tiempo) || 0) : [0]));
       if (!producto || producto.disponible === false) {
         return { id, disponible: false, motivo: 'Ya no está disponible.', tiempoEntregaDias };
       }
@@ -2692,19 +2791,57 @@ app.post('/api/carrito/validar', limitadorGeneral, async (req, res) => {
 // correo en el checkout pero todavía no termina de pagar -- así, si lo deja
 // a medias, se le puede mandar un recordatorio más tarde. Se llama sola
 // desde el checkout, sin que el cliente note nada.
-app.post('/api/carrito-temporal', limitadorGeneral, async (req, res) => {
-  const { email, nombre, carrito, total } = req.body || {};
-  if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || !Array.isArray(carrito) || carrito.length === 0) {
+// Límite propio y estricto: este endpoint termina mandando un correo a la
+// dirección que se escriba, así que no debe poder usarse en masa.
+const limitadorCarritoTemporal = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes. Espera un momento.' }
+});
+
+// Guarda (o actualiza) una "foto" del carrito de alguien que ya escribió su
+// correo en el checkout pero todavía no termina de pagar -- así, si lo deja
+// a medias, se le puede mandar un recordatorio más tarde.
+// IMPORTANTE: del navegador solo se aceptan el ID, la cantidad y el tamaño de
+// cada producto. Nombres y precios salen de la base de datos, y el nombre del
+// saludo solo de la cuenta con sesión. Antes se guardaba tal cual lo que
+// mandaba el navegador, y cualquiera podía usar este correo para enviar
+// enlaces falsos firmados como Reserva Floral a cualquier dirección.
+app.post('/api/carrito-temporal', limitadorCarritoTemporal, async (req, res) => {
+  const { email, carrito } = req.body || {};
+  if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || email.trim().length > 150 || !Array.isArray(carrito) || carrito.length === 0) {
     return res.status(400).json({ error: 'Datos incompletos.' });
   }
   try {
+    const renglones = carrito.slice(0, 30).map(it => ({
+      id: Number(it?.id),
+      cantidad: Math.min(99, Math.max(1, Math.floor(Number(it?.cantidad)) || 1)),
+      variante: typeof it?.variante === 'string' ? it.variante.slice(0, 200) : null
+    })).filter(it => Number.isInteger(it.id) && it.id > 0);
+    const ids = [...new Set(renglones.map(it => it.id))];
+    if (ids.length === 0) return res.status(400).json({ error: 'Datos incompletos.' });
+    const productos = await pool.query('SELECT id, nombre, precio, tamanos FROM arreglos_florales WHERE id = ANY($1::int[]) AND COALESCE(disponible, true) = true', [ids]);
+    const porId = new Map(productos.rows.map(p => [p.id, p]));
+    const items = [];
+    for (const it of renglones) {
+      const producto = porId.get(it.id);
+      if (!producto) continue;
+      const precio = precioSegunTamanoRF(producto, it.variante);
+      if (precio === null) continue;
+      items.push({ id: producto.id, nombre: producto.nombre, precio, cantidad: it.cantidad });
+    }
+    if (items.length === 0) return res.json({ exito: true });
+    const total = items.reduce((s, it) => s + it.precio * it.cantidad, 0);
+    const nombre = req.session && req.session.clienteId ? (req.session.clienteNombre || null) : null;
     await pool.query(`
       INSERT INTO carritos_abandonados (email, nombre, items, total, actualizado_en, correo_enviado, recuperado)
       VALUES ($1,$2,$3,$4,NOW(),false,false)
       ON CONFLICT (email) DO UPDATE SET
         nombre = EXCLUDED.nombre, items = EXCLUDED.items, total = EXCLUDED.total,
         actualizado_en = NOW(), correo_enviado = false, recuperado = false
-    `, [email.trim().toLowerCase(), nombre?.trim() || null, JSON.stringify(carrito), Number(total) || 0]);
+    `, [email.trim().toLowerCase(), nombre, JSON.stringify(items), total]);
     res.json({ exito: true });
   } catch (error) {
     console.error('POST /api/carrito-temporal:', error);
@@ -2776,7 +2913,7 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     // stock de cada producto que lo compone -- el combo en sí no tiene un
     // stock propio independiente.
     const comboItems = await client.query(`
-      SELECT pci.producto_id, pci.cantidad, a.id AS componente_id, a.nombre AS componente_nombre, a.stock AS componente_stock, a.disponible AS componente_disponible
+      SELECT pci.producto_id, pci.cantidad, a.id AS componente_id, a.nombre AS componente_nombre, a.stock AS componente_stock, a.disponible AS componente_disponible, a.tiempo_entrega_dias AS componente_tiempo
       FROM producto_combo_items pci JOIN arreglos_florales a ON a.id = pci.componente_id
       WHERE pci.producto_id = ANY($1::int[])
       FOR UPDATE OF a
@@ -2813,7 +2950,12 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
     // Tiempo mínimo de preparación de cada producto -- antes el checkout solo
     // avisaba y se podían registrar pedidos imposibles de cumplir a tiempo.
     for (const producto of porId.values()) {
-      const dias = Math.max(0, Number(producto.tiempo_entrega_dias) || 0);
+      // Un combo tarda lo que tarde su pieza más lenta (o lo que tenga
+      // configurado el propio combo, si es más).
+      const diasPiezas = producto.es_combo
+        ? comboItems.rows.filter(ci => ci.producto_id === producto.id).map(ci => Number(ci.componente_tiempo) || 0)
+        : [];
+      const dias = Math.max(0, Number(producto.tiempo_entrega_dias) || 0, ...diasPiezas);
       if (dias === 0) continue;
       const fechaMinima = sumarDiasRF(hoyMx, dias);
       if (fecha < fechaMinima) {
