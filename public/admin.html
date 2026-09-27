@@ -199,6 +199,59 @@
             .ed-fotos, .ed-dos-columnas{ grid-template-columns:1fr; }
             .ed-fotos > div:first-child{ max-width:240px; }
         }
+    
+        /* ================= SISTEMA VISUAL DEL PANEL (fase 1) =================
+           Mismo lenguaje que el editor de productos: fondo cálido muy suave,
+           fucsia solo para acciones, verde tallo para lo completado, títulos
+           en Playfair y sin mayúsculas decorativas. */
+        #app-admin{ background:#faf7f8; }
+        .adm-card{ border-color:#ece6e9; box-shadow:0 1px 2px rgba(60,20,35,.04); }
+        .adm-input{ border-color:#e4dde0; border-radius:12px; }
+        .adm-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.12); }
+        .adm-label{ font-size:12.5px; font-weight:600; color:#4a4245; letter-spacing:0; }
+        .adm-section-title{ text-transform:none; letter-spacing:0; font-size:13px; color:#353535; }
+        .adm-badge{ font-size:11.5px; font-weight:600; letter-spacing:0; padding:.2rem .62rem; }
+        .adm-titulo{ font-family:'Playfair Display', serif !important; font-size:1.2rem !important; font-weight:600 !important; color:#2f2a2c !important; letter-spacing:0; }
+        .adm-titulo.adm-titulo-chico{ font-size:1.08rem !important; }
+
+        /* Encabezado de cada sección */
+        .adm-encabezado-vista{ padding:18px 28px !important; background:rgba(255,255,255,.92); backdrop-filter:saturate(1.2) blur(6px); border-color:#ece6e9 !important; }
+        #titulo-vista{ font-family:'Playfair Display', serif; font-size:1.5rem; font-weight:600; color:#2f2a2c; line-height:1.2; }
+        #subtitulo-vista{ font-size:13px; color:#8a7f83; margin-top:2px; }
+
+        /* Barra lateral: la sección activa se marca con calma */
+        .adm-sidebar{ border-color:#ece6e9 !important; }
+        .adm-nav-item{ color:#5f5559; }
+        .adm-nav-item:hover{ background:#faf4f7; color:#2f2a2c; }
+        .adm-nav-item.is-active{ background:#fbf1f5; color:#c2185b; box-shadow:none; font-weight:600; }
+        .adm-nav-item.is-active::before{ content:''; position:absolute; left:-12px; top:9px; bottom:9px; width:3px; border-radius:0 3px 3px 0; background:#c2185b; }
+
+        /* Números: una sola franja con divisiones, en lugar de tarjetas iguales */
+        .adm-stats{ gap:0 !important; background:#fff; border:1px solid #ece6e9; border-radius:16px; overflow:hidden; box-shadow:0 1px 2px rgba(60,20,35,.04); }
+        .adm-stats > .adm-card{ border:0 !important; border-radius:0 !important; box-shadow:none !important; padding:18px 22px !important; background:transparent; }
+        .adm-stats > .adm-card + .adm-card{ border-left:1px solid #ece6e9 !important; }
+        .adm-stats > .adm-card > div:first-child{ display:none !important; }
+        .adm-stats .min-w-0 > p:first-child{ font-size:12.5px !important; color:#8a7f83 !important; font-weight:500 !important; }
+        .adm-stats .min-w-0 > p:last-child{ color:#2f2a2c !important; font-size:1.55rem !important; font-weight:600 !important; line-height:1.25; margin-top:3px; letter-spacing:-.01em; }
+        @media (max-width:767px){
+            .adm-stats > .adm-card:nth-child(odd){ border-left:0 !important; }
+            .adm-stats > .adm-card:nth-child(n+3){ border-top:1px solid #ece6e9 !important; }
+        }
+
+        /* Etiquetas de estado: los azules y morados se suavizan hacia tonos
+           que combinan con el rosa de la marca; el verde pasa a verde tallo. */
+        .adm-badge.bg-blue-50{ background:#eef1f5 !important; color:#4f6173 !important; }
+        .adm-badge.bg-purple-50, .adm-badge.bg-violet-50, .adm-badge.bg-indigo-50{ background:#f4eef4 !important; color:#7d5a7f !important; }
+        .adm-badge.bg-green-50{ background:#edf3ed !important; color:#4a6b4e !important; }
+        .adm-badge.bg-amber-50, .adm-badge.bg-yellow-50{ background:#fbf3e4 !important; color:#94621a !important; }
+
+        /* Tablas y acciones: legibles, sin mayúsculas diminutas */
+        .adm-thead{ font-size:12px !important; font-weight:500; color:#8a7f83 !important; }
+        .adm-accion{ font-size:12.5px; font-weight:600; padding:4px 2px; border-radius:6px; }
+        .adm-accion:hover{ text-decoration:underline; }
+
+        /* Vistas previas sin imagen: un recuadro suave en lugar de una imagen rota */
+        #app-admin img[src=""], #app-admin img[id^="ib-preview"]:not([src]), #carrusel_preview:not([src]){ opacity:1 !important; background:#f7f1f4 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23d4c3cb' stroke-width='1.5' viewBox='0 0 24 24'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'/%3E%3C/svg%3E") center/22px no-repeat; }
     </style>
 </head>
 <body class="bg-brandGray font-sans text-brandDark min-h-screen">
@@ -284,7 +337,7 @@
         <nav id="sidebar-nav" class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
             <div class="adm-nav-item is-active" data-vista="dashboard">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-                Dashboard
+                Resumen
             </div>
             <div class="adm-nav-item" data-vista="catalogo">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
@@ -319,7 +372,7 @@
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" /></svg>
                 Menú del sitio
             </div>
-            <p class="text-[10px] font-bold text-gray-300 uppercase tracking-wider px-3 pt-4 pb-1">Administración</p>
+            <p class="text-[11.5px] font-medium text-gray-400 px-3 pt-5 pb-1">Administración</p>
             <div class="adm-nav-item" data-vista="equipo" data-solo-admin="1">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 Equipo
@@ -349,8 +402,11 @@
 
     <!-- Contenido -->
     <div class="flex-1 min-w-0">
-        <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
-            <h1 id="titulo-vista" class="text-lg font-semibold text-brandDark">Dashboard</h1>
+        <header class="adm-encabezado-vista bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-4 sticky top-0 z-20">
+            <div class="min-w-0">
+                <h1 id="titulo-vista">Resumen</h1>
+                <p id="subtitulo-vista">Lo más importante de tu tienda.</p>
+            </div>
             <button id="btn-recargar" title="Recargar datos" class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center transition text-gray-500">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             </button>
@@ -360,7 +416,7 @@
 
             <!-- ============ DASHBOARD ============ -->
             <section id="vista-dashboard">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="adm-stats grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div class="adm-card p-4 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-pink-50 text-brandFuchsia flex items-center justify-center shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z" /></svg>
@@ -389,7 +445,7 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="adm-card p-5 lg:col-span-2">
-                        <h3 class="text-sm font-semibold text-brandDark mb-3">Pedidos recientes</h3>
+                        <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark mb-3">Pedidos recientes</h3>
                         <div id="dash-pedidos-recientes" class="divide-y divide-gray-100"></div>
                     </div>
                     <div class="space-y-6">
@@ -401,7 +457,7 @@
                             <div id="dash-stock-bajo" class="space-y-2"></div>
                         </div>
                         <div class="adm-card p-5">
-                            <h3 class="text-sm font-semibold text-brandDark mb-3">Más vendidos (histórico reciente)</h3>
+                            <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark mb-3">Más vendidos (histórico reciente)</h3>
                             <div id="dash-populares" class="space-y-2"></div>
                         </div>
                     </div>
@@ -410,7 +466,7 @@
 
             <!-- ============ CATÁLOGO ============ -->
             <section id="vista-catalogo" class="hidden">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="adm-stats grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div class="adm-card p-4 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-gray-100 text-brandDark flex items-center justify-center shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
@@ -440,7 +496,7 @@
                 <div class="grid grid-cols-1 gap-6 items-start">
                     <div class="adm-card overflow-hidden flex flex-col">
                         <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-                            <h2 class="text-lg font-semibold text-brandDark">Catálogo actual</h2>
+                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Catálogo actual</h2>
                             <div class="flex items-center gap-4">
                                 <p id="conteo-catalogo" class="text-xs text-gray-400"></p>
                                 <button type="button" onclick="exportarCatalogoCSV()" class="text-xs font-semibold text-brandFuchsia hover:underline flex items-center gap-1">
@@ -488,7 +544,7 @@
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
-                                    <tr class="bg-white border-b border-gray-100 text-[10px] uppercase tracking-wider text-gray-500">
+                                    <tr class="bg-white border-b border-gray-100 adm-thead text-gray-500">
                                         <th class="px-4 py-3 w-8"><input type="checkbox" id="check-todos-catalogo" class="w-4 h-4 accent-brandFuchsia"></th>
                                         <th class="px-6 py-3">Producto</th>
                                         <th class="px-6 py-3">Estado</th>
@@ -505,7 +561,7 @@
 
             <!-- ============ PEDIDOS ============ -->
             <section id="vista-pedidos" class="hidden">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="adm-stats grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div class="adm-card p-4 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-gray-100 text-brandDark flex items-center justify-center shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z" /></svg>
@@ -547,7 +603,7 @@
 
                 <div class="adm-card overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-                        <h2 class="text-lg font-semibold text-brandDark">Pedidos Recibidos</h2>
+                        <h2 class="adm-titulo text-lg font-semibold text-brandDark">Pedidos recibidos</h2>
                         <div class="flex items-center gap-3">
                             <div class="flex items-center bg-gray-100 rounded-lg p-0.5 text-xs font-medium">
                                 <button type="button" id="btn-vista-lista-pedidos" onclick="cambiarVistaPedidos('lista')" class="px-3 py-1 rounded-md bg-white shadow-sm text-brandDark">Lista</button>
@@ -588,7 +644,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                             </button>
                         </div>
-                        <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-gray-400 uppercase mb-1">
+                        <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-gray-400 mb-1">
                             <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
                         </div>
                         <div id="grid-calendario-pedidos" class="grid grid-cols-7 gap-1"></div>
@@ -598,7 +654,7 @@
 
             <!-- ============ CLIENTES ============ -->
             <section id="vista-clientes" class="hidden">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="adm-stats grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div class="adm-card p-4 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-gray-100 text-brandDark flex items-center justify-center shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm6 3.13a4 4 0 00-3-3.87" /></svg>
@@ -626,7 +682,7 @@
                 </div>
                 <div class="adm-card overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-                        <h2 class="text-lg font-semibold text-brandDark">Clientes</h2>
+                        <h2 class="adm-titulo text-lg font-semibold text-brandDark">Clientes</h2>
                         <div class="flex items-center gap-3">
                             <p id="conteo-clientes" class="text-xs text-gray-400"></p>
                             <button type="button" onclick="exportarClientesCSV()" class="text-xs font-semibold text-brandFuchsia hover:underline flex items-center gap-1">
@@ -644,7 +700,7 @@
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse text-sm">
                             <thead>
-                                <tr class="bg-white border-b border-gray-100 text-[10px] uppercase tracking-wider text-gray-500">
+                                <tr class="bg-white border-b border-gray-100 adm-thead text-gray-500">
                                     <th class="px-6 py-3">Cliente</th>
                                     <th class="px-6 py-3">Pedidos</th>
                                     <th class="px-6 py-3">Total gastado</th>
@@ -658,7 +714,7 @@
 
                 <div class="adm-card overflow-hidden mt-6">
                     <div class="px-6 py-4 border-b border-gray-100">
-                        <h2 class="text-lg font-semibold text-brandDark">Recordatorios de tus clientes</h2>
+                        <h2 class="adm-titulo text-lg font-semibold text-brandDark">Recordatorios de tus clientes</h2>
                         <p class="text-xs text-gray-400 mt-0.5">Fechas que tus clientes guardaron para no olvidar (cumpleaños, aniversarios, etc.) -- ideal para contactarlos antes de que se les pase.</p>
                     </div>
                     <div id="lista-recordatorios" class="divide-y divide-gray-100"></div>
@@ -678,7 +734,7 @@
                         Descargar reporte
                     </button>
                 </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="adm-stats grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div class="adm-card p-4 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m9-8a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -706,16 +762,16 @@
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="adm-card p-5 lg:col-span-2">
-                        <h3 class="text-sm font-semibold text-brandDark mb-3">Ingresos por día</h3>
+                        <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark mb-3">Ingresos por día</h3>
                         <div class="h-64"><canvas id="grafico-ingresos"></canvas></div>
                     </div>
                     <div class="adm-card p-5">
-                        <h3 class="text-sm font-semibold text-brandDark mb-3">Más vendidos por ingreso</h3>
+                        <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark mb-3">Más vendidos por ingreso</h3>
                         <div id="fin-top-productos" class="space-y-2.5"></div>
                     </div>
                 </div>
                 <div class="adm-card p-5 mt-6">
-                    <h3 class="text-sm font-semibold text-brandDark mb-3">Pedidos por estado (en el periodo)</h3>
+                    <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark mb-3">Pedidos por estado (en el periodo)</h3>
                     <div id="fin-por-estado" class="flex flex-wrap gap-2"></div>
                 </div>
             </section>
@@ -724,7 +780,7 @@
             <section id="vista-envios" class="hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div class="adm-card p-6">
-                        <h2 class="text-lg font-semibold text-brandDark mb-1">Agregar zona de envío</h2>
+                        <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Agregar zona de envío</h2>
                         <p class="text-xs text-gray-400 mb-4">Estas zonas son las que puedes marcar en la cobertura de cada producto del catálogo.</p>
                         <form id="form-zona" class="space-y-4">
                             <input type="hidden" id="zona_id">
@@ -751,12 +807,12 @@
                         </form>
                     </div>
                     <div class="adm-card overflow-hidden lg:col-span-2">
-                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
-                            <div>
-                                <h2 class="text-lg font-semibold text-brandDark">Zonas de cobertura</h2>
+                        <div class="px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
+                            <div class="min-w-0 flex-1">
+                                <h2 class="adm-titulo text-lg font-semibold text-brandDark">Zonas de cobertura</h2>
                                 <p class="text-xs text-gray-400 mt-0.5">Lo que agregues, edites o desactives aquí se refleja directamente en el selector de ubicación de la tienda y en qué categorías se ven según la ciudad.</p>
                             </div>
-                            <input type="text" id="buscador-zonas" placeholder="Buscar ciudad o estado..." class="adm-input text-sm w-48 shrink-0">
+                            <div class="w-full md:w-64 shrink-0"><input type="text" id="buscador-zonas" placeholder="Buscar ciudad o estado..." class="adm-input text-sm"></div>
                         </div>
                         <div id="lista-zonas" class="divide-y divide-gray-100"></div>
                     </div>
@@ -767,7 +823,7 @@
             <section id="vista-cupones" class="hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div class="adm-card p-6">
-                        <h2 class="text-lg font-semibold text-brandDark mb-1">Crear cupón</h2>
+                        <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Crear cupón</h2>
                         <p class="text-xs text-gray-400 mb-4">Los cupones se aplican en el checkout con un código. Los que salen de canjear puntos se crean solos y no aparecen aquí para editar.</p>
                         <form id="form-cupon" class="space-y-4">
                             <div>
@@ -797,20 +853,20 @@
                                 <label class="adm-label">Fecha de inicio (opcional -- el cupón no funciona antes de esta fecha)</label>
                                 <input type="date" id="cupon_fecha_inicio" class="adm-input">
                             </div>
-                            <label class="flex items-center gap-2 text-xs text-gray-600 sm:col-span-2 cursor-pointer">
-                                <input type="checkbox" id="cupon_un_uso_por_cliente" class="w-4 h-4 accent-brandFuchsia">
-                                Un solo uso por cliente (ideal para "primera compra" o "bienvenida")
-                            </label>
                             <div>
                                 <label class="adm-label">Fecha de expiración (opcional)</label>
                                 <input type="date" id="cupon_fecha_expiracion" class="adm-input">
                             </div>
+                            <label class="flex items-center gap-2 text-[13px] text-gray-700 pt-1 sm:col-span-2 cursor-pointer">
+                                <input type="checkbox" id="cupon_un_uso_por_cliente" class="w-4 h-4 accent-brandFuchsia">
+                                Un solo uso por cliente (ideal para "primera compra" o "bienvenida")
+                            </label>
                             <button type="submit" class="w-full bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">Crear cupón</button>
                         </form>
                     </div>
                     <div class="adm-card overflow-hidden lg:col-span-2">
                         <div class="px-6 py-4 border-b border-gray-100">
-                            <h2 class="text-lg font-semibold text-brandDark">Cupones</h2>
+                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Cupones</h2>
                             <p class="text-xs text-gray-400 mt-0.5">Los marcados con una cuenta son de un cliente específico (normalmente, canjeados con puntos).</p>
                         </div>
                         <div id="lista-cupones" class="divide-y divide-gray-100"></div>
@@ -820,14 +876,11 @@
 
             <!-- ============ PÁGINA DE INICIO ============ -->
             <section id="vista-inicio-web" class="hidden">
-                <div class="adm-card p-6 max-w-2xl mb-6 border-l-4 border-amber-400 bg-amber-50">
-                    <p class="text-xs text-amber-800"><strong>Importante:</strong> las imágenes que subes como archivo se guardan en el disco del servidor, el cual Railway reinicia en cada despliegue -- por eso desaparecían. Usa la opción "Poner un link" con una imagen ya alojada en otro lugar (por ejemplo, una que subas a <a href="https://imgur.com" target="_blank" rel="noopener" class="underline font-semibold">imgur.com</a>) para que sobreviva a los despliegues. Si prefieres seguir subiendo archivos directo, pide que se conecte un "Volume" de Railway a la carpeta de subidas -- así tampoco se perderían.</p>
-                </div>
                 <div class="adm-card p-6 max-w-2xl mb-6">
-                    <h2 class="text-lg font-semibold text-brandDark mb-1">Portada</h2>
+                    <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Portada</h2>
                     <p class="text-xs text-gray-400 mb-4">La foto grande hasta arriba de la página de inicio.</p>
                     <div class="flex items-center gap-4 mb-3">
-                        <img id="ib-preview-hero" class="w-28 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
+                        <img id="ib-preview-hero" alt="" class="w-28 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50">
                         <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
                             <span id="ib-texto-hero">Subir un archivo</span>
                             <input type="file" accept="image/*" id="ib-archivo-hero" class="hidden">
@@ -840,10 +893,10 @@
                 </div>
 
                 <div class="adm-card p-6 max-w-2xl mb-6">
-                    <h2 class="text-lg font-semibold text-brandDark mb-1">Imagen de "Categoría no disponible"</h2>
+                    <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Imagen de "Categoría no disponible"</h2>
                     <p class="text-xs text-gray-400 mb-4">Aparece cuando alguien entra a una categoría que, por ahora, no tiene productos disponibles en su ciudad.</p>
                     <div class="flex items-center gap-4 mb-3">
-                        <img id="ib-preview-no-disponible" class="w-28 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
+                        <img id="ib-preview-no-disponible" alt="" class="w-28 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50">
                         <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
                             <span id="ib-texto-no-disponible">Subir un archivo</span>
                             <input type="file" accept="image/*" id="ib-archivo-no-disponible" class="hidden">
@@ -858,7 +911,7 @@
                 <div class="adm-card p-6 mb-6">
                     <div class="flex items-start justify-between mb-1">
                         <div>
-                            <h2 class="text-lg font-semibold text-brandDark">Carrusel: "Entregas el mismo día..."</h2>
+                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Carrusel: "Entregas el mismo día..."</h2>
                             <p class="text-xs text-gray-400 mt-0.5">Las tarjetas con foto y nombre que aparecen justo debajo del buscador del inicio.</p>
                         </div>
                         <button type="button" onclick="abrirFormCarrusel('categorias')" class="shrink-0 bg-brandFuchsia hover:bg-pink-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition">+ Agregar tarjeta</button>
@@ -869,7 +922,7 @@
                 <div class="adm-card p-6">
                     <div class="flex items-start justify-between mb-1">
                         <div>
-                            <h2 class="text-lg font-semibold text-brandDark">Carrusel: "Ocasiones"</h2>
+                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Carrusel: "Ocasiones"</h2>
                             <p class="text-xs text-gray-400 mt-0.5">Las tarjetas de solo foto (sin texto encima) más abajo en la página de inicio.</p>
                         </div>
                         <button type="button" onclick="abrirFormCarrusel('ocasiones')" class="shrink-0 bg-brandFuchsia hover:bg-pink-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition">+ Agregar tarjeta</button>
@@ -883,7 +936,7 @@
                 <div class="adm-card p-6">
                     <div class="flex items-start justify-between mb-1">
                         <div>
-                            <h2 class="text-lg font-semibold text-brandDark">Menú del sitio</h2>
+                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Menú del sitio</h2>
                             <p class="text-xs text-gray-400 mt-0.5">Las pestañas de hasta arriba (Cumpleaños, Ocasiones, Globos...) y todos sus submenús. Cada una lleva a donde tú decidas -- una categoría, una búsqueda, o cualquier otra página.</p>
                         </div>
                         <button type="button" onclick="abrirFormMenu(null, 0, null)" class="shrink-0 bg-brandFuchsia hover:bg-pink-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition">+ Agregar pestaña</button>
@@ -945,7 +998,7 @@
                         <div>
                             <label class="adm-label">Imagen</label>
                             <div class="flex items-center gap-3 mt-1">
-                                <img id="carrusel_preview" class="w-20 h-20 object-cover rounded-lg border border-gray-200 bg-gray-50" src="" style="opacity:.15">
+                                <img id="carrusel_preview" alt="" class="w-20 h-20 object-cover rounded-lg border border-gray-200 bg-gray-50">
                                 <div class="flex-1 space-y-2">
                                     <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline block">
                                         <span id="carrusel_texto_subir">Subir un archivo</span>
@@ -979,7 +1032,7 @@
             <section id="vista-equipo" class="hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div class="adm-card p-6">
-                        <h2 class="text-lg font-semibold text-brandDark mb-1">Agregar integrante</h2>
+                        <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Agregar integrante</h2>
                         <p class="text-xs text-gray-400 mb-4">Los "editores" pueden gestionar catálogo y pedidos, pero no el equipo, la configuración, los cupones ni las finanzas.</p>
                         <form id="form-usuario" class="space-y-4">
                             <div>
@@ -1005,7 +1058,7 @@
                         </form>
 
                         <div class="border-t border-gray-100 mt-6 pt-5">
-                            <h3 class="text-sm font-semibold text-brandDark mb-3">Cambiar mi contraseña</h3>
+                            <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark mb-3">Cambiar mi contraseña</h3>
                             <form id="form-cambiar-password" class="space-y-3">
                                 <input type="password" id="pw_actual" placeholder="Contraseña actual" required autocomplete="current-password" class="adm-input">
                                 <input type="password" id="pw_nueva" placeholder="Nueva contraseña (mínimo 8)" required minlength="8" autocomplete="new-password" class="adm-input">
@@ -1015,7 +1068,7 @@
                     </div>
                     <div class="adm-card overflow-hidden lg:col-span-2">
                         <div class="px-6 py-4 border-b border-gray-100">
-                            <h2 class="text-lg font-semibold text-brandDark">Cuentas del panel</h2>
+                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Cuentas del panel</h2>
                         </div>
                         <div id="lista-usuarios" class="divide-y divide-gray-100"></div>
                     </div>
@@ -1023,7 +1076,7 @@
 
                 <div class="adm-card overflow-hidden mt-6">
                     <div class="px-6 py-4 border-b border-gray-100">
-                        <h2 class="text-lg font-semibold text-brandDark">Bitácora del panel</h2>
+                        <h2 class="adm-titulo text-lg font-semibold text-brandDark">Bitácora del panel</h2>
                         <p class="text-xs text-gray-400 mt-0.5">Quién hizo qué desde el panel, más reciente primero.</p>
                     </div>
                     <div id="lista-bitacora" class="divide-y divide-gray-100 max-h-96 overflow-y-auto"></div>
@@ -1033,7 +1086,7 @@
             <!-- ============ CONFIGURACIÓN ============ -->
             <section id="vista-configuracion" class="hidden">
                 <div class="adm-card p-6 max-w-2xl">
-                    <h2 class="text-lg font-semibold text-brandDark mb-1">Configuración de la tienda</h2>
+                    <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Configuración de la tienda</h2>
                     <p class="text-xs text-gray-400 mb-5">Estos datos ya están conectados a las páginas públicas del sitio (WhatsApp, imágenes, redes sociales).</p>
                     <form id="form-configuracion" class="space-y-4">
                         <div>
@@ -1704,8 +1757,22 @@
     // Navegación entre vistas
     // =======================================================================
     const TITULOS_VISTA = {
-        dashboard: 'Dashboard', catalogo: 'Catálogo', pedidos: 'Pedidos', clientes: 'Clientes',
+        dashboard: 'Resumen', catalogo: 'Catálogo', pedidos: 'Pedidos', clientes: 'Clientes',
         finanzas: 'Finanzas', envios: 'Envíos', cupones: 'Cupones', 'inicio-web': 'Página de inicio', 'menu-sitio': 'Menú del sitio', equipo: 'Equipo', configuracion: 'Configuración'
+    };
+    // Una frase por sección: le dice a quien entra por primera vez para qué sirve.
+    const SUBTITULOS_VISTA = {
+        dashboard: 'Lo más importante de tu tienda.',
+        catalogo: 'Tus productos, sus precios y cuántas piezas quedan.',
+        pedidos: 'Todo lo que te han pedido, del más reciente al más antiguo.',
+        clientes: 'Quién te compra, cuánto y las fechas que no quieren olvidar.',
+        finanzas: 'Cuánto vendes y qué es lo que más se vende.',
+        envios: 'Las ciudades a las que entregas.',
+        cupones: 'Descuentos que tus clientes pueden usar al pagar.',
+        'inicio-web': 'Lo que ven tus clientes al entrar a la tienda.',
+        'menu-sitio': 'Las pestañas del menú principal de la tienda.',
+        equipo: 'Quién puede entrar al panel y qué puede hacer.',
+        configuracion: 'Datos de contacto, correos automáticos y ajustes generales.'
     };
     function cambiarVista(vista) {
         vistaActiva = vista;
@@ -1716,6 +1783,7 @@
             el.classList.toggle('is-active', el.dataset.vista === vista);
         });
         document.getElementById('titulo-vista').innerText = TITULOS_VISTA[vista] || 'Panel';
+        document.getElementById('subtitulo-vista').innerText = SUBTITULOS_VISTA[vista] || '';
         if (vista === 'finanzas' && catalogo.length >= 0) cargarFinanzas();
     }
     window.cambiarVista = cambiarVista;
@@ -2443,9 +2511,9 @@
                         <p class="text-[10px] text-gray-400 mt-1 truncate max-w-[150px]">${item.cobertura ? item.cobertura.split(',').map(c => (zonas.find(z => z.nombre === c.trim())?.etiqueta || c.trim())).join(', ') : 'Sin zona asignada'}</p>
                     </td>
                     <td class="px-6 py-3 text-right whitespace-nowrap">
-                        <button onclick="prepararEdicion(${item.id})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold uppercase tracking-wide mr-3">Editar</button>
-                        <button onclick="duplicarProducto(${item.id})" class="text-gray-500 hover:text-brandDark text-[11px] font-semibold uppercase tracking-wide mr-3">Duplicar</button>
-                        <button onclick="eliminarProducto(${item.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase tracking-wide">Eliminar</button>
+                        <button onclick="prepararEdicion(${item.id})" class="adm-accion text-brandDark hover:text-brandFuchsia mr-3">Editar</button>
+                        <button onclick="duplicarProducto(${item.id})" class="adm-accion text-gray-500 hover:text-brandDark mr-3">Duplicar</button>
+                        <button onclick="eliminarProducto(${item.id})" class="adm-accion text-red-600 hover:text-red-700">Eliminar</button>
                     </td>
                 </tr>`;
         }).join('');
@@ -3511,8 +3579,8 @@
                         <input type="checkbox" ${z.activa ? 'checked' : ''} onchange="toggleZonaActiva(${z.id}, this.checked)">
                         <span class="adm-switch-track"></span>
                     </label>
-                    <button onclick="editarZona(${z.id})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold uppercase">Editar</button>
-                    <button onclick="eliminarZona(${z.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase">Eliminar</button>
+                    <button onclick="editarZona(${z.id})" class="adm-accion text-brandDark hover:text-brandFuchsia">Editar</button>
+                    <button onclick="eliminarZona(${z.id})" class="adm-accion text-red-600 hover:text-red-700">Eliminar</button>
                 </div>
             </div>`).join('') : `<p class="text-center py-10 text-gray-500 text-sm">${filtroZonasTexto ? 'Ninguna zona coincide con tu búsqueda.' : 'Aún no hay zonas configuradas.'}</p>`;
     }
@@ -3629,7 +3697,7 @@
                         <input type="checkbox" ${c.activo ? 'checked' : ''} onchange="toggleCuponActivo(${c.id}, this.checked)">
                         <span class="adm-switch-track"></span>
                     </label>
-                    <button onclick="eliminarCupon(${c.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase">Eliminar</button>
+                    <button onclick="eliminarCupon(${c.id})" class="adm-accion text-red-600 hover:text-red-700">Eliminar</button>
                 </div>
             </div>`;
         }).join('') : '<p class="text-center py-10 text-gray-500 text-sm">Aún no hay cupones creados.</p>';
@@ -3723,8 +3791,8 @@
                 <div class="flex items-center gap-2 shrink-0">
                     <span class="adm-badge ${u.rol === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-gray-100 text-gray-500'}">${u.rol === 'admin' ? 'Admin' : 'Editor'}</span>
                     <span class="adm-badge ${u.activo ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}">${u.activo ? 'Activo' : 'Inactivo'}</span>
-                    <button onclick="abrirModalUsuario(${u.id})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold uppercase">Editar</button>
-                    ${u.id !== usuarioActual.id ? `<button onclick="eliminarUsuario(${u.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase">Eliminar</button>` : ''}
+                    <button onclick="abrirModalUsuario(${u.id})" class="adm-accion text-brandDark hover:text-brandFuchsia">Editar</button>
+                    ${u.id !== usuarioActual.id ? `<button onclick="eliminarUsuario(${u.id})" class="adm-accion text-red-600 hover:text-red-700">Eliminar</button>` : ''}
                 </div>
             </div>`).join('');
     }
@@ -3819,12 +3887,12 @@
 
             const previewHero = document.getElementById('ib-preview-hero');
             if (previewHero) {
-                previewHero.src = cfg.imagen_hero || '';
+                if (cfg.imagen_hero) previewHero.src = cfg.imagen_hero; else previewHero.removeAttribute('src');
                 previewHero.style.opacity = cfg.imagen_hero ? '1' : '.15';
             }
             const previewNoDisponible = document.getElementById('ib-preview-no-disponible');
             if (previewNoDisponible) {
-                previewNoDisponible.src = cfg.imagen_categoria_no_disponible || '';
+                if (cfg.imagen_categoria_no_disponible) previewNoDisponible.src = cfg.imagen_categoria_no_disponible; else previewNoDisponible.removeAttribute('src');
                 previewNoDisponible.style.opacity = cfg.imagen_categoria_no_disponible ? '1' : '.15';
             }
         } catch (error) {
@@ -3991,8 +4059,8 @@
                         <input type="checkbox" ${item.activo ? 'checked' : ''} onchange="toggleActivoCarrusel(${item.id}, this.checked)">
                         <span class="adm-switch-track"></span>
                     </label>
-                    <button type="button" onclick='abrirFormCarrusel("${tipo}", ${JSON.stringify(item).replace(/'/g, "&#39;")})' class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold uppercase px-1">Editar</button>
-                    <button type="button" onclick="eliminarTarjetaCarrusel(${item.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase px-1">Borrar</button>
+                    <button type="button" onclick='abrirFormCarrusel("${tipo}", ${JSON.stringify(item).replace(/'/g, "&#39;")})' class="adm-accion text-brandDark hover:text-brandFuchsia px-1">Editar</button>
+                    <button type="button" onclick="eliminarTarjetaCarrusel(${item.id})" class="adm-accion text-red-600 hover:text-red-700 px-1">Borrar</button>
                 </div>
             </div>
         `).join('') : '<p class="text-center py-8 text-gray-400 text-sm">Todavía no hay tarjetas aquí -- agrega la primera con el botón de arriba.</p>';
@@ -4006,7 +4074,7 @@
         document.getElementById('carrusel_imagen_url').value = item?.imagen_url || '';
         carruselImagenPendiente = item?.imagen_url || '';
         const preview = document.getElementById('carrusel_preview');
-        preview.src = item?.imagen_url || '';
+        if (item?.imagen_url) preview.src = item.imagen_url; else preview.removeAttribute('src');
         preview.style.opacity = item?.imagen_url ? '1' : '.15';
 
         // En "Ocasiones" las tarjetas no muestran texto encima de la foto
@@ -4177,9 +4245,9 @@
                     <input type="checkbox" ${nodo.activo ? 'checked' : ''} onchange="toggleActivoMenu(${nodo.id}, this.checked)">
                     <span class="adm-switch-track"></span>
                 </label>
-                ${!esUltimoNivel ? `<button type="button" onclick='event.stopPropagation(); abrirFormMenu(null, ${nodo.nivel + 1}, ${nodo.id})' class="text-brandFuchsia hover:underline text-[11px] font-semibold uppercase px-1">+ ${ETIQUETA_NIVEL[nodo.nivel + 1]}</button>` : ''}
-                <button type="button" onclick='event.stopPropagation(); abrirFormMenu(${JSON.stringify(nodo).replace(/'/g, "&#39;")}, ${nodo.nivel}, ${nodo.padre_id ?? 'null'})' class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold uppercase px-1">Editar</button>
-                <button type="button" onclick="event.stopPropagation(); eliminarNodoMenu(${nodo.id})" class="text-red-500 hover:text-red-700 text-[11px] font-semibold uppercase px-1">Borrar</button>
+                ${!esUltimoNivel ? `<button type="button" onclick='event.stopPropagation(); abrirFormMenu(null, ${nodo.nivel + 1}, ${nodo.id})' class="adm-accion text-brandFuchsia hover:underline px-1">+ ${ETIQUETA_NIVEL[nodo.nivel + 1]}</button>` : ''}
+                <button type="button" onclick='event.stopPropagation(); abrirFormMenu(${JSON.stringify(nodo).replace(/'/g, "&#39;")}, ${nodo.nivel}, ${nodo.padre_id ?? 'null'})' class="adm-accion text-brandDark hover:text-brandFuchsia px-1">Editar</button>
+                <button type="button" onclick="event.stopPropagation(); eliminarNodoMenu(${nodo.id})" class="adm-accion text-red-600 hover:text-red-700 px-1">Borrar</button>
             </div>
         `;
 
