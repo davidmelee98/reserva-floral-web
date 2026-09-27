@@ -1171,7 +1171,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const r = await fetch('/api/cupones/validar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ codigo, subtotal: subtotalCarrito() })
+            body: JSON.stringify({ codigo, subtotal: subtotalCarrito(), email: document.getElementById('p1-email')?.value.trim() || null })
         });
         const datos = await r.json();
         if (!r.ok) throw new Error(datos.error || 'No se pudo aplicar el cupón.');

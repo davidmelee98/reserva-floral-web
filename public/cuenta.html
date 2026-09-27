@@ -203,7 +203,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     <!-- Factura para quien compró SIN cuenta: se llega aquí desde el enlace
          del correo de confirmación (trae el número de pedido y su clave). -->
     <div id="factura-invitado" class="hidden max-w-sm mx-auto py-20 px-4 text-center">
-        <h1 class="text-lg font-semibold text-brandDark mb-1">Factura de tu pedido <span id="fi-numero"></span></h1>
+        <h1 class="text-lg font-semibold text-brandDark mb-4">Tu pedido <span id="fi-numero"></span></h1>
+        <div id="fi-estado" class="hidden text-left bg-white border border-gray-100 rounded-xl px-4 py-3 mb-6 text-sm space-y-1"></div>
+        <h2 class="text-sm font-semibold text-brandDark mb-1">Factura</h2>
         <p id="fi-mensaje" class="text-sm text-gray-500 mb-5">Cargando...</p>
         <button type="button" id="fi-btn-solicitar" onclick="abrirModalFactura(facturaInvitado.id)" class="hidden bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Solicitar factura</button>
         <a id="fi-btn-descargar" href="#" class="hidden inline-block bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">🧾 Descargar factura</a>
@@ -767,7 +769,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }).join('');
             const envio = Number(o.envio || 0);
             const subtotal = Number(o.total || 0) - envio;
-            const puedeCancelar = o.estado === 'Pendiente';
+            // Un pedido pagado ya no se cancela desde aquí (requiere reembolso).
+            const puedeCancelar = o.estado === 'Pendiente' && o.estado_pago !== 'aprobado';
             return `
                 <div class="bg-white rounded-2xl border border-gray-100 p-5">
                     <div class="flex items-center justify-between flex-wrap gap-2">
@@ -805,6 +808,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <div class="flex gap-4 mt-4 pt-3 border-t border-gray-100 flex-wrap items-center">
                         <button type="button" onclick="volverAPedir(${o.id})" class="text-brandFuchsia text-xs font-semibold hover:underline">Volver a pedir</button>
                         ${puedeCancelar ? `<button type="button" onclick="cancelarMiPedido(${o.id})" class="text-red-500 text-xs font-semibold hover:underline">Cancelar pedido</button>` : ''}
+                        ${o.estado_pago === 'aprobado' && o.estado !== 'Cancelado' ? `<span class="text-green-700 text-xs font-medium">✓ Pago confirmado</span>` : ''}
+                        ${o.estado === 'Pendiente' && o.estado_pago === 'aprobado' ? `<span class="text-gray-400 text-xs">¿Necesitas cancelarlo? Escríbenos por WhatsApp y te ayudamos con tu reembolso.</span>` : ''}
                         ${!o.factura_estado ? `<button type="button" onclick="abrirModalFactura(${o.id})" class="text-gray-500 text-xs font-semibold hover:underline flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>Solicitar factura</button>` : ''}
                         ${o.factura_estado === 'pendiente' ? `<span class="text-amber-600 text-xs font-medium flex items-center gap-1">🧾 Factura en trámite</span><button type="button" onclick="cancelarSolicitudFactura(${o.id})" class="text-gray-400 text-xs hover:underline">Cancelar</button>` : ''}
                         ${o.factura_estado === 'lista' ? `<a href="/api/cuenta/pedidos/${o.id}/factura" class="text-green-600 text-xs font-semibold hover:underline flex items-center gap-1">🧾 Descargar factura</a>` : ''}
@@ -856,6 +861,18 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const btnDescargar = document.getElementById('fi-btn-descargar');
         btnSolicitar.classList.add('hidden'); btnDescargar.classList.add('hidden');
         if (!datos) { mensaje.innerText = 'No encontramos este pedido. Revisa que el enlace esté completo.'; return; }
+        // Estado del pedido (para quien compró sin cuenta y no tiene "Mis pedidos").
+        const bloqueEstado = document.getElementById('fi-estado');
+        if (datos.estado && bloqueEstado) {
+            const estadoVisible = datos.descartado ? 'Cancelado' : datos.estado;
+            const pago = { aprobado: '✓ Confirmado', pendiente: 'Pendiente', rechazado: 'Rechazado', reembolsado: 'Reembolsado' }[datos.estado_pago] || 'Pendiente';
+            bloqueEstado.innerHTML = `
+                <p><span class="text-gray-500">Estatus:</span> <strong class="text-brandDark">${escaparHtml(estadoVisible)}</strong></p>
+                <p><span class="text-gray-500">Pago:</span> ${escaparHtml(pago)}</p>
+                ${datos.fecha_entrega ? `<p><span class="text-gray-500">Entrega:</span> ${escaparHtml(formatearFecha(datos.fecha_entrega))}${datos.horario_entrega ? ' · ' + escaparHtml(datos.horario_entrega) : ''}</p>` : ''}
+                ${datos.total !== undefined ? `<p><span class="text-gray-500">Total:</span> $${formatearPrecio(datos.total)}</p>` : ''}`;
+            bloqueEstado.classList.remove('hidden');
+        }
         if (datos.estado === 'Cancelado') { mensaje.innerText = 'Este pedido está cancelado, no se puede facturar.'; return; }
         if (datos.factura_estado === 'lista') {
             mensaje.innerText = 'Tu factura ya está lista.';

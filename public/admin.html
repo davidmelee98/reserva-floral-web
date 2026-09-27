@@ -850,6 +850,10 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                                 <label class="adm-label">Fecha de inicio (opcional -- el cupón no funciona antes de esta fecha)</label>
                                 <input type="date" id="cupon_fecha_inicio" class="adm-input">
                             </div>
+                            <label class="flex items-center gap-2 text-xs text-gray-600 sm:col-span-2 cursor-pointer">
+                                <input type="checkbox" id="cupon_un_uso_por_cliente" class="w-4 h-4 accent-brandFuchsia">
+                                Un solo uso por cliente (ideal para "primera compra" o "bienvenida")
+                            </label>
                             <div>
                                 <label class="adm-label">Fecha de expiración (opcional)</label>
                                 <input type="date" id="cupon_fecha_expiracion" class="adm-input">
@@ -2534,6 +2538,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                                 <span class="adm-badge ${colorEstado}">${escaparHtmlAdmin(o.estado || 'Pendiente')}</span>
                                 <span class="adm-badge ${colorEstadoPago}">${etiquetaEstadoPago}</span>
                                 ${o.descartado ? '<span class="adm-badge bg-gray-100 text-gray-500" title="El cliente corrigió sus datos antes de pagar y se generó un pedido nuevo">Descartado</span>' : ''}
+                                ${o.estado === 'Cancelado' && o.estado_pago === 'aprobado' ? '<span class="adm-badge bg-red-50 text-red-600" title="Este pedido se canceló pero su pago sigue sin reembolsarse. Al reembolsar en Mercado Pago, esta etiqueta desaparece sola.">⚠️ Reembolso pendiente</span>' : ''}
                             </div>
                             <p class="text-xs text-gray-500 mt-0.5">☎️ Contacto: ${escaparHtmlAdmin(o.cliente_telefono)}${o.email_contacto ? ` · ${escaparHtmlAdmin(o.email_contacto)}` : ''}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''} · Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</p>
                             <p class="text-xs text-gray-500 mt-0.5">${iconoTipo} ${escaparHtmlAdmin(o.direccion_entrega)}
@@ -2577,6 +2582,13 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         document.getElementById(id).addEventListener('change', renderListaPedidos);
     });
     async function cambiarEstadoPedido(id, estado) {
+        const pedido = ordenes.find(x => x.id === id);
+        // Cancelar un pedido que YA se pagó implica devolver el dinero -- se
+        // pide confirmar para que no se olvide el reembolso.
+        if (estado === 'Cancelado' && pedido && pedido.estado_pago === 'aprobado') {
+            const ok = confirm(`El pedido #${id} ya está PAGADO ($${Number(pedido.total || 0).toFixed(2)}).\n\nAl cancelarlo, recuerda hacer el reembolso desde tu cuenta de Mercado Pago. Al cliente le avisaremos por correo que recibirá su reembolso.\n\n¿Cancelar el pedido?`);
+            if (!ok) { renderListaPedidos(); return; } // regresa el selector a su estado anterior
+        }
         try {
             await jsonOError(await fetch(`/api/admin/ordenes/${id}/estado`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) }));
             const o = ordenes.find(x => x.id === id);
@@ -3198,6 +3210,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                         ${agotado ? '<span class="adm-badge bg-gray-100 text-gray-500">Agotado</span>' : ''}
                         ${vencido ? '<span class="adm-badge bg-red-50 text-red-600">Vencido</span>' : ''}
                         ${programado ? '<span class="adm-badge bg-blue-50 text-blue-600">Programado</span>' : ''}
+                        ${c.un_uso_por_cliente ? '<span class="adm-badge bg-gray-100 text-gray-600">1 por cliente</span>' : ''}
                         ${c.cliente_cuenta_id ? `<span class="adm-badge bg-blue-50 text-blue-600">${escaparHtmlAdmin(c.cliente_nombre || '')} ${escaparHtmlAdmin(c.cliente_apellido || '')}</span>` : ''}
                     </p>
                     <p class="text-[11px] text-gray-400">
@@ -3225,6 +3238,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
             valor: document.getElementById('cupon_valor').value,
             montoMinimo: document.getElementById('cupon_monto_minimo').value || 0,
             usosMaximos: document.getElementById('cupon_usos_maximos').value || null,
+            unUsoPorCliente: document.getElementById('cupon_un_uso_por_cliente').checked,
             fechaInicio: document.getElementById('cupon_fecha_inicio').value || null,
             fechaExpiracion: document.getElementById('cupon_fecha_expiracion').value || null
         };

@@ -69,6 +69,21 @@ const TAXONOMIA_CATALOGO = {
 const port = Number(process.env.PORT) || 3000;
 
 app.set('trust proxy', 1);
+
+// Encabezados de seguridad estándar (protección adicional):
+// - ninguna página del sitio puede mostrarse dentro de un marco de OTRO sitio
+//   (evita que alguien meta tu panel en un marco invisible para engañarte);
+// - el navegador no "adivina" el tipo de un archivo subido;
+// - no se filtran direcciones completas a otros sitios al navegar;
+// - en producción, el navegador solo usa HTTPS para este dominio.
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=15552000');
+  next();
+});
 app.use(express.json({ limit: '1mb' }));
 
 // ---------------------------------------------------------------------------
@@ -620,7 +635,8 @@ async function inicializarDB() {
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS correo_confirmacion_enviado BOOLEAN DEFAULT false',
     'ALTER TABLE recordatorios_cliente ADD COLUMN IF NOT EXISTS ultimo_aviso_para DATE',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descartado BOOLEAN DEFAULT false',
-    'CREATE TABLE IF NOT EXISTS correos_bajas (email VARCHAR(150) PRIMARY KEY, origen VARCHAR(20), creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
+    'CREATE TABLE IF NOT EXISTS correos_bajas (email VARCHAR(150) PRIMARY KEY, origen VARCHAR(20), creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
+    'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS un_uso_por_cliente BOOLEAN DEFAULT false'
   ];
 
   for (const query of alterQueries) {
@@ -1318,6 +1334,13 @@ app.patch('/api/cuenta/pedidos/:id/cancelar', requireClienteAuth, async (req, re
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Este pedido ya no se puede cancelar (puede que ya esté en preparación o no te pertenezca).' });
     }
+    // Un pedido YA PAGADO no se cancela desde aquí: necesita un reembolso, y
+    // eso lo hace una persona. Antes se cancelaba sin avisarle a nadie, y el
+    // reembolso que promete el Centro de Ayuda nunca ocurría.
+    if (actual.rows[0].estado_pago === 'aprobado') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Tu pedido ya está pagado. Para cancelarlo y recibir tu reembolso, escríbenos por WhatsApp y con gusto te ayudamos.' });
+    }
     // Antes el cliente podía cancelar pero el stock NUNCA regresaba al
     // inventario (y si después el admin lo marcaba como cancelado, tampoco,
     // porque ya estaba cancelado).
@@ -1325,6 +1348,10 @@ app.patch('/api/cuenta/pedidos/:id/cancelar', requireClienteAuth, async (req, re
     const resultado = await client.query(`UPDATE ordenes SET estado='Cancelado' WHERE id=$1 RETURNING *`, [id]);
     await client.query('COMMIT');
     reabastecidos.forEach(p => avisarRestockRF(p.id, p.nombre));
+    // Se te avisa, para que no prepares un pedido que el cliente ya canceló.
+    avisarAdminsRF(`El cliente canceló el pedido #${id}`,
+      `<h2 style="font-size:16px;margin:0 0 8px;">El cliente canceló su pedido #${id}</h2>
+       <p style="font-size:13px;color:#666;">${escaparHtmlServidorRF(resultado.rows[0].cliente_nombre || 'El cliente')} lo canceló desde su cuenta antes de pagarlo. No hay nada que reembolsar; el stock ya regresó al inventario.</p>`);
     res.json(resultado.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');
@@ -1526,7 +1553,7 @@ app.get('/api/pedidos/:id/factura-invitado', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0 || !tokenValidoRF(req.query.token)) return res.status(404).json({ error: 'No se encontró ese pedido.' });
   try {
-    const r = await pool.query('SELECT id, estado, total, fecha_entrega, factura_estado FROM ordenes WHERE id=$1 AND token_invitado=$2', [id, req.query.token]);
+    const r = await pool.query('SELECT id, estado, estado_pago, total, fecha_entrega, horario_entrega, factura_estado, descartado FROM ordenes WHERE id=$1 AND token_invitado=$2', [id, req.query.token]);
     if (r.rowCount === 0) return res.status(404).json({ error: 'No se encontró ese pedido.' });
     res.json(r.rows[0]);
   } catch (error) {
@@ -2321,6 +2348,19 @@ function esVentaRF(o) {
   return o.estado !== 'Cancelado' && (o.estado_pago === 'aprobado' || (o.estado || 'Pendiente') !== 'Pendiente');
 }
 
+// ¿Esta persona ya usó este cupón en otro pedido? (por su correo o por su
+// cuenta). Los pedidos cancelados no cuentan: el uso se devolvió.
+async function cuponYaUsadoPorRF(db, codigo, email, clienteId) {
+  if (!email && !clienteId) return false;
+  const r = await db.query(
+    `SELECT 1 FROM ordenes WHERE UPPER(cupon_codigo) = UPPER($1) AND estado <> 'Cancelado'
+       AND (($2::text IS NOT NULL AND LOWER(email_contacto) = LOWER($2::text)) OR ($3::int IS NOT NULL AND cliente_cuenta_id = $3::int))
+     LIMIT 1`,
+    [codigo, email ? String(email).trim() : null, clienteId || null]
+  );
+  return r.rowCount > 0;
+}
+
 function problemaFechasCuponRF(cupon) {
   const hoy = hoyMexicoRF();
   const inicio = fechaCalendarioRF(cupon.fecha_inicio);
@@ -2431,7 +2471,7 @@ function construirCorreoConfirmacion(orden) {
     <p style="font-size:13px;margin:4px 0;"><strong>Total:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${escaparHtmlServidorRF(orden.direccion_entrega)}</p>
-    ${orden.token_invitado ? `<p style="font-size:12px;color:#888;margin:16px 0 0;">¿Necesitas factura? <a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#c2185b;">Solicítala aquí</a>.</p>` : ''}
+    ${orden.token_invitado ? `<p style="font-size:12px;color:#888;margin:16px 0 0;"><a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#c2185b;">Consulta el estado de tu pedido o solicita tu factura aquí</a>.</p>` : ''}
   `;
   return { titulo: 'Confirmación de pedido', asunto: `Recibimos tu pedido #${orden.id} — Reserva Floral`, cuerpo };
 }
@@ -2463,6 +2503,8 @@ function construirCorreoEstadoActualizado(orden, estadoNuevo) {
     <p style="font-size:13px;margin:4px 0;"><strong>Pedido:</strong> #${orden.id}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${escaparHtmlServidorRF(orden.direccion_entrega || '')}</p>
+    ${estadoNuevo === 'Cancelado' && orden.estado_pago === 'aprobado' ? `<p style="font-size:13px;color:#3a3a3a;background:#f7eef2;border-radius:10px;padding:10px 12px;margin:14px 0 0;">Como ya habías pagado, te reembolsaremos <strong>$${Number(orden.total || 0).toFixed(2)}</strong> en el mismo método de pago que usaste. Dependiendo de tu banco, puede tardar algunos días en reflejarse.</p>` : ''}
+    ${!orden.cliente_cuenta_id && orden.token_invitado ? `<p style="margin-top:16px;"><a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#c2185b;font-size:13px;">Ver mi pedido</a></p>` : ''}
   `;
   return { titulo: mensaje.titulo, asunto: `${mensaje.asunto} — Pedido #${orden.id}`, cuerpo };
 }
@@ -2544,6 +2586,21 @@ async function revisarRecordatoriosClientesRF() {
     }
   } catch (error) {
     console.error('No se pudieron revisar los recordatorios:', error?.message || error);
+  }
+}
+
+// Aviso por correo a todos los administradores activos, para eventos que
+// requieren que alguien actúe (un reembolso pendiente, un pago tardío...).
+async function avisarAdminsRF(asunto, cuerpoHtml) {
+  if (!resendClient) return;
+  try {
+    const admins = await pool.query("SELECT email FROM usuarios_admin WHERE rol='admin' AND activo=true");
+    if (!admins.rows.length) return;
+    const html = await plantillaBaseCorreo(asunto, cuerpoHtml + `<p style="margin-top:16px;"><a href="${URL_SITIO}/admin" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Abrir el panel</a></p>`);
+    await Promise.all(admins.rows.map(a => resendClient.emails.send({ from: CORREO_REMITENTE, to: a.email, subject: asunto, html })
+      .catch(err => console.error('No se pudo avisar a un administrador:', err?.message || err))));
+  } catch (error) {
+    console.error('No se pudo avisar a los administradores:', error?.message || error);
   }
 }
 
@@ -2703,7 +2760,7 @@ async function revisarCarritosAbandonadosRF() {
 // checkout antes de completar la compra. La validación de verdad (la que
 // realmente cuenta) se repite dentro de POST /api/ordenes.
 app.post('/api/cupones/validar', limitadorPedidos, async (req, res) => {
-  const { codigo, subtotal } = req.body;
+  const { codigo, subtotal, email } = req.body;
   const subtotalNum = Number(subtotal);
   if (!codigo?.trim() || !Number.isFinite(subtotalNum) || subtotalNum <= 0) {
     return res.status(400).json({ error: 'Faltan datos para validar el cupón.' });
@@ -2719,6 +2776,9 @@ app.post('/api/cupones/validar', limitadorPedidos, async (req, res) => {
     if (cupon.usos_maximos !== null && cupon.usos_actuales >= cupon.usos_maximos) return res.status(400).json({ error: 'Este cupón ya alcanzó su límite de usos.' });
     if (Number(cupon.monto_minimo) > subtotalNum) return res.status(400).json({ error: `Este cupón requiere una compra mínima de $${Number(cupon.monto_minimo).toFixed(2)}.` });
     if (cupon.cliente_cuenta_id && cupon.cliente_cuenta_id !== clienteIdSesion) return res.status(400).json({ error: 'Este cupón no está disponible para tu cuenta.' });
+    if (cupon.un_uso_por_cliente && await cuponYaUsadoPorRF(pool, cupon.codigo, typeof email === 'string' && email.includes('@') ? email : null, clienteIdSesion)) {
+      return res.status(400).json({ error: 'Ya usaste este cupón en una compra anterior.' });
+    }
 
     let descuento = cupon.tipo === 'porcentaje' ? subtotalNum * (Number(cupon.valor) / 100) : Number(cupon.valor);
     descuento = Math.min(descuento, subtotalNum);
@@ -3003,6 +3063,9 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       if (cupon.usos_maximos !== null && cupon.usos_actuales >= cupon.usos_maximos) throw Object.assign(new Error('Este cupón ya alcanzó su límite de usos.'), { statusCode: 400 });
       if (Number(cupon.monto_minimo) > subtotal) throw Object.assign(new Error(`Este cupón requiere una compra mínima de $${Number(cupon.monto_minimo).toFixed(2)}.`), { statusCode: 400 });
       if (cupon.cliente_cuenta_id && cupon.cliente_cuenta_id !== clienteIdSesion) throw Object.assign(new Error('Este cupón no está disponible para tu cuenta.'), { statusCode: 400 });
+      if (cupon.un_uso_por_cliente && await cuponYaUsadoPorRF(client, cupon.codigo, emailContacto, clienteIdSesion)) {
+        throw Object.assign(new Error('Ya usaste este cupón en una compra anterior.'), { statusCode: 400 });
+      }
 
       descuento = cupon.tipo === 'porcentaje' ? subtotal * (Number(cupon.valor) / 100) : Number(cupon.valor);
       descuento = Math.min(descuento, subtotal);
@@ -3232,6 +3295,9 @@ app.post('/api/pagos/webhook', async (req, res) => {
       if (actualizada.rows[0]?.estado === 'Cancelado') {
         await pool.query('INSERT INTO pedido_notas (orden_id, autor, nota) VALUES ($1, $2, $3)',
           [ordenId, 'Sistema', '⚠️ Se recibió el PAGO de este pedido después de que se canceló. Revisa si hay existencia para entregarlo o reembólsalo desde Mercado Pago.']);
+        avisarAdminsRF(`⚠️ Pago recibido de un pedido cancelado (#${ordenId})`,
+          `<h2 style="font-size:16px;margin:0 0 8px;">Llegó el pago de un pedido ya cancelado</h2>
+           <p style="font-size:13px;color:#666;">El pedido <strong>#${ordenId}</strong> se había cancelado (por ejemplo, porque su pago en OXXO no llegó a tiempo), pero Mercado Pago acaba de confirmar su pago de <strong>$${Number(actualizada.rows[0]?.total || 0).toFixed(2)}</strong>. Revisa si hay existencia para entregarlo o reembólsalo desde Mercado Pago.</p>`);
       }
     }
   } catch (error) {
@@ -4132,7 +4198,7 @@ app.get('/api/admin/cupones', requireAuth, async (req, res) => {
 });
 
 app.post('/api/admin/cupones', requireAuth, async (req, res) => {
-  const { codigo, tipo, valor, montoMinimo, usosMaximos, fechaInicio, fechaExpiracion } = req.body || {};
+  const { codigo, tipo, valor, montoMinimo, usosMaximos, fechaInicio, fechaExpiracion, unUsoPorCliente } = req.body || {};
   if (!codigo?.trim()) return res.status(400).json({ error: 'El código es obligatorio.' });
   if (!['monto_fijo', 'porcentaje'].includes(tipo)) return res.status(400).json({ error: 'Tipo de cupón inválido.' });
   const valorNum = Number(valor);
@@ -4143,14 +4209,15 @@ app.post('/api/admin/cupones', requireAuth, async (req, res) => {
   }
   try {
     const resultado = await pool.query(
-      `INSERT INTO cupones (codigo, tipo, valor, monto_minimo, usos_maximos, fecha_inicio, fecha_expiracion)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      `INSERT INTO cupones (codigo, tipo, valor, monto_minimo, usos_maximos, fecha_inicio, fecha_expiracion, un_uso_por_cliente)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [
         codigo.trim().toUpperCase(), tipo, valorNum,
         Number.isFinite(Number(montoMinimo)) ? Number(montoMinimo) : 0,
         Number.isFinite(Number(usosMaximos)) && Number(usosMaximos) > 0 ? Number(usosMaximos) : null,
         fechaInicio || null,
-        fechaExpiracion || null
+        fechaExpiracion || null,
+        unUsoPorCliente === true
       ]
     );
     res.status(201).json(resultado.rows[0]);
