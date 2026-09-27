@@ -207,9 +207,12 @@
 <!-- PANTALLA DE CARGA -->
 <!-- ============================================================= -->
 <div id="pantalla-carga" class="fixed inset-0 z-[300] bg-brandGray flex items-center justify-center">
-    <div class="flex flex-col items-center gap-3">
-        <div class="w-10 h-10 border-[3px] border-brandFuchsia border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-xs text-gray-400">Cargando panel...</p>
+    <div class="flex flex-col items-center gap-5">
+        <img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="h-12 w-auto" draggable="false">
+        <div class="flex items-center gap-2.5">
+            <div class="w-4 h-4 border-2 border-brandFuchsia border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-xs text-gray-400">Cargando panel...</p>
+        </div>
     </div>
 </div>
 
@@ -217,8 +220,9 @@
 <!-- PANTALLA: PRIMER ARRANQUE (crear cuenta admin) -->
 <!-- ============================================================= -->
 <div id="pantalla-bootstrap" class="hidden fixed inset-0 z-[290] bg-gradient-to-br from-brandFuchsia to-[#7a0f3d] items-center justify-center px-4">
-    <div class="adm-scale-in bg-white rounded-2xl shadow-2xl w-full max-w-[420px] p-8">
-        <div class="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center text-2xl mb-4">🌷</div>
+    <div class="w-full max-w-[420px] flex flex-col items-center">
+    <img src="/logo-reserva-floral-claro-720.png" alt="Reserva Floral" class="h-16 w-auto mb-7" draggable="false">
+    <div class="adm-scale-in bg-white rounded-2xl shadow-2xl w-full p-8">
         <h1 class="text-xl font-serif font-semibold text-brandDark">Configura tu panel</h1>
         <p class="text-sm text-gray-500 mt-1 mb-6">Es la primera vez que se abre este panel. Crea la cuenta principal de administrador para continuar.</p>
         <form id="form-bootstrap" class="space-y-4">
@@ -238,16 +242,18 @@
             <button type="submit" id="bs-btn" class="w-full bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">Crear cuenta y entrar</button>
         </form>
     </div>
+    </div>
 </div>
 
 <!-- ============================================================= -->
 <!-- PANTALLA: LOGIN -->
 <!-- ============================================================= -->
 <div id="pantalla-login" class="hidden fixed inset-0 z-[280] bg-gradient-to-br from-brandFuchsia to-[#7a0f3d] items-center justify-center px-4">
-    <div class="adm-scale-in bg-white rounded-2xl shadow-2xl w-full max-w-[380px] p-8">
-        <div class="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center text-2xl mb-4">🌷</div>
-        <h1 class="text-xl font-serif font-semibold text-brandDark">Reserva Floral</h1>
-        <p class="text-sm text-gray-500 mt-1 mb-6">Inicia sesión para entrar al panel de administración.</p>
+    <div class="w-full max-w-[380px] flex flex-col items-center">
+    <img src="/logo-reserva-floral-claro-720.png" alt="Reserva Floral" class="h-16 w-auto mb-7" draggable="false">
+    <div class="adm-scale-in bg-white rounded-2xl shadow-2xl w-full p-8">
+        <h1 class="text-xl font-serif font-semibold text-brandDark">Inicia sesión</h1>
+        <p class="text-sm text-gray-500 mt-1 mb-6">Entra con tu correo para administrar la tienda.</p>
         <form id="form-login" class="space-y-4">
             <div>
                 <label class="adm-label">Correo electrónico</label>
@@ -261,6 +267,7 @@
             <button type="submit" id="login-btn" class="w-full bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">Iniciar sesión</button>
         </form>
     </div>
+    </div>
 </div>
 
 <!-- ============================================================= -->
@@ -270,12 +277,9 @@
 
     <!-- Sidebar -->
     <aside class="adm-sidebar bg-white border-r border-gray-200 lg:min-h-screen lg:sticky lg:top-0 lg:h-screen flex flex-col">
-        <div class="px-5 py-5 flex items-center gap-2.5 border-b border-gray-100">
-            <div class="w-9 h-9 rounded-full bg-brandFuchsia/10 flex items-center justify-center text-lg">🌷</div>
-            <div>
-                <p class="font-serif font-semibold text-brandDark leading-tight">Reserva Floral</p>
-                <p class="text-[10px] text-gray-400">Panel de administración</p>
-            </div>
+        <div class="px-5 py-5 border-b border-gray-100">
+            <img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="h-10 w-auto" draggable="false">
+            <p class="text-[11px] text-gray-400 mt-2">Panel de administración</p>
         </div>
         <nav id="sidebar-nav" class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
             <div class="adm-nav-item is-active" data-vista="dashboard">
