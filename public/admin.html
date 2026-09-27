@@ -62,6 +62,143 @@
         .adm-preview-card{ border-radius:14px; overflow:hidden; border:1px solid #eef0f2; background:#fff; transition:box-shadow .15s ease; }
         .adm-preview-image{ aspect-ratio:1/1; background:#f7f7f8; display:flex; align-items:center; justify-content:center; overflow:hidden; }
         .adm-preview-image img{ width:100%; height:100%; object-fit:cover; }
+    
+        /* ================= EDITOR DE PRODUCTO =================
+           Paleta: fucsia de marca solo para acciones; rosa pálido solo en
+           la vista previa; verde "tallo" para lo completado. */
+        .ed-editor{ position:fixed; inset:0; z-index:150; background:#fff; }
+        .ed-editor.is-abriendo{ animation:edEntrada .22s ease-out; }
+        @keyframes edEntrada{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+        @media (prefers-reduced-motion: reduce){ .ed-editor.is-abriendo{ animation:none; } }
+        .ed-editor :is(button, a, summary, label.ed-zona-foto, label.ed-galeria-agregar):focus-visible{ outline:2px solid #c2185b; outline-offset:2px; }
+        .ed-encabezado{ display:flex; align-items:center; gap:14px; padding:14px 28px; border-bottom:1px solid #ece6e9; background:#fff; }
+        .ed-volver{ display:inline-flex; align-items:center; gap:2px; color:#6b6b6b; font-size:13px; font-weight:500; padding:8px 10px 8px 4px; border-radius:10px; }
+        .ed-volver:hover{ background:#f7f2f4; color:#353535; }
+        .ed-titulo{ font-family:'Playfair Display', serif; font-size:1.45rem; font-weight:600; color:#2f2a2c; line-height:1.2; }
+        .ed-estado{ align-items:center; gap:7px; font-size:12px; font-weight:500; padding:6px 12px; border-radius:999px; background:#f6f1f3; color:#7a6068; white-space:nowrap; }
+        .ed-estado::before{ content:''; width:7px; height:7px; border-radius:999px; background:#c2185b; }
+        .ed-estado.is-listo{ background:#edf3ed; color:#4a6b4e; }
+        .ed-estado.is-listo::before{ background:#5b7f5f; }
+        .ed-link-tienda{ font-size:12.5px; font-weight:600; color:#c2185b; white-space:nowrap; }
+        .ed-link-tienda:hover{ text-decoration:underline; }
+        .ed-btn-primario{ display:inline-flex; align-items:center; justify-content:center; gap:7px; background:#c2185b; color:#fff; font-weight:600; font-size:14px; padding:10px 18px; border-radius:12px; transition:background-color .15s ease; white-space:nowrap; }
+        .ed-btn-primario:hover{ background:#a8144e; }
+        .ed-btn-primario:disabled{ opacity:.6; cursor:wait; }
+        .ed-btn-secundario{ display:inline-flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; padding:9px 16px; border-radius:12px; border:1px solid #e4dde0; color:#353535; background:#fff; white-space:nowrap; }
+        .ed-btn-secundario:hover{ background:#faf6f8; }
+        .ed-scroll{ flex:1; overflow-y:auto; }
+        .ed-rejilla{ max-width:1320px; margin:0 auto; display:grid; grid-template-columns:212px minmax(0,1fr) 330px; gap:56px; padding:40px 32px 72px; align-items:start; }
+
+        .ed-indice{ position:sticky; top:40px; }
+        .ed-indice ol{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; }
+        .ed-indice button{ display:flex; align-items:center; gap:12px; width:100%; padding:9px 10px; border-radius:10px; font-size:13.5px; color:#6b6b6b; text-align:left; transition:background-color .15s ease, color .15s ease; }
+        .ed-indice button:hover{ background:#faf6f8; color:#353535; }
+        .ed-num{ position:relative; width:24px; height:24px; border-radius:999px; border:1.5px solid #d9cfd3; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:#8a7c82; flex-shrink:0; transition:all .2s ease; }
+        .ed-indice li.is-activo button{ color:#c2185b; font-weight:600; background:#fbf1f5; }
+        .ed-indice li.is-activo .ed-num{ border-color:#c2185b; color:#c2185b; }
+        .ed-indice li.is-completo .ed-num{ background:#5b7f5f; border-color:#5b7f5f; font-size:0; }
+        .ed-indice li.is-completo .ed-num::after{ content:''; width:9px; height:5px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg) translate(1px,-1px); }
+
+        .ed-contenido{ max-width:660px; }
+        .ed-seccion{ padding:36px 0; border-top:1px solid #ece6e9; scroll-margin-top:28px; }
+        .ed-seccion:first-child{ border-top:0; padding-top:0; }
+        .ed-seccion-titulo{ font-family:'Playfair Display', serif; font-size:1.3rem; font-weight:600; color:#2f2a2c; display:flex; align-items:center; gap:4px; line-height:1.25; }
+        .ed-seccion-ayuda{ font-size:13.5px; color:#7a6f73; margin:5px 0 22px; max-width:56ch; line-height:1.55; }
+        .ed-campo{ margin-top:22px; }
+        .ed-seccion-ayuda + .ed-campo, .ed-seccion-ayuda + .ed-fotos{ margin-top:0; }
+        .ed-etiqueta{ display:block; font-size:13px; font-weight:600; color:#353535; margin-bottom:7px; }
+        .ed-opcional{ font-family:'Poppins', sans-serif; font-size:11px; font-weight:500; color:#9a8d92; background:#f6f1f3; padding:2px 9px; border-radius:999px; margin-left:8px; vertical-align:middle; }
+        .ed-ayuda{ font-size:12px; color:#8a7f83; margin-top:7px; line-height:1.55; }
+        .ed-error{ font-size:12px; color:#c62828; margin-top:7px; }
+        .ed-enlace{ color:#c2185b; font-weight:600; }
+        .ed-enlace:hover{ text-decoration:underline; }
+        .ed-input{ font-size:14px; padding:.7rem .85rem; border-radius:12px; border-color:#e4dde0; }
+        .ed-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.12); }
+        textarea.ed-input{ line-height:1.55; resize:vertical; }
+        .ed-precio{ position:relative; max-width:250px; }
+        .ed-precio .ed-input{ padding-left:28px; padding-right:52px; }
+        .ed-precio input::-webkit-outer-spin-button, .ed-precio input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+        .ed-precio input[type=number]{ -moz-appearance:textfield; }
+        .ed-precio-signo, .ed-precio-moneda{ position:absolute; top:50%; transform:translateY(-50%); color:#9a8d92; pointer-events:none; }
+        .ed-precio-signo{ left:14px; font-size:14px; }
+        .ed-precio-moneda{ right:14px; font-size:11.5px; font-weight:600; }
+        .ed-agregar{ display:inline-flex; align-items:center; gap:6px; margin-top:12px; font-size:13px; font-weight:600; color:#c2185b; padding:6px 2px; border-radius:8px; }
+        .ed-agregar:hover{ text-decoration:underline; }
+        .ed-dos-columnas{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+        .ed-dos-columnas .ed-campo{ margin-top:0; }
+        .ed-interruptor{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:24px; padding:14px 16px; border:1px solid #ece6e9; border-radius:14px; cursor:pointer; }
+        .ed-casilla{ display:inline-flex; align-items:center; gap:10px; font-size:14px; font-weight:500; color:#353535; cursor:pointer; }
+        .ed-casilla input{ width:18px; height:18px; accent-color:#c2185b; }
+        .ed-final{ display:flex; justify-content:flex-end; gap:10px; padding-top:28px; border-top:1px solid #ece6e9; }
+
+        .ed-fotos{ display:grid; grid-template-columns:220px minmax(0,1fr); gap:36px; }
+        .ed-zona-foto{ display:block; position:relative; aspect-ratio:1/1; border:1.5px dashed #dccfd5; border-radius:18px; background:#fcf8fa; cursor:pointer; overflow:hidden; transition:border-color .15s ease, background-color .15s ease; }
+        .ed-zona-foto:hover, .ed-zona-foto.is-arrastrando{ border-color:#c2185b; background:#fbf1f5; }
+        .ed-zona-foto.tiene-foto{ border-style:solid; border-color:#ece6e9; }
+        .ed-zona-foto-vista{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#d4c3cb; }
+        .ed-zona-foto-vista img{ width:100%; height:100%; object-fit:cover; }
+        .ed-zona-foto-vista svg{ width:44px; height:44px; margin-bottom:34px; }
+        .ed-zona-foto-texto{ position:absolute; left:12px; right:12px; bottom:12px; display:flex; align-items:center; justify-content:center; gap:6px; background:rgba(255,255,255,.94); border-radius:10px; padding:8px; font-size:12.5px; font-weight:600; color:#c2185b; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+        .ed-galeria{ display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:10px; }
+        .ed-galeria-foto{ position:relative; aspect-ratio:1/1; border-radius:12px; overflow:hidden; background:#f6f1f3; }
+        .ed-galeria-foto img{ width:100%; height:100%; object-fit:cover; }
+        .ed-galeria-quitar{ position:absolute; top:5px; right:5px; width:24px; height:24px; border-radius:999px; background:rgba(255,255,255,.95); color:#6b6b6b; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.15); }
+        .ed-galeria-quitar:hover{ color:#c62828; }
+        .ed-galeria-agregar{ aspect-ratio:1/1; border:1.5px dashed #dccfd5; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:#c2185b; font-size:12px; font-weight:600; cursor:pointer; background:#fcf8fa; text-align:center; padding:6px; transition:border-color .15s ease, background-color .15s ease; }
+        .ed-galeria-agregar:hover, .ed-galeria-agregar.is-arrastrando{ border-color:#c2185b; background:#fbf1f5; }
+        .ed-detalles summary{ font-size:12px; color:#8a7f83; cursor:pointer; margin-top:12px; }
+        .ed-detalles summary:hover{ color:#353535; }
+
+        /* La columna completa es la que se queda fija (antes solo su interior,
+           que no tenía espacio para quedarse y se iba al bajar). */
+        .ed-lateral{ position:sticky; top:40px; }
+        /* Los renglones que se agregan con botones usan el mismo estilo. */
+        #editor-producto .adm-input{ border-radius:12px; border-color:#e4dde0; }
+        #editor-producto .adm-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.12); }
+        #editor-producto .adm-input.is-invalid{ border-color:#e53935; box-shadow:0 0 0 3px rgba(229,57,53,.10); }
+        .ed-lateral-titulo{ font-size:12.5px; font-weight:600; color:#8a7f83; margin-bottom:10px; }
+        .ed-escenario{ background:#fbf1f5; border-radius:26px; padding:34px 44px; display:flex; justify-content:center; }
+        .ed-tarjeta{ width:100%; max-width:220px; background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 14px 34px -14px rgba(194,24,91,.32); }
+        .ed-tarjeta-foto{ aspect-ratio:1/1; background:#f7eff3; display:flex; align-items:center; justify-content:center; }
+        .ed-tarjeta-foto img{ width:100%; height:100%; object-fit:cover; }
+        .ed-tarjeta-texto{ padding:12px 14px 15px; }
+        .ed-tarjeta-nombre{ font-size:14px; font-weight:500; color:#353535; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .ed-tarjeta-nombre.es-vacio{ color:#b9aab0; }
+        .ed-tarjeta-precio{ font-size:15px; font-weight:700; color:#1f1f1f; margin-top:4px; }
+        #preview-vivo-categoria{ display:none !important; }
+        .ed-lista-revision{ margin-top:30px; }
+        #ed-revision{ list-style:none; margin:0; padding:0; }
+        #ed-revision button{ display:flex; align-items:center; gap:11px; width:100%; padding:7px 4px; font-size:13.5px; color:#7a6f73; text-align:left; border-radius:8px; }
+        #ed-revision button:hover{ background:#faf6f8; }
+        .ed-check{ position:relative; width:18px; height:18px; border-radius:999px; border:1.5px solid #d9cfd3; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; transition:all .2s ease; }
+        #ed-revision li.is-ok button{ color:#353535; }
+        #ed-revision li.is-ok .ed-check{ background:#5b7f5f; border-color:#5b7f5f; }
+        #ed-revision li.is-ok .ed-check::after{ content:''; width:8px; height:4px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg) translate(1px,-1px); }
+        .ed-recomendado{ margin-left:auto; font-size:11px; color:#a4979c; }
+
+        @media (max-width:1180px){
+            .ed-rejilla{ grid-template-columns:minmax(0,1fr) 290px; gap:40px; }
+            .ed-indice{ display:none; }
+        }
+        @media (max-width:639px){
+            .ed-solo-escritorio{ display:none !important; }
+            #subtitulo-formulario{ display:none; }
+            .ed-encabezado .ed-titulo{ font-size:1.1rem; }
+            .ed-encabezado .ed-btn-primario{ padding:9px 14px; font-size:13.5px; }
+        }
+        @media (max-width:860px){
+            .ed-encabezado{ padding:12px 16px; gap:10px; }
+            .ed-titulo{ font-size:1.2rem; }
+            .ed-rejilla{ grid-template-columns:1fr; gap:28px; padding:20px 16px 48px; }
+            .ed-lateral{ order:-1; }
+            .ed-lateral{ position:static; }
+            .ed-escenario{ padding:18px; border-radius:20px; }
+            .ed-tarjeta{ display:flex; max-width:none; }
+            .ed-tarjeta-foto{ width:88px; flex-shrink:0; }
+            .ed-lista-revision{ display:none; }
+            .ed-fotos, .ed-dos-columnas{ grid-template-columns:1fr; }
+            .ed-fotos > div:first-child{ max-width:240px; }
+        }
     </style>
 </head>
 <body class="bg-brandGray font-sans text-brandDark min-h-screen">
@@ -158,7 +295,7 @@
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-4a4 4 0 11-8 0 4 4 0 018 0zm6 4a4 4 0 10-3-6.65" /></svg>
                 Clientes
             </div>
-            <div class="adm-nav-item" data-vista="finanzas">
+            <div class="adm-nav-item" data-vista="finanzas" data-solo-admin="1">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m9-8a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 Finanzas
             </div>
@@ -166,7 +303,7 @@
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 Envíos
             </div>
-            <div class="adm-nav-item" data-vista="cupones">
+            <div class="adm-nav-item" data-vista="cupones" data-solo-admin="1">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v3a2 2 0 010 4v3a2 2 0 002 2h2m6-14h2a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2h-2M9 9h6m-6 3h6m-6 3h6" /></svg>
                 Cupones
             </div>
@@ -296,213 +433,19 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                    <div class="adm-card p-6 lg:col-span-1">
-                        <div class="flex items-center justify-between mb-1">
-                            <h2 id="titulo-formulario" class="text-lg font-semibold text-brandDark">Agregar Nuevo Arreglo</h2>
-                            <a id="link-ver-tienda" href="#" target="_blank" class="hidden text-[11px] font-semibold text-brandFuchsia hover:underline shrink-0">Ver en la tienda ↗</a>
-                        </div>
-                        <p id="subtitulo-formulario" class="text-xs text-gray-400 mb-4">Completa los datos del arreglo para publicarlo en la tienda.</p>
-
-                        <form id="form-arreglo" class="space-y-5" novalidate>
-                            <input type="hidden" id="producto_id">
-
-                            <!-- Vista previa en vivo: así se va a ver la tarjeta del
-                                 producto en la tienda, actualizándose mientras escribes. -->
-                            <div class="adm-preview-card">
-                                <div class="adm-preview-image">
-                                    <img id="preview-vivo-imagen" class="hidden" alt="Vista previa">
-                                    <svg id="preview-vivo-icono" class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                </div>
-                                <div class="p-3">
-                                    <p id="preview-vivo-nombre" class="text-sm font-medium text-brandDark leading-tight truncate">Así se verá tu producto</p>
-                                    <div class="flex items-center justify-between mt-1">
-                                        <span id="preview-vivo-precio" class="text-sm font-bold text-gray-900">$0.00</span>
-                                        <span id="preview-vivo-categoria" class="adm-badge bg-gray-100 text-gray-400">Sin categoría</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3">
-                                <p class="adm-section-title">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    Información general
-                                </p>
-                                <div>
-                                    <label class="adm-label">Nombre del arreglo</label>
-                                    <input type="text" id="nombre" required class="adm-input">
-                                    <p class="hidden text-[11px] text-red-600 mt-1" data-error-for="nombre">Escribe un nombre para el arreglo.</p>
-                                </div>
-                            <div>
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <label class="adm-label !mb-0">Clasificación (categoría, subcategoría y tipo)</label>
-                                    <button type="button" onclick="agregarFilaClasificacion()" class="text-[11px] font-semibold text-brandFuchsia hover:underline">+ Agregar clasificación</button>
-                                </div>
-                                <p class="text-[10px] text-gray-400 mb-2">Un mismo producto puede pertenecer a varias a la vez -- ej. "Flores y plantas → Por presentación → Ramos" Y "Cumpleaños → Flores y Plantas → Rosas". Así aparece en todos los lugares donde debería.</p>
-                                <div id="lista-clasificaciones" class="space-y-2"></div>
-                                <p class="hidden text-[11px] text-red-600 mt-1" data-error-for="clasificaciones">Agrega al menos una clasificación completa (categoría, subcategoría y tipo).</p>
-                            </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="adm-label">Precio base ($ MXN)</label>
-                                        <input type="number" id="precio" step="0.01" min="0" required class="adm-input">
-                                        <p class="hidden text-[11px] text-red-600 mt-1" data-error-for="precio">Ingresa un precio válido.</p>
-                                    </div>
-                                    <div>
-                                        <label class="adm-label">Stock disponible</label>
-                                        <input type="number" id="stock" step="1" min="0" value="1" class="adm-input">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="adm-label">Tiempo de entrega de este producto</label>
-                                    <select id="tiempo_entrega_dias" class="adm-input">
-                                        <option value="0">Mismo día (el normal de la tienda)</option>
-                                        <option value="1">Al día siguiente</option>
-                                        <option value="2">Hasta 2 días</option>
-                                        <option value="3">Hasta 3 días (ej. envío por paquetería)</option>
-                                        <option value="5">Hasta 5 días</option>
-                                        <option value="7">Hasta 7 días</option>
-                                    </select>
-                                    <p class="text-[10px] text-gray-400 mt-1">No limita en qué categorías aparece -- solo hace que, si el cliente elige una fecha más próxima de lo que este producto tarda, le salga un aviso en el pago.</p>
-                                </div>
-                                <div class="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2.5 bg-gray-50">
-                                    <div>
-                                        <p class="text-xs font-semibold text-brandDark">Visible en la tienda</p>
-                                        <p class="text-[10px] text-gray-500">Si lo apagas, el producto se oculta sin borrarlo.</p>
-                                    </div>
-                                    <label class="adm-switch">
-                                        <input type="checkbox" id="disponible" checked>
-                                        <span class="adm-switch-track"></span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3 border-t border-gray-100 pt-4">
-                                <p class="adm-section-title">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    Imágenes
-                                </p>
-                                <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">Usar un link (URL) es más seguro que "Subir desde tu computadora" -- lo que subas como archivo puede perderse si Railway reinicia el servidor sin tener un Volume conectado.</p>
-                                <div class="flex gap-3 items-start">
-                                    <div id="preview-imagen-principal" class="w-16 h-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-300 shrink-0 overflow-hidden">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    </div>
-                                    <div class="flex-1 space-y-1.5">
-                                        <label class="adm-label">Imagen principal (URL o sube un archivo)</label>
-                                        <input type="url" id="imagen_url" placeholder="https://..." class="adm-input">
-                                        <label class="inline-flex items-center gap-1.5 text-[11px] text-brandFuchsia font-semibold cursor-pointer hover:underline">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                                            <span id="texto-subir-principal">Subir desde tu computadora</span>
-                                            <input type="file" id="archivo_imagen_principal" accept="image/*" class="hidden">
-                                        </label>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="adm-label">Galería adicional (URLs separadas por coma)</label>
-                                    <textarea id="imagenes" rows="2" placeholder="url1.jpg, url2.jpg" class="adm-input"></textarea>
-                                    <label class="inline-flex items-center gap-1.5 text-[11px] text-brandFuchsia font-semibold cursor-pointer hover:underline mt-1.5">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                                        <span id="texto-subir-galeria">Agregar fotos a la galería</span>
-                                        <input type="file" id="archivo_imagenes_galeria" accept="image/*" multiple class="hidden">
-                                    </label>
-                                    <div id="preview-galeria" class="flex flex-wrap gap-2 mt-2"></div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-4 border-t border-b border-gray-100 py-4 -mx-6 px-6 bg-gray-50/60">
-                                <p class="adm-section-title">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 10.5V5a2 2 0 012-2z" /></svg>
-                                    Tamaños y variantes
-                                </p>
-
-                                <!-- Tamaños / cantidades: cada uno con su propio precio. El
-                                     cliente los ve como botones para elegir en la tienda, y el
-                                     precio del producto cambia según cuál elija. -->
-                                <div>
-                                    <div class="flex items-center justify-between mb-1.5">
-                                        <label class="adm-label !mb-0">Tamaños o cantidades (cada uno con su precio)</label>
-                                        <button type="button" onclick="agregarFilaTamano()" class="text-[11px] font-semibold text-brandFuchsia hover:underline">+ Agregar tamaño</button>
-                                    </div>
-                                    <p class="text-[10px] text-gray-400 mb-2">Si agregas más de uno, el cliente elige en la tienda y ese precio es el que se cobra. Si no agregas ninguno, se usa el "Precio base" de arriba.</p>
-                                    <input type="hidden" id="tamanos">
-                                    <div id="lista-tamanos" class="space-y-2"></div>
-                                </div>
-
-                                <!-- Variantes: grupos de opciones (Color, Listón, etc.) que el
-                                     cliente elige antes de agregar al carrito -- sin cambiar el
-                                     precio, solo para anotar su preferencia en el pedido. -->
-                                <div class="border-t border-gray-200 pt-3">
-                                    <div class="flex items-center justify-between mb-1.5">
-                                        <label class="adm-label !mb-0">Variantes u opciones a elegir (no cambian el precio)</label>
-                                        <button type="button" onclick="agregarGrupoVariante()" class="text-[11px] font-semibold text-brandFuchsia hover:underline">+ Agregar grupo</button>
-                                    </div>
-                                    <p class="text-[10px] text-gray-400 mb-2">Ej. un grupo llamado "Color" con las opciones Rosa, Rojo y Blanco.</p>
-                                    <input type="hidden" id="variante_personalizada">
-                                    <div id="lista-variantes" class="space-y-3"></div>
-                                </div>
-
-                                <div class="border-t border-gray-200 pt-3">
-                                    <label class="adm-label">Ciudades de cobertura</label>
-                                    <div id="chips-cobertura" class="flex flex-wrap gap-2"></div>
-                                    <p class="text-[10px] text-gray-400 mt-1.5">¿Falta una ciudad? Agrégala desde <button type="button" onclick="cambiarVista('envios')" class="text-brandFuchsia font-semibold hover:underline">Envíos</button>.</p>
-                                </div>
-
-                                <!-- Combo: este producto en realidad junta otros productos que
-                                     ya existen en el catálogo (ej. "Ramo + Peluche + Chocolates"). -->
-                                <div class="border-t border-gray-200 pt-3">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" id="es_combo" class="w-4 h-4 accent-brandFuchsia">
-                                        <span class="text-xs font-semibold text-brandDark">Este producto es un combo (junta otros productos del catálogo)</span>
-                                    </label>
-                                    <div id="bloque-combo" class="hidden mt-2 space-y-2">
-                                        <p class="text-[10px] text-gray-400">Busca y agrega los productos que forman este combo. El precio del combo lo sigues poniendo tú arriba -- esto es solo para saber qué incluye.</p>
-                                        <div class="relative">
-                                            <input type="text" id="buscador-combo" placeholder="Busca un producto por nombre..." class="adm-input !text-sm">
-                                            <div id="resultados-combo" class="hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
-                                        </div>
-                                        <div id="lista-combo-items" class="space-y-1.5"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3 border-t border-gray-100 pt-4">
-                                <p class="adm-section-title">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17h6m-6-4h6m-6-4h6M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                                    Descripción y detalles
-                                </p>
-                                <div>
-                                    <label class="adm-label">Descripción comercial</label>
-                                    <textarea id="descripcion" rows="3" placeholder="Descripción comercial del arreglo..." class="adm-input"></textarea>
-                                </div>
-                                <div>
-                                    <label class="adm-label">Especificaciones (una por línea)</label>
-                                    <textarea id="especificaciones" rows="5" placeholder="12 Rosas Rojas.
-Follaje.
-Tarjeta y Moño.
-Altura promedio del arreglo: 55 cm.
-Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
-                                    <p class="text-[10px] text-gray-400 mt-1">Se muestra como lista con viñetas en "Ver descripción".</p>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-2 pt-1 sticky bottom-0 bg-white pb-1 -mx-6 px-6 border-t border-gray-100 pt-4">
-                                <button type="submit" id="btn-guardar" class="flex-1 bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                    Guardar
-                                </button>
-                                <button type="button" onclick="limpiarFormulario()" class="bg-gray-100 hover:bg-gray-200 text-brandDark font-semibold py-2.5 px-4 rounded-lg text-sm transition">Cancelar</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="adm-card overflow-hidden flex flex-col lg:col-span-2">
+                <div class="grid grid-cols-1 gap-6 items-start">
+                    <div class="adm-card overflow-hidden flex flex-col">
                         <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-                            <h2 class="text-lg font-semibold text-brandDark">Catálogo Actual</h2>
-                            <div class="flex items-center gap-3">
+                            <h2 class="text-lg font-semibold text-brandDark">Catálogo actual</h2>
+                            <div class="flex items-center gap-4">
                                 <p id="conteo-catalogo" class="text-xs text-gray-400"></p>
                                 <button type="button" onclick="exportarCatalogoCSV()" class="text-xs font-semibold text-brandFuchsia hover:underline flex items-center gap-1">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                     Exportar CSV
+                                </button>
+                                <button type="button" onclick="nuevoProducto()" class="ed-btn-primario">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" /></svg>
+                                    Nuevo producto
                                 </button>
                             </div>
                         </div>
@@ -1033,7 +976,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div class="adm-card p-6">
                         <h2 class="text-lg font-semibold text-brandDark mb-1">Agregar integrante</h2>
-                        <p class="text-xs text-gray-400 mb-4">Los "editores" pueden gestionar catálogo y pedidos, pero no el equipo ni la configuración.</p>
+                        <p class="text-xs text-gray-400 mb-4">Los "editores" pueden gestionar catálogo y pedidos, pero no el equipo, la configuración, los cupones ni las finanzas.</p>
                         <form id="form-usuario" class="space-y-4">
                             <div>
                                 <label class="adm-label">Nombre</label>
@@ -1226,6 +1169,250 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
 </div>
 
 <!-- Toasts -->
+<!-- =====================================================================
+     EDITOR DE PRODUCTO (pantalla completa). Se abre con "Nuevo producto",
+     "Editar" o "Duplicar". Conserva todos los ids del formulario anterior,
+     así que guardar, validar y subir fotos siguen funcionando igual.
+     ===================================================================== -->
+<div id="editor-producto" class="ed-editor hidden" role="dialog" aria-modal="true" aria-labelledby="titulo-formulario">
+  <form id="form-arreglo" novalidate class="h-full flex flex-col">
+    <input type="hidden" id="producto_id">
+
+    <header class="ed-encabezado">
+      <button type="button" onclick="cerrarEditorProducto()" class="ed-volver" title="Volver al catálogo">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        <span class="hidden sm:inline">Catálogo</span>
+      </button>
+      <div class="min-w-0 flex-1">
+        <h2 id="titulo-formulario" class="ed-titulo">Nuevo producto</h2>
+        <p id="subtitulo-formulario" class="text-xs text-gray-500 truncate">Llena los datos y guárdalo para publicarlo en la tienda.</p>
+      </div>
+      <p id="ed-estado-global" class="ed-estado hidden md:flex"></p>
+      <a id="link-ver-tienda" href="#" target="_blank" class="hidden ed-link-tienda ed-solo-escritorio">Ver en la tienda</a>
+      <button type="button" onclick="cerrarEditorProducto()" class="ed-btn-secundario ed-solo-escritorio">Cancelar</button>
+      <button type="submit" id="btn-guardar" class="ed-btn-primario">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+        <span id="texto-btn-guardar">Guardar producto</span>
+      </button>
+    </header>
+
+    <div id="ed-scroll" class="ed-scroll">
+      <div class="ed-rejilla">
+
+        <!-- Índice: registrar un producto sí es una secuencia, por eso va numerado.
+             Cada paso se marca en verde cuando ya está completo. -->
+        <nav class="ed-indice" aria-label="Secciones del producto">
+          <ol id="ed-lista-indice">
+            <li><button type="button" data-ir-seccion="ed-sec-basico"><span class="ed-num">1</span><span>Lo básico</span></button></li>
+            <li><button type="button" data-ir-seccion="ed-sec-fotos"><span class="ed-num">2</span><span>Fotos</span></button></li>
+            <li><button type="button" data-ir-seccion="ed-sec-ubicacion"><span class="ed-num">3</span><span>Dónde aparece</span></button></li>
+            <li><button type="button" data-ir-seccion="ed-sec-opciones"><span class="ed-num">4</span><span>Opciones</span></button></li>
+            <li><button type="button" data-ir-seccion="ed-sec-inventario"><span class="ed-num">5</span><span>Inventario y entrega</span></button></li>
+            <li><button type="button" data-ir-seccion="ed-sec-combo"><span class="ed-num">6</span><span>Combo</span></button></li>
+          </ol>
+        </nav>
+
+        <div class="ed-contenido">
+
+          <!-- 1. LO BÁSICO -->
+          <section id="ed-sec-basico" class="ed-seccion" data-seccion-editor>
+            <h3 class="ed-seccion-titulo">Lo básico</h3>
+            <p class="ed-seccion-ayuda">El nombre y el precio con los que el cliente va a encontrar este producto.</p>
+            <div class="ed-campo">
+              <label for="nombre" class="ed-etiqueta">Nombre del producto</label>
+              <input type="text" id="nombre" required class="adm-input ed-input" placeholder="Ej. Ramo de 12 rosas rojas" autocomplete="off">
+              <p class="hidden ed-error" data-error-for="nombre">Escribe el nombre del producto.</p>
+            </div>
+            <div class="ed-campo">
+              <label for="precio" class="ed-etiqueta">Precio</label>
+              <div class="ed-precio">
+                <span class="ed-precio-signo">$</span>
+                <input type="number" id="precio" step="0.01" min="0" required class="adm-input ed-input" placeholder="0.00">
+                <span class="ed-precio-moneda">MXN</span>
+              </div>
+              <p class="ed-ayuda">Si tiene varios tamaños con distinto precio, cada uno se agrega en <button type="button" class="ed-enlace" data-ir-seccion="ed-sec-opciones">Opciones</button>.</p>
+              <p class="hidden ed-error" data-error-for="precio">Escribe un precio válido (puede ser 0).</p>
+            </div>
+            <div class="ed-campo">
+              <label for="descripcion" class="ed-etiqueta">Descripción <span class="ed-opcional">opcional</span></label>
+              <textarea id="descripcion" rows="3" class="adm-input ed-input" placeholder="Cuéntale al cliente cómo es y para qué ocasión es ideal."></textarea>
+            </div>
+            <div class="ed-campo">
+              <label for="especificaciones" class="ed-etiqueta">Qué incluye <span class="ed-opcional">opcional</span></label>
+              <textarea id="especificaciones" rows="4" class="adm-input ed-input" placeholder="12 rosas rojas&#10;Follaje de temporada&#10;Tarjeta y moño&#10;Altura aproximada: 55 cm"></textarea>
+              <p class="ed-ayuda">Una cosa por renglón. En la tienda se muestra como lista.</p>
+            </div>
+          </section>
+
+          <!-- 2. FOTOS -->
+          <section id="ed-sec-fotos" class="ed-seccion" data-seccion-editor>
+            <h3 class="ed-seccion-titulo">Fotos</h3>
+            <p class="ed-seccion-ayuda">La foto principal es la que se ve en el catálogo y en las búsquedas.</p>
+            <div class="ed-fotos">
+              <div>
+                <p class="ed-etiqueta">Foto principal</p>
+                <label for="archivo_imagen_principal" id="ed-zona-principal" class="ed-zona-foto">
+                  <div id="preview-imagen-principal" class="ed-zona-foto-vista"></div>
+                  <span class="ed-zona-foto-texto">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    <span id="texto-subir-principal">Subir o arrastrar foto</span>
+                  </span>
+                  <input type="file" id="archivo_imagen_principal" accept="image/*" class="hidden">
+                </label>
+                <label for="imagen_url" class="ed-ayuda block mt-3">O pega el enlace de una foto</label>
+                <input type="url" id="imagen_url" placeholder="https://..." class="adm-input ed-input !text-xs mt-1">
+              </div>
+              <div>
+                <p class="ed-etiqueta">Más fotos <span class="ed-opcional">opcional</span></p>
+                <div class="ed-galeria">
+                  <div id="preview-galeria" class="contents"></div>
+                  <label for="archivo_imagenes_galeria" id="ed-zona-galeria" class="ed-galeria-agregar">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" /></svg>
+                    <span id="texto-subir-galeria">Agregar</span>
+                    <input type="file" id="archivo_imagenes_galeria" accept="image/*" multiple class="hidden">
+                  </label>
+                </div>
+                <p class="ed-ayuda">Se muestran en la página del producto. Puedes elegir varias a la vez.</p>
+                <details class="ed-detalles">
+                  <summary>Ver o editar los enlaces de las fotos</summary>
+                  <textarea id="imagenes" rows="2" placeholder="https://foto1.jpg, https://foto2.jpg" class="adm-input ed-input !text-xs mt-2"></textarea>
+                </details>
+              </div>
+            </div>
+          </section>
+
+          <!-- 3. DÓNDE APARECE -->
+          <section id="ed-sec-ubicacion" class="ed-seccion" data-seccion-editor>
+            <h3 class="ed-seccion-titulo">Dónde aparece</h3>
+            <p class="ed-seccion-ayuda">En qué partes de la tienda se muestra y a qué ciudades se puede enviar.</p>
+            <div class="ed-campo">
+              <p class="ed-etiqueta">Clasificación</p>
+              <p class="ed-ayuda !mt-0 mb-2">Elige categoría, subcategoría y tipo. Un producto puede estar en varios lugares a la vez: por ejemplo en «Ramos» y también en «Cumpleaños».</p>
+              <div id="lista-clasificaciones" class="space-y-2"></div>
+              <button type="button" onclick="agregarFilaClasificacion()" class="ed-agregar">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" /></svg>
+                Agregar otra clasificación
+              </button>
+              <p class="hidden ed-error" data-error-for="clasificaciones">Elige al menos una categoría para que el producto aparezca en la tienda.</p>
+            </div>
+            <div class="ed-campo">
+              <p class="ed-etiqueta">Ciudades de entrega</p>
+              <div id="chips-cobertura" class="flex flex-wrap gap-2"></div>
+              <p class="ed-ayuda">¿Falta una ciudad? Agrégala en <button type="button" onclick="salirDelEditorA('envios')" class="ed-enlace">Envíos</button>.</p>
+            </div>
+          </section>
+
+          <!-- 4. OPCIONES -->
+          <section id="ed-sec-opciones" class="ed-seccion" data-seccion-editor>
+            <h3 class="ed-seccion-titulo">Opciones para el cliente <span class="ed-opcional">opcional</span></h3>
+            <p class="ed-seccion-ayuda">Tamaños con precio distinto, o detalles que el cliente elige antes de comprar.</p>
+            <div class="ed-campo">
+              <p class="ed-etiqueta">Tamaños</p>
+              <p class="ed-ayuda !mt-0 mb-2">Cada tamaño lleva su propio precio y el cliente elige cuál quiere. Ej. «12 rosas» a $450 y «24 rosas» a $750.</p>
+              <input type="hidden" id="tamanos">
+              <div id="lista-tamanos" class="space-y-2"></div>
+              <button type="button" onclick="agregarFilaTamano()" class="ed-agregar">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" /></svg>
+                Agregar tamaño
+              </button>
+            </div>
+            <div class="ed-campo">
+              <p class="ed-etiqueta">Detalles a elegir</p>
+              <p class="ed-ayuda !mt-0 mb-2">No cambian el precio; solo quedan anotados en el pedido. Ej. un grupo «Color del listón» con Rosa, Rojo y Blanco.</p>
+              <input type="hidden" id="variante_personalizada">
+              <div id="lista-variantes" class="space-y-3"></div>
+              <button type="button" onclick="agregarGrupoVariante()" class="ed-agregar">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" /></svg>
+                Agregar un detalle a elegir
+              </button>
+            </div>
+          </section>
+
+          <!-- 5. INVENTARIO Y ENTREGA -->
+          <section id="ed-sec-inventario" class="ed-seccion" data-seccion-editor>
+            <h3 class="ed-seccion-titulo">Inventario y entrega</h3>
+            <p class="ed-seccion-ayuda">Cuántas piezas hay y cuánto tarda en prepararse.</p>
+            <div class="ed-dos-columnas">
+              <div class="ed-campo">
+                <label for="stock" class="ed-etiqueta">Piezas disponibles</label>
+                <input type="number" id="stock" step="1" min="0" value="1" class="adm-input ed-input">
+                <p class="ed-ayuda">Baja sola con cada venta. En 0 se muestra como agotado.</p>
+              </div>
+              <div class="ed-campo">
+                <label for="tiempo_entrega_dias" class="ed-etiqueta">Tiempo de preparación</label>
+                <select id="tiempo_entrega_dias" class="adm-input ed-input">
+                  <option value="0">Mismo día</option>
+                  <option value="1">1 día</option>
+                  <option value="2">2 días</option>
+                  <option value="3">3 días (ej. envío por paquetería)</option>
+                  <option value="5">5 días</option>
+                  <option value="7">7 días</option>
+                </select>
+                <p class="ed-ayuda">El cliente no podrá pedirlo para una fecha más próxima.</p>
+              </div>
+            </div>
+            <label class="ed-interruptor">
+              <span>
+                <span class="ed-etiqueta !mb-0">Visible en la tienda</span>
+                <span class="ed-ayuda !mt-0 block">Apágalo para ocultarlo sin borrarlo.</span>
+              </span>
+              <span class="adm-switch"><input type="checkbox" id="disponible" checked><span class="adm-switch-track"></span></span>
+            </label>
+          </section>
+
+          <!-- 6. COMBO -->
+          <section id="ed-sec-combo" class="ed-seccion" data-seccion-editor>
+            <h3 class="ed-seccion-titulo">Combo <span class="ed-opcional">opcional</span></h3>
+            <p class="ed-seccion-ayuda">Para productos que juntan otros del catálogo, como «Ramo + peluche + chocolates».</p>
+            <label class="ed-casilla">
+              <input type="checkbox" id="es_combo">
+              <span>Este producto es un combo</span>
+            </label>
+            <div id="bloque-combo" class="hidden mt-4 space-y-3">
+              <p class="ed-ayuda !mt-0">Busca y agrega los productos que incluye. El precio del combo es el de «Lo básico»; esto solo registra qué lleva y descuenta sus piezas del inventario.</p>
+              <div class="relative">
+                <input type="text" id="buscador-combo" placeholder="Busca un producto por nombre..." class="adm-input ed-input" autocomplete="off">
+                <p class="hidden ed-error" data-error-for="buscador-combo">Agrega al menos un producto al combo, o desmarca la casilla si no es un combo.</p>
+                <div id="resultados-combo" class="hidden absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+              </div>
+              <div id="lista-combo-items" class="space-y-1.5"></div>
+            </div>
+          </section>
+
+          <div class="ed-final">
+            <button type="button" onclick="cerrarEditorProducto()" class="ed-btn-secundario">Cancelar</button>
+            <button type="submit" class="ed-btn-primario"><span data-texto-guardar>Guardar producto</span></button>
+          </div>
+        </div>
+
+        <!-- Vista previa: el único elemento protagonista del editor. -->
+        <aside class="ed-lateral">
+          <div class="ed-lateral-fijo">
+            <p class="ed-lateral-titulo">Así se verá en la tienda</p>
+            <div class="ed-escenario">
+              <div class="ed-tarjeta">
+                <div class="ed-tarjeta-foto">
+                  <img id="preview-vivo-imagen" class="hidden" alt="Vista previa de la foto principal">
+                  <svg id="preview-vivo-icono" class="w-10 h-10 text-[#d9c7cf]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.3"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </div>
+                <div class="ed-tarjeta-texto">
+                  <p id="preview-vivo-nombre" class="ed-tarjeta-nombre">Nombre del producto</p>
+                  <p id="preview-vivo-precio" class="ed-tarjeta-precio">$0.00</p>
+                  <span id="preview-vivo-categoria" class="hidden"></span>
+                </div>
+              </div>
+            </div>
+            <div class="ed-lista-revision">
+              <p class="ed-lateral-titulo">Antes de guardar</p>
+              <ul id="ed-revision"></ul>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </form>
+</div>
+
 <div id="toast-container" class="fixed bottom-5 right-5 z-[200] flex flex-col gap-2"></div>
 
 <!-- Modal de confirmación -->
@@ -1540,7 +1727,9 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     });
 
     async function cargarTodoElPanel() {
-        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), cargarCupones(), cargarCarruseles(), cargarMenuSitio(), cargarCategoriasDisponibles(), cargarEstadosMunicipios(), cargarRecordatorios(), cargarFacturasPendientes()]);
+        // Los cupones solo los ve un administrador (el servidor tampoco se los da a un editor).
+        const esAdminRF = usuarioActual && usuarioActual.rol === 'admin';
+        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), esAdminRF ? cargarCupones() : Promise.resolve(), cargarCarruseles(), cargarMenuSitio(), cargarCategoriasDisponibles(), cargarEstadosMunicipios(), cargarRecordatorios(), cargarFacturasPendientes()]);
         if (usuarioActual && usuarioActual.rol === 'admin') {
             await Promise.all([cargarUsuarios(), cargarConfiguracion(), cargarBitacora()]);
         }
@@ -1717,6 +1906,9 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     function actualizarPreviewPrincipal() {
         const url = document.getElementById('imagen_url').value.trim();
         const cont = document.getElementById('preview-imagen-principal');
+        document.getElementById('ed-zona-principal')?.classList.toggle('tiene-foto', !!url);
+        const textoZona = document.getElementById('texto-subir-principal');
+        if (textoZona && !/Subiendo/.test(textoZona.innerText)) textoZona.innerText = url ? 'Cambiar foto' : 'Subir o arrastrar foto';
         if (!url) {
             cont.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>';
             return;
@@ -1734,7 +1926,9 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         const clasificaciones = obtenerClasificacionesDelFormulario();
         const url = document.getElementById('imagen_url').value.trim();
 
-        document.getElementById('preview-vivo-nombre').innerText = nombre || 'Así se verá tu producto';
+        const nombrePreview = document.getElementById('preview-vivo-nombre');
+        nombrePreview.innerText = nombre || 'Nombre del producto';
+        nombrePreview.classList.toggle('es-vacio', !nombre);
         document.getElementById('preview-vivo-precio').innerText = '$' + formatearPrecioAdmin(precio);
         const badgeCategoria = document.getElementById('preview-vivo-categoria');
         if (clasificaciones.length === 0) {
@@ -1753,6 +1947,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         } else {
             img.classList.add('hidden'); icono.classList.remove('hidden');
         }
+        if (typeof actualizarRevisionEditorRF === 'function') actualizarRevisionEditorRF();
     }
     ['nombre', 'precio', 'imagen_url'].forEach(id => {
         document.getElementById(id).addEventListener('input', actualizarPreviewVivo);
@@ -1761,9 +1956,12 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
 
     function actualizarPreviewGaleria() {
         const urls = document.getElementById('imagenes').value.split(',').map(s => s.trim()).filter(Boolean);
-        document.getElementById('preview-galeria').innerHTML = urls.map(u => `
-            <div class="w-10 h-10 rounded-md border border-gray-200 overflow-hidden bg-gray-50">
-                <img src="${escaparHtmlAdmin(u)}" class="w-full h-full object-cover" onerror="this.style.opacity='.15'">
+        document.getElementById('preview-galeria').innerHTML = urls.map((u, i) => `
+            <div class="ed-galeria-foto">
+                <img src="${escaparHtmlAdmin(u)}" alt="Foto ${i + 1} de la galería" onerror="this.style.opacity='.15'">
+                <button type="button" class="ed-galeria-quitar" title="Quitar esta foto" onclick="quitarFotoGaleriaRF(${i})">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
             </div>
         `).join('');
     }
@@ -1960,6 +2158,10 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         `;
         fila.querySelector('[data-quitar-combo]').addEventListener('click', () => { fila.remove(); renderComboItems(); });
         cont.appendChild(fila);
+        // Al agregar un producto, se quita el aviso de "combo vacío" y se
+        // actualiza la lista "Antes de guardar".
+        marcarError('buscador-combo', false);
+        if (typeof actualizarRevisionEditorRF === 'function') actualizarRevisionEditorRF();
     }
 
     document.getElementById('buscador-combo').addEventListener('input', (e) => {
@@ -2065,6 +2267,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         if (obtenerClasificacionesDelFormulario().length === 0) { marcarError('clasificaciones', true); valido = false; } else marcarError('clasificaciones', false);
         if (document.querySelector('#lista-tamanos .is-invalid')) { mostrarToast('Tienes dos tamaños con el mismo nombre -- corrígelo antes de guardar.', 'error'); valido = false; }
         if (document.querySelector('#lista-clasificaciones .is-invalid')) { mostrarToast('Tienes una clasificación repetida -- quita la que sobra antes de guardar.', 'error'); valido = false; }
+        const comboVacio = document.getElementById('es_combo').checked && document.querySelectorAll('#lista-combo-items [data-combo-item]').length === 0;
+        if (comboVacio) { marcarError('buscador-combo', true); valido = false; } else marcarError('buscador-combo', false);
         return valido;
     }
 
@@ -2249,7 +2453,7 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
 
     document.getElementById('form-arreglo').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!validarFormulario()) { mostrarToast('Revisa los campos marcados en rojo.', 'error'); return; }
+        if (!validarFormulario()) { mostrarToast('Faltan datos: revisa lo que quedó marcado en rojo.', 'error'); irAlPrimerErrorEditorRF(); return; }
         const id = document.getElementById('producto_id').value;
         const coberturaSelec = Array.from(document.querySelectorAll('input[name="cobertura"]:checked')).map(cb => cb.value).join(',');
         const producto = {
@@ -2274,8 +2478,9 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         btn.disabled = true; btn.classList.add('opacity-60');
         try {
             await jsonOError(await fetch(url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(producto) }));
-            mostrarToast(id ? 'Producto actualizado.' : 'Producto agregado al catálogo.');
-            limpiarFormulario();
+            const quedoVisible = document.getElementById('disponible').checked;
+            mostrarToast(id ? 'Cambios guardados.' : (quedoVisible ? 'Producto guardado y publicado en la tienda.' : 'Producto guardado (oculto en la tienda).'));
+            cerrarEditorProducto(true);
             cargarCatalogo();
             cargarDashboard();
         } catch (error) {
@@ -2309,27 +2514,26 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     function prepararEdicion(id) {
         const p = catalogo.find(x => x.id === id);
         if (!p) return;
-        document.getElementById('titulo-formulario').innerText = 'Editar Arreglo';
-        document.getElementById('subtitulo-formulario').innerText = `Editando "${p.nombre}" (ID ${p.id}).`;
+        document.getElementById('titulo-formulario').innerText = 'Editar producto';
+        document.getElementById('subtitulo-formulario').innerText = `${p.nombre} · número ${p.id}`;
         cargarProductoEnFormulario(p);
         const linkTienda = document.getElementById('link-ver-tienda');
         linkTienda.href = `/producto/${p.id}`;
         linkTienda.classList.remove('hidden');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        abrirEditorProducto('editar');
     }
     window.prepararEdicion = prepararEdicion;
 
     function duplicarProducto(id) {
         const p = catalogo.find(x => x.id === id);
         if (!p) return;
-        document.getElementById('titulo-formulario').innerText = 'Agregar Nuevo Arreglo';
-        document.getElementById('subtitulo-formulario').innerText = `Copia de "${p.nombre}" -- revisa los datos antes de guardar.`;
+        document.getElementById('titulo-formulario').innerText = 'Nuevo producto';
+        document.getElementById('subtitulo-formulario').innerText = `Copia de «${p.nombre}». Revisa los datos antes de guardarla.`;
         cargarProductoEnFormulario({ ...p, id: null, nombre: p.nombre + ' (copia)' });
         // La copia todavía no existe en la tienda -- si el enlace se quedara
         // visible, apuntaría al producto ORIGINAL y confundiría.
         document.getElementById('link-ver-tienda')?.classList.add('hidden');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        document.getElementById('nombre').focus();
+        abrirEditorProducto('duplicar');
     }
     window.duplicarProducto = duplicarProducto;
 
@@ -2377,8 +2581,8 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
     function limpiarFormulario() {
         document.getElementById('form-arreglo').reset();
         document.getElementById('producto_id').value = '';
-        document.getElementById('titulo-formulario').innerText = 'Agregar Nuevo Arreglo';
-        document.getElementById('subtitulo-formulario').innerText = 'Completa los datos del arreglo para publicarlo en la tienda.';
+        document.getElementById('titulo-formulario').innerText = 'Nuevo producto';
+        document.getElementById('subtitulo-formulario').innerText = 'Llena los datos y guárdalo para publicarlo en la tienda.';
         document.getElementById('link-ver-tienda').classList.add('hidden');
         document.getElementById('stock').value = 1;
         document.getElementById('tiempo_entrega_dias').value = 0;
@@ -2394,6 +2598,202 @@ Jarrón y listón sujetos a cambio." class="adm-input"></textarea>
         marcarError('nombre', false); marcarError('precio', false);
     }
     window.limpiarFormulario = limpiarFormulario;
+
+    // =======================================================================
+    // EDITOR DE PRODUCTO (pantalla completa)
+    // =======================================================================
+    let editorAbiertoRF = false;
+    let editorConCambiosRF = false;
+    const seccionesTocadasRF = new Set();
+
+    function abrirEditorProducto(modo) {
+        const editor = document.getElementById('editor-producto');
+        editor.classList.remove('hidden');
+        editor.classList.add('is-abriendo');
+        setTimeout(() => editor.classList.remove('is-abriendo'), 260);
+        document.body.style.overflow = 'hidden';
+        document.getElementById('ed-scroll').scrollTop = 0;
+        const textoGuardar = modo === 'editar' ? 'Guardar cambios' : 'Guardar producto';
+        document.getElementById('texto-btn-guardar').innerText = textoGuardar;
+        document.querySelectorAll('[data-texto-guardar]').forEach(el => { el.innerText = textoGuardar; });
+        editorAbiertoRF = true;
+        editorConCambiosRF = false;
+        seccionesTocadasRF.clear();
+        actualizarRevisionEditorRF();
+        marcarSeccionActivaRF('ed-sec-basico');
+        setTimeout(() => document.getElementById('nombre').focus({ preventScroll: true }), 60);
+    }
+    function nuevoProducto() {
+        limpiarFormulario();
+        abrirEditorProducto('nuevo');
+    }
+    window.nuevoProducto = nuevoProducto;
+
+    // Si hay cambios sin guardar, se pregunta antes de salir -- es fácil
+    // perder un producto a medias por un clic de más.
+    async function cerrarEditorProducto(forzar = false) {
+        if (!editorAbiertoRF) return true;
+        if (!forzar && editorConCambiosRF) {
+            const ok = await pedirConfirmacionAdmin('¿Salir sin guardar?', 'Los cambios que hiciste en este producto se van a perder.');
+            if (!ok) return false;
+        }
+        document.getElementById('editor-producto').classList.add('hidden');
+        document.body.style.overflow = '';
+        editorAbiertoRF = false;
+        editorConCambiosRF = false;
+        limpiarFormulario();
+        return true;
+    }
+    window.cerrarEditorProducto = cerrarEditorProducto;
+
+    async function salirDelEditorA(vista) {
+        if (await cerrarEditorProducto()) cambiarVista(vista);
+    }
+    window.salirDelEditorA = salirDelEditorA;
+
+    // Cualquier cambio en el formulario cuenta como "cambios sin guardar".
+    const formEditorRF = document.getElementById('form-arreglo');
+    ['input', 'change'].forEach(tipo => formEditorRF.addEventListener(tipo, (e) => {
+        if (!editorAbiertoRF) return;
+        editorConCambiosRF = true;
+        const seccion = e.target.closest && e.target.closest('[data-seccion-editor]');
+        if (seccion) seccionesTocadasRF.add(seccion.id);
+        actualizarRevisionEditorRF();
+    }));
+    formEditorRF.addEventListener('click', (e) => {
+        if (!editorAbiertoRF) return;
+        if (e.target.closest('[data-quitar-clasificacion],[data-quitar-tamano],[data-quitar-grupo],[data-quitar-combo],[data-chip-ciudad],[data-chip-opcion] button,.ed-agregar,.ed-galeria-quitar')) {
+            editorConCambiosRF = true;
+            setTimeout(actualizarRevisionEditorRF, 0);
+        }
+    });
+
+    // Lista "Antes de guardar" + estado del encabezado + índice.
+    function actualizarRevisionEditorRF() {
+        const lista = document.getElementById('ed-revision');
+        if (!lista) return;
+        const nombre = document.getElementById('nombre').value.trim();
+        const precioTexto = document.getElementById('precio').value;
+        const precioOk = precioTexto !== '' && Number.isFinite(Number(precioTexto)) && Number(precioTexto) >= 0;
+        const clasifOk = obtenerClasificacionesDelFormulario().length > 0;
+        const fotoOk = !!document.getElementById('imagen_url').value.trim();
+        const descripcionOk = !!document.getElementById('descripcion').value.trim();
+        const puntos = [
+            { texto: 'Nombre', ok: !!nombre, obligatorio: true, seccion: 'ed-sec-basico', campo: 'nombre' },
+            { texto: 'Precio', ok: precioOk, obligatorio: true, seccion: 'ed-sec-basico', campo: 'precio' },
+            { texto: 'Clasificación', ok: clasifOk, obligatorio: true, seccion: 'ed-sec-ubicacion' },
+            { texto: 'Foto principal', ok: fotoOk, obligatorio: false, seccion: 'ed-sec-fotos' },
+            { texto: 'Descripción', ok: descripcionOk, obligatorio: false, seccion: 'ed-sec-basico', campo: 'descripcion' }
+        ];
+        // Si se marcó como combo, sus productos pasan a ser obligatorios.
+        if (document.getElementById('es_combo').checked) {
+            puntos.push({ texto: 'Productos del combo', ok: document.querySelectorAll('#lista-combo-items [data-combo-item]').length > 0, obligatorio: true, seccion: 'ed-sec-combo', campo: 'buscador-combo' });
+        }
+        lista.innerHTML = puntos.map(p => `
+            <li class="${p.ok ? 'is-ok' : ''}">
+                <button type="button" data-ir-seccion="${p.seccion}" ${p.campo ? `data-enfocar="${p.campo}"` : ''}>
+                    <span class="ed-check"></span><span>${p.texto}</span>
+                    ${p.obligatorio ? '' : '<span class="ed-recomendado">recomendado</span>'}
+                </button>
+            </li>`).join('');
+        const faltan = puntos.filter(p => p.obligatorio && !p.ok).length;
+        const estado = document.getElementById('ed-estado-global');
+        estado.innerText = faltan === 0 ? 'Listo para guardar' : `Falta${faltan === 1 ? '' : 'n'} ${faltan} dato${faltan === 1 ? '' : 's'} obligatorio${faltan === 1 ? '' : 's'}`;
+        estado.classList.toggle('is-listo', faltan === 0);
+
+        const tamanos = document.querySelectorAll('#lista-tamanos [data-fila-tamano]').length;
+        const variantes = document.querySelectorAll('#lista-variantes [data-grupo-variante]').length;
+        const esCombo = document.getElementById('es_combo').checked;
+        const piezasCombo = document.querySelectorAll('#lista-combo-items [data-combo-item]').length;
+        const completas = {
+            'ed-sec-basico': !!nombre && precioOk,
+            'ed-sec-fotos': fotoOk,
+            'ed-sec-ubicacion': clasifOk,
+            'ed-sec-opciones': tamanos > 0 || variantes > 0,
+            // Tiene valores válidos por defecto, pero en un producto NUEVO solo
+            // se marca completa cuando la persona ya pasó a revisarla.
+            'ed-sec-inventario': document.getElementById('stock').value !== '' && (!!document.getElementById('producto_id').value || seccionesTocadasRF.has('ed-sec-inventario')),
+            'ed-sec-combo': esCombo && piezasCombo > 0
+        };
+        document.querySelectorAll('#ed-lista-indice [data-ir-seccion]').forEach(btn => {
+            btn.parentElement.classList.toggle('is-completo', !!completas[btn.dataset.irSeccion]);
+        });
+    }
+
+    function marcarSeccionActivaRF(id) {
+        document.querySelectorAll('#ed-lista-indice [data-ir-seccion]').forEach(btn => {
+            btn.parentElement.classList.toggle('is-activo', btn.dataset.irSeccion === id);
+        });
+    }
+
+    // Clic en el índice, en la lista de revisión o en un enlace interno.
+    document.getElementById('editor-producto').addEventListener('click', (e) => {
+        const destino = e.target.closest('[data-ir-seccion]');
+        if (!destino) return;
+        const seccion = document.getElementById(destino.dataset.irSeccion);
+        if (!seccion) return;
+        seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        marcarSeccionActivaRF(destino.dataset.irSeccion);
+        if (destino.dataset.enfocar) setTimeout(() => document.getElementById(destino.dataset.enfocar)?.focus({ preventScroll: true }), 350);
+    });
+
+    // El índice sigue la sección que estás viendo.
+    if ('IntersectionObserver' in window) {
+        const observador = new IntersectionObserver((entradas) => {
+            entradas.forEach(en => { if (en.isIntersecting) marcarSeccionActivaRF(en.target.id); });
+        }, { root: document.getElementById('ed-scroll'), rootMargin: '-15% 0px -70% 0px' });
+        document.querySelectorAll('[data-seccion-editor]').forEach(s => observador.observe(s));
+    }
+    // La última sección nunca sube lo suficiente para "activarse" sola: al
+    // llegar al final de la página se marca directamente.
+    document.getElementById('ed-scroll').addEventListener('scroll', (e) => {
+        const cont = e.currentTarget;
+        if (cont.scrollTop + cont.clientHeight >= cont.scrollHeight - 4) marcarSeccionActivaRF('ed-sec-combo');
+    }, { passive: true });
+
+    function irAlPrimerErrorEditorRF() {
+        const primero = document.querySelector('#editor-producto .is-invalid, #editor-producto .ed-error:not(.hidden)');
+        if (!primero) return;
+        primero.closest('[data-seccion-editor]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (primero.matches('input, select, textarea')) setTimeout(() => primero.focus({ preventScroll: true }), 350);
+    }
+
+    // Esc cierra el editor (preguntando si hay cambios), salvo que haya una
+    // ventana de confirmación abierta encima.
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || !editorAbiertoRF) return;
+        if (!document.getElementById('modal-confirmar').classList.contains('hidden')) return;
+        cerrarEditorProducto();
+    });
+
+    // Arrastrar fotos: se reutiliza exactamente la misma subida que al elegirlas.
+    [['ed-zona-principal', 'archivo_imagen_principal'], ['ed-zona-galeria', 'archivo_imagenes_galeria']].forEach(([idZona, idInput]) => {
+        const zona = document.getElementById(idZona);
+        const input = document.getElementById(idInput);
+        if (!zona || !input) return;
+        zona.addEventListener('dragover', (e) => { e.preventDefault(); zona.classList.add('is-arrastrando'); });
+        zona.addEventListener('dragleave', () => zona.classList.remove('is-arrastrando'));
+        zona.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zona.classList.remove('is-arrastrando');
+            const imagenes = [...(e.dataTransfer?.files || [])].filter(f => f.type.startsWith('image/'));
+            if (!imagenes.length) { mostrarToast('Solo se pueden agregar imágenes.', 'error'); return; }
+            const dt = new DataTransfer();
+            (input.multiple ? imagenes : imagenes.slice(0, 1)).forEach(f => dt.items.add(f));
+            input.files = dt.files;
+            input.dispatchEvent(new Event('change'));
+        });
+    });
+
+    function quitarFotoGaleriaRF(indice) {
+        const campo = document.getElementById('imagenes');
+        const urls = campo.value.split(',').map(s => s.trim()).filter(Boolean);
+        urls.splice(indice, 1);
+        campo.value = urls.join(', ');
+        actualizarPreviewGaleria();
+        editorConCambiosRF = true;
+    }
+    window.quitarFotoGaleriaRF = quitarFotoGaleriaRF;
 
     // =======================================================================
     // PEDIDOS

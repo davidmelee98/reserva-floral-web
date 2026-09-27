@@ -815,17 +815,35 @@ function estaBloqueado(email) {
 // de 7 días, se cierra sola tras 8 horas sin actividad en el panel, aunque
 // el navegador siga con la cookie vigente.
 const INACTIVIDAD_MAXIMA_ADMIN_MS = 8 * 60 * 60 * 1000;
-function requireAuth(req, res, next) {
+function cerrarSesionPanelRF(req) {
+  delete req.session.usuarioId; delete req.session.nombre; delete req.session.email;
+  delete req.session.rol; delete req.session.ultimaActividadAdmin;
+}
+async function requireAuth(req, res, next) {
   if (!req.session || !req.session.usuarioId) {
     return res.status(401).json({ error: 'Debes iniciar sesión.' });
   }
   const ahora = Date.now();
   if (req.session.ultimaActividadAdmin && (ahora - req.session.ultimaActividadAdmin) > INACTIVIDAD_MAXIMA_ADMIN_MS) {
-    // Solo se cierra la sesión del PANEL -- si en este navegador también hay
-    // una cuenta de cliente iniciada, esa sigue abierta.
-    delete req.session.usuarioId; delete req.session.nombre; delete req.session.email;
-    delete req.session.rol; delete req.session.ultimaActividadAdmin;
+    // Solo se cierra la sesión del PANEL.
+    cerrarSesionPanelRF(req);
     return res.status(401).json({ error: 'Tu sesión expiró por inactividad. Vuelve a iniciar sesión.' });
+  }
+  // En cada acción se revisa que la cuenta siga activa y con qué rol. Antes el
+  // rol se guardaba al iniciar sesión y ya no se volvía a revisar: si
+  // desactivabas a alguien (o le quitabas el rol de administrador) con el
+  // panel abierto, seguía teniendo acceso completo.
+  try {
+    const r = await pool.query('SELECT rol, activo FROM usuarios_admin WHERE id=$1', [req.session.usuarioId]);
+    const usuario = r.rows[0];
+    if (!usuario || usuario.activo === false) {
+      cerrarSesionPanelRF(req);
+      return res.status(401).json({ error: 'Tu acceso al panel fue desactivado.' });
+    }
+    req.session.rol = usuario.rol;
+  } catch (error) {
+    console.error('No se pudo verificar al usuario del panel:', error?.message || error);
+    return res.status(500).json({ error: 'No se pudo verificar tu sesión. Intenta de nuevo.' });
   }
   req.session.ultimaActividadAdmin = ahora;
   next();
@@ -1905,6 +1923,20 @@ app.patch('/api/admin/usuarios/:id', requireAuth, requireAdmin, async (req, res)
 
   valores.push(id);
   try {
+    // Si este cambio le quita el rol de administrador (o desactiva) al ÚLTIMO
+    // administrador activo, nadie podría volver a gestionar el equipo ni la
+    // configuración -- se impide.
+    const quitaAdmin = req.body.rol === 'editor' || req.body.activo === false;
+    if (quitaAdmin) {
+      const objetivo = await pool.query('SELECT rol, activo FROM usuarios_admin WHERE id=$1', [id]);
+      const esAdminActivo = objetivo.rows[0] && objetivo.rows[0].rol === 'admin' && objetivo.rows[0].activo !== false;
+      if (esAdminActivo) {
+        const admins = await pool.query(`SELECT COUNT(*)::int AS n FROM usuarios_admin WHERE rol='admin' AND activo=true`);
+        if (admins.rows[0].n <= 1) {
+          return res.status(400).json({ error: 'Debe quedar al menos un administrador activo. Nombra primero a otra persona como administrador.' });
+        }
+      }
+    }
     const resultado = await pool.query(`UPDATE usuarios_admin SET ${campos.join(', ')} WHERE id=$${i} RETURNING *`, valores);
     if (resultado.rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
     res.json(usuarioPublico(resultado.rows[0]));
@@ -2348,12 +2380,16 @@ function esVentaRF(o) {
   return o.estado !== 'Cancelado' && (o.estado_pago === 'aprobado' || (o.estado || 'Pendiente') !== 'Pendiente');
 }
 
-// ¿Esta persona ya usó este cupón en otro pedido? (por su correo o por su
-// cuenta). Los pedidos cancelados no cuentan: el uso se devolvió.
+// ¿Esta persona ya usó este cupón en una compra real? (por su correo o por
+// su cuenta). Los pedidos cancelados o sin pagar no cuentan.
 async function cuponYaUsadoPorRF(db, codigo, email, clienteId) {
   if (!email && !clienteId) return false;
   const r = await db.query(
     `SELECT 1 FROM ordenes WHERE UPPER(cupon_codigo) = UPPER($1) AND estado <> 'Cancelado'
+       -- Solo cuenta una compra REAL (pagada, o que ya avanzaste de "Pendiente").
+       -- Antes contaba cualquier pedido sin pagar, y un cliente nuevo que
+       -- llegaba al pago y regresaba después quedaba bloqueado sin haber comprado.
+       AND (estado_pago = 'aprobado' OR estado <> 'Pendiente')
        AND (($2::text IS NOT NULL AND LOWER(email_contacto) = LOWER($2::text)) OR ($3::int IS NOT NULL AND cliente_cuenta_id = $3::int))
      LIMIT 1`,
     [codigo, email ? String(email).trim() : null, clienteId || null]
@@ -3714,7 +3750,7 @@ app.get('/api/admin/dashboard', requireAuth, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Panel de administración: finanzas
 // ---------------------------------------------------------------------------
-app.get('/api/admin/finanzas', requireAuth, async (req, res) => {
+app.get('/api/admin/finanzas', requireAuth, requireAdmin, async (req, res) => {
   const dias = Math.min(Math.max(Number(req.query.dias) || 30, 7), 180);
   try {
     const todas = await pool.query(`SELECT * FROM ordenes WHERE creado_en >= NOW() - INTERVAL '${dias} days' AND NOT COALESCE(descartado, false)`);
@@ -4182,7 +4218,7 @@ app.get('/api/admin/categorias-disponibles', requireAuth, async (req, res) => {
 // ---------------------------------------------------------------------------
 // Panel de administración: cupones de descuento
 // ---------------------------------------------------------------------------
-app.get('/api/admin/cupones', requireAuth, async (req, res) => {
+app.get('/api/admin/cupones', requireAuth, requireAdmin, async (req, res) => {
   try {
     const resultado = await pool.query(`
       SELECT c.*, cl.nombre AS cliente_nombre, cl.apellido AS cliente_apellido
@@ -4197,7 +4233,7 @@ app.get('/api/admin/cupones', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/admin/cupones', requireAuth, async (req, res) => {
+app.post('/api/admin/cupones', requireAuth, requireAdmin, async (req, res) => {
   const { codigo, tipo, valor, montoMinimo, usosMaximos, fechaInicio, fechaExpiracion, unUsoPorCliente } = req.body || {};
   if (!codigo?.trim()) return res.status(400).json({ error: 'El código es obligatorio.' });
   if (!['monto_fijo', 'porcentaje'].includes(tipo)) return res.status(400).json({ error: 'Tipo de cupón inválido.' });
@@ -4228,7 +4264,7 @@ app.post('/api/admin/cupones', requireAuth, async (req, res) => {
   }
 });
 
-app.patch('/api/admin/cupones/:id', requireAuth, async (req, res) => {
+app.patch('/api/admin/cupones/:id', requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
   const campos = []; const valores = []; let i = 1;
@@ -4248,7 +4284,7 @@ app.patch('/api/admin/cupones/:id', requireAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/cupones/:id', requireAuth, async (req, res) => {
+app.delete('/api/admin/cupones/:id', requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
   try {
