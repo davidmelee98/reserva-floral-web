@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" role="img" aria-label="Foto próximamente">
+  <rect width="600" height="600" fill="#f7eff3"/>
+  <g fill="none" stroke="#d4bfc8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" transform="translate(300 270)">
+    <path d="M0 -70 C-32 -70 -46 -44 -40 -18 C-58 -32 -86 -22 -86 4 C-86 30 -54 44 -24 30 C-30 58 -6 72 0 72 C6 72 30 58 24 30 C54 44 86 30 86 4 C86 -22 58 -32 40 -18 C46 -44 32 -70 0 -70 Z"/>
+    <circle cx="0" cy="4" r="16"/>
+  </g>
+  <text x="300" y="420" text-anchor="middle" font-family="Poppins, Helvetica, Arial, sans-serif" font-size="30" fill="#b9a4ad">Foto próximamente</text>
+</svg>

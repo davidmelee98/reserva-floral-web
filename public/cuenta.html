@@ -11,17 +11,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
-                    colors: { brandFuchsia: '#c2185b', brandLightPink: '#e91e63', brandDark: '#353535', brandGray: '#f8f9fa' }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="/estilos-tailwind.css">
     <style>
         .cta-input{ width:100%; border:1px solid #d1d5db; border-radius:10px; padding:.6rem .85rem; font-size:.875rem; outline:none; }
         .cta-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.10); }
@@ -107,6 +97,17 @@ body.rf-mobile-menu-open{overflow:hidden !important}
 body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0;}
 </style>
 
+<script>
+    // Las tarjetas del catálogo usan una copia ligera de la foto (1000 px),
+    // del tamaño en que se muestran. La foto grande del producto sigue siendo
+    // la original. Solo aplica a fotos subidas al sitio.
+    function urlTarjetaRF(url) {
+        let u = String(url || '');
+        if (u.startsWith(location.origin)) u = u.slice(location.origin.length);
+        const m = /^\/uploads\/([^/?#]+\.(?:jpe?g|png|webp|avif))$/i.exec(u);
+        return m ? '/uploads/tarjeta/' + m[1] : String(url || '');
+    }
+</script>
 </head>
 <body class="bg-brandGray font-sans text-brandDark antialiased min-h-screen">
 
@@ -119,7 +120,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
                 <!-- Logo -->
                 <div class="rf-mobile-logo flex-shrink-0 flex items-center cursor-pointer" onclick="location.href='/'">
-                    <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
+                    <img src="/logo-reserva-floral-claro-720.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
                 </div>
                 
                 <!-- Buscador global -->
@@ -762,7 +763,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 const cantidad = Math.max(1, Number(it.cantidad) || 1);
                 return `
                     <a href="/producto/${it.id}" target="_blank" class="flex items-center gap-3 py-1.5 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition">
-                        <img src="${escaparHtml(it.imagen || '')}" onerror="this.style.visibility='hidden'" class="w-10 h-10 object-cover rounded-md border border-gray-200">
+                        <img src="${escaparHtml(urlTarjetaRF(it.imagen || ''))}" onerror="this.style.visibility='hidden'" class="w-10 h-10 object-cover rounded-md border border-gray-200">
                         <span class="flex-1 text-xs text-gray-600">${escaparHtml(it.nombre)}${cantidad > 1 ? ` x${cantidad}` : ''}${it.variante ? ` <span class="text-gray-400">(${escaparHtml(it.variante)})</span>` : ''}</span>
                         <span class="text-xs font-medium text-brandDark">$${formatearPrecio(it.precio * cantidad)}</span>
                     </a>`;

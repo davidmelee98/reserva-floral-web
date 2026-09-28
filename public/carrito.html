@@ -10,25 +10,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { 
-                        sans: ['Poppins', 'sans-serif'],
-                        serif: ['Playfair Display', 'serif']
-                    },
-                    colors: {
-                        brandFuchsia: '#c2185b',
-                        brandLightPink: '#e91e63',
-                        brandDark: '#353535',
-                        brandGray: '#f8f9fa'
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="/estilos-tailwind.css">
     <style>
         #carrito-lateral {
             opacity: 0;
@@ -551,6 +533,17 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 ::-webkit-scrollbar{ width:7px; height:7px; }
 ::-webkit-scrollbar-thumb{ background:#e2c2d0; border-radius:999px; }
 </style>
+<script>
+    // Las tarjetas del catálogo usan una copia ligera de la foto (1000 px),
+    // del tamaño en que se muestran. La foto grande del producto sigue siendo
+    // la original. Solo aplica a fotos subidas al sitio.
+    function urlTarjetaRF(url) {
+        let u = String(url || '');
+        if (u.startsWith(location.origin)) u = u.slice(location.origin.length);
+        const m = /^\/uploads\/([^/?#]+\.(?:jpe?g|png|webp|avif))$/i.exec(u);
+        return m ? '/uploads/tarjeta/' + m[1] : String(url || '');
+    }
+</script>
 </head>
 <body class="bg-white font-sans text-brandDark antialiased">
 
@@ -564,7 +557,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
                 <!-- Logo -->
                 <div class="rf-mobile-logo flex-shrink-0 flex items-center cursor-pointer" onclick="location.href='/'">
-                    <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
+                    <img src="/logo-reserva-floral-claro-720.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
                 </div>
                 
                 <!-- Buscador global -->
@@ -981,13 +974,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         function mostrarGaleria(producto) {
             const imagenes = obtenerImagenes(producto);
-            const principal = imagenes[0] || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
+            const principal = imagenes[0] || '/sin-foto.svg';
             const main = document.getElementById('modal-img');
             const thumbs = document.getElementById('modal-thumbnails');
             const mobileTrack = document.getElementById('modal-mobile-gallery-track');
             const mobileDots = document.getElementById('modal-mobile-gallery-dots');
             main.src = principal;
-            main.onerror = () => { main.onerror = null; main.src = 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'; };
+            main.onerror = () => { main.onerror = null; main.src = '/sin-foto.svg'; };
             thumbs.innerHTML = '';
             if (mobileTrack) mobileTrack.innerHTML = '';
             if (mobileDots) mobileDots.innerHTML = '';
@@ -1108,12 +1101,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 }
 
                 arreglos.forEach(arreglo => {
-                    const urlImagen = (obtenerImagenes(arreglo)[0]) || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
+                    const urlImagen = (obtenerImagenes(arreglo)[0]) || '/sin-foto.svg';
                     const arregloData = encodeURIComponent(JSON.stringify(arreglo));
                     contenedor.innerHTML += `
                         <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
                             <div class="rf-favorite-card-image">
-                                <img src="${urlImagen}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80'">
+                                <img loading="lazy" decoding="async" src="${urlTarjetaRF(urlImagen)}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='/sin-foto.svg'">
                                 ${etiquetaAgotadoHtmlRF(arreglo)}
                             </div>
                             <div class="rf-favorite-card-body">
@@ -1214,7 +1207,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 return;
             }
             cont.innerHTML = lista.map(p => {
-                const urlImagen = (obtenerImagenes(p)[0]) || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=300&q=80';
+                const urlImagen = (obtenerImagenes(p)[0]) || '/sin-foto.svg';
                 const data = encodeURIComponent(JSON.stringify(p));
                 const tieneVariantes = obtenerVariantes(p).length > 0;
                 const accionMas = tieneVariantes
@@ -1223,7 +1216,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 return `
                     <div class="shrink-0 w-[150px] group relative">
                         <div onclick="abrirProducto('${data}', '${urlImagen}')" class="w-[150px] h-[150px] rounded-xl overflow-hidden bg-gray-100 cursor-pointer relative">
-                            <img src="${urlImagen}" alt="${escaparHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=300&q=80'">
+                            <img loading="lazy" decoding="async" src="${urlTarjetaRF(urlImagen)}" alt="${escaparHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='/sin-foto.svg'">
                         </div>
                         <button type="button" onclick="event.stopPropagation(); ${accionMas}" title="Agregar al carrito" aria-label="Agregar al carrito" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-white shadow-md flex items-center justify-center text-brandFuchsia hover:bg-brandFuchsia hover:text-white transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
@@ -1340,11 +1333,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 const relacionados = await (await fetch(`/api/catalogo/${id}/relacionados`)).json();
                 if (!Array.isArray(relacionados) || relacionados.length === 0) return;
                 track.innerHTML = relacionados.map(p => {
-                    const urlImagen = (obtenerImagenes(p)[0]) || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=300&q=80';
+                    const urlImagen = (obtenerImagenes(p)[0]) || '/sin-foto.svg';
                     const data = encodeURIComponent(JSON.stringify(p));
                     return `
                         <div onclick="abrirProducto('${data}', '${urlImagen}')" class="shrink-0 w-[130px] text-left cursor-pointer">
-                            <img src="${urlImagen}" alt="${escaparHtml(p.nombre)}" loading="lazy" class="w-[130px] h-[130px] object-cover rounded-lg bg-gray-100" onerror="this.style.visibility='hidden'">
+                            <img src="${urlTarjetaRF(urlImagen)}" alt="${escaparHtml(p.nombre)}" loading="lazy" class="w-[130px] h-[130px] object-cover rounded-lg bg-gray-100" onerror="this.style.visibility='hidden'">
                             <p class="text-xs font-medium text-brandDark mt-2 line-clamp-2">${escaparHtml(p.nombre)}</p>
                             <p class="text-xs font-semibold text-brandDark mt-0.5">$${formatearPrecio(p.precio)}</p>
                         </div>
@@ -1411,7 +1404,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             // El producto siempre debe abrir desde arriba, independientemente de dónde estaba el catálogo.
             window.scrollTo(0, 0);
             const imagenes = obtenerImagenes(productoActual);
-            const urlImagen = imagenes[0] || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=600&q=80';
+            const urlImagen = imagenes[0] || '/sin-foto.svg';
             document.getElementById('modal-id').innerText = '00' + productoActual.id;
             document.getElementById('modal-nombre').innerText = productoActual.nombre;
             document.getElementById('modal-precio').innerText = '$' + formatearPrecio(productoActual.precio);
@@ -1605,11 +1598,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             
             if (complementos.length > 0) {
                 complementos.forEach((comp, index) => {
-                    const urlImagenComp = escaparHtml(comp.imagen_url || 'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=200&q=80');
+                    const urlImagenComp = escaparHtml(comp.imagen_url || '/sin-foto.svg');
                     const safeName = escaparHtml(comp.nombre || 'Producto');
                     contenedorComp.innerHTML += `
                         <button type="button" data-complemento-index="${index}" class="rf-complemento-card border border-gray-200 rounded-xl p-3 text-center cursor-pointer transition-colors flex flex-col justify-between group/comp focus:outline-none focus:ring-0">
-                            <img src="${urlImagenComp}" class="w-12 h-12 mx-auto object-cover rounded mb-2 shadow-sm group-hover/comp:scale-105 transition-transform" alt="${safeName}">
+                            <img loading="lazy" decoding="async" src="${urlTarjetaRF(urlImagenComp)}" class="w-12 h-12 mx-auto object-cover rounded mb-2 shadow-sm group-hover/comp:scale-105 transition-transform" alt="${safeName}">
                             <span class="rf-complemento-nombre text-[11px] text-gray-700">${safeName}</span>
                             <span class="font-bold text-xs mt-1 text-brandDark">$${formatearPrecio(comp.precio)}</span>
                             <span class="rf-complemento-detalle text-[10px] font-bold text-brandLightPink mt-1 hover:underline">+ Detalle</span>
@@ -1902,7 +1895,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     const sku = String(item.id ?? '').padStart(3, '0');
                     contenedor.innerHTML += `
                         <div class="flex items-start gap-3 py-3 border-b border-gray-100 last:border-b-0">
-                            <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || 'Producto')}" onerror="this.style.visibility='hidden'" class="w-[82px] h-[82px] object-cover rounded-md bg-gray-100 flex-shrink-0">
+                            <img src="${escaparHtml(urlTarjetaRF(item.imagen || ''))}" alt="${escaparHtml(item.nombre || 'Producto')}" onerror="this.style.visibility='hidden'" class="w-[82px] h-[82px] object-cover rounded-md bg-gray-100 flex-shrink-0">
                             <div class="min-w-0 flex-1 pt-0.5">
                                 <h4 class="font-medium text-[12px] leading-tight text-brandDark line-clamp-2">${escaparHtml(item.nombre)}</h4>
                                 <p class="font-semibold text-[11px] text-brandDark mt-1">$${formatearPrecio(item.precio)}<span class="text-[7px] align-top ml-0.5">MXN</span></p>
@@ -1943,7 +1936,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                             </div>` : '';
                         return `
                             <div class="flex items-start gap-4 py-5">
-                                <img src="${escaparHtml(item.imagen || '')}" alt="${escaparHtml(item.nombre || 'Producto')}" onerror="this.style.visibility='hidden'" class="w-[96px] h-[96px] object-cover rounded-lg bg-gray-100 flex-shrink-0">
+                                <img src="${escaparHtml(urlTarjetaRF(item.imagen || ''))}" alt="${escaparHtml(item.nombre || 'Producto')}" onerror="this.style.visibility='hidden'" class="w-[96px] h-[96px] object-cover rounded-lg bg-gray-100 flex-shrink-0">
                                 <div class="min-w-0 flex-1">
                                     <h4 class="font-medium text-sm text-brandDark leading-tight">${escaparHtml(item.nombre)}</h4>
                                     <p class="text-xs text-gray-500 mt-1.5">Cantidad: ${cantidad}</p>

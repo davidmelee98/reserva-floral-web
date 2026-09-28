@@ -10,18 +10,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/estilos-tailwind.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Poppins', 'sans-serif'], serif: ['Playfair Display', 'serif'] },
-                    colors: { brandFuchsia: '#c2185b', brandLightPink: '#e91e63', brandDark: '#353535', brandGray: '#f8f9fa' }
-                }
-            }
-        }
-    </script>
     <style>
         body{ -webkit-font-smoothing:antialiased; }
         .adm-card{ background:#fff; border:1px solid #eef0f2; border-radius:16px; box-shadow:0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.03); }
@@ -278,6 +268,17 @@
         }
         @media (prefers-reduced-motion: reduce){ .adm-sidebar, .adm-fondo-menu{ transition:none; } }
     </style>
+<script>
+    // Las tarjetas del catálogo usan una copia ligera de la foto (1000 px),
+    // del tamaño en que se muestran. La foto grande del producto sigue siendo
+    // la original. Solo aplica a fotos subidas al sitio.
+    function urlTarjetaRF(url) {
+        let u = String(url || '');
+        if (u.startsWith(location.origin)) u = u.slice(location.origin.length);
+        const m = /^\/uploads\/([^/?#]+\.(?:jpe?g|png|webp|avif))$/i.exec(u);
+        return m ? '/uploads/tarjeta/' + m[1] : String(url || '');
+    }
+</script>
 </head>
 <body class="bg-brandGray font-sans text-brandDark min-h-screen">
 
@@ -2290,7 +2291,7 @@
         fila.dataset.comboId = producto.id;
         fila.className = 'flex items-center gap-2 border border-gray-200 rounded-lg p-2';
         const img = producto.imagen_url
-            ? `<img src="${escaparHtmlAdmin(producto.imagen_url)}" class="w-9 h-9 object-cover rounded border border-gray-200">`
+            ? `<img src="${escaparHtmlAdmin(urlTarjetaRF(producto.imagen_url))}" class="w-9 h-9 object-cover rounded border border-gray-200">`
             : `<div class="w-9 h-9 rounded border border-gray-200 bg-gray-100"></div>`;
         fila.innerHTML = `
             ${img}
@@ -2317,7 +2318,7 @@
         if (coincidencias.length === 0) { resultados.innerHTML = '<p class="text-xs text-gray-400 p-3">Sin resultados.</p>'; resultados.classList.remove('hidden'); return; }
         resultados.innerHTML = coincidencias.map(p => `
             <button type="button" data-elegir-combo="${p.id}" class="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left">
-                ${p.imagen_url ? `<img src="${escaparHtmlAdmin(p.imagen_url)}" class="w-7 h-7 object-cover rounded">` : `<div class="w-7 h-7 rounded bg-gray-100"></div>`}
+                ${p.imagen_url ? `<img src="${escaparHtmlAdmin(urlTarjetaRF(p.imagen_url))}" class="w-7 h-7 object-cover rounded">` : `<div class="w-7 h-7 rounded bg-gray-100"></div>`}
                 <span class="text-xs text-brandDark truncate flex-1">${escaparHtmlAdmin(p.nombre)}</span>
                 <span class="text-[11px] text-gray-400">$${formatearPrecioAdmin(p.precio)}</span>
             </button>
@@ -2554,7 +2555,7 @@
             const stock = item.stock === null || item.stock === undefined ? 1 : Number(item.stock);
             const stockBajo = disponible && stock <= 2;
             const imgTag = item.imagen_url
-                ? `<img src="${escaparHtmlAdmin(item.imagen_url)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'w-12 h-12 rounded-md border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-300 text-[9px]',innerText:'Sin foto'}))" class="w-12 h-12 object-cover rounded-md border border-gray-200 hover:opacity-80">`
+                ? `<img src="${escaparHtmlAdmin(urlTarjetaRF(item.imagen_url))}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'w-12 h-12 rounded-md border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-300 text-[9px]',innerText:'Sin foto'}))" class="w-12 h-12 object-cover rounded-md border border-gray-200 hover:opacity-80">`
                 : `<div class="w-12 h-12 rounded-md border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-300 text-[9px]">Sin foto</div>`;
             return `
                 <tr class="hover:bg-gray-50 transition ${disponible ? '' : 'opacity-60'}">
@@ -3036,7 +3037,10 @@
         for (let i = 0; i < offsetInicio; i++) celdas.push('<div class="min-h-[84px]"></div>');
         for (let dia = 1; dia <= diasEnMes; dia++) {
             const clave = `${año}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-            const pedidosDelDia = (porFecha[clave] || []).filter(o => o.estado !== 'Cancelado');
+            // Solo se muestran como entregas los pedidos que sí se van a preparar;
+            // los que todavía esperan su pago se cuentan aparte, en ámbar.
+            const pedidosDelDia = (porFecha[clave] || []).filter(o => o.estado !== 'Cancelado' && !o.descartado && !pedidoEsperandoPagoRF(o));
+            const sinPagarDelDia = (porFecha[clave] || []).filter(pedidoEsperandoPagoRF).length;
             const esHoy = clave === hoyClave;
             const chips = pedidosDelDia.slice(0, 3).map(o => `<div class="adm-badge ${ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500'} !text-[9px] !px-1.5 !py-0.5 w-full truncate block" title="${escaparHtmlAdmin(o.cliente_nombre)} — ${escaparHtmlAdmin(o.estado || 'Pendiente')}">${escaparHtmlAdmin(o.cliente_nombre)}</div>`).join('');
             const masTexto = pedidosDelDia.length > 3 ? `<p class="text-[9px] text-gray-400 mt-0.5">+${pedidosDelDia.length - 3} más</p>` : '';
@@ -3045,6 +3049,7 @@
                     <p class="text-[11px] font-semibold ${esHoy ? 'text-brandFuchsia' : 'text-gray-500'}">${dia}</p>
                     <div class="space-y-0.5 mt-1">${chips}</div>
                     ${masTexto}
+                    ${sinPagarDelDia ? `<p class="text-[9px] text-amber-700 mt-0.5" title="Pedidos que todavía no se pagan: no los prepares aún">${sinPagarDelDia} esperando pago</p>` : ''}
                 </div>`);
         }
         document.getElementById('grid-calendario-pedidos').innerHTML = celdas.join('');
@@ -3061,7 +3066,7 @@
             const itemsHtml = items.map(it => {
                 const cantidad = Math.max(1, Number(it.cantidad) || 1);
                 const imgTag = it.imagen
-                    ? `<img src="${escaparHtmlAdmin(it.imagen)}" onerror="this.style.visibility='hidden'" class="w-10 h-10 object-cover rounded-md border border-gray-200 bg-white">`
+                    ? `<img src="${escaparHtmlAdmin(urlTarjetaRF(it.imagen))}" onerror="this.style.visibility='hidden'" class="w-10 h-10 object-cover rounded-md border border-gray-200 bg-white">`
                     : `<div class="w-10 h-10 rounded-md border border-gray-200 bg-white flex items-center justify-center text-gray-300 text-[8px]">Sin foto</div>`;
                 return `
                 <a href="/producto/${it.id}" target="_blank" class="flex items-center gap-3 py-1.5 hover:bg-white/70 -mx-1 px-1 rounded-lg transition">
@@ -4123,7 +4128,7 @@
         const items = carruselesTodos.filter(c => c.carrusel === tipo).sort((a, b) => a.orden - b.orden);
         cont.innerHTML = items.length ? items.map((item, i) => `
             <div class="py-3 flex items-center gap-3">
-                <img src="${escaparHtmlAdmin(item.imagen_url)}" class="w-14 h-14 object-cover rounded-lg border border-gray-200 bg-gray-50 shrink-0">
+                <img src="${escaparHtmlAdmin(urlTarjetaRF(item.imagen_url))}" class="w-14 h-14 object-cover rounded-lg border border-gray-200 bg-gray-50 shrink-0">
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-brandDark truncate">${escaparHtmlAdmin(item.titulo)}</p>
                     <p class="text-[11px] text-gray-400 truncate">${escaparHtmlAdmin(item.enlace)}</p>

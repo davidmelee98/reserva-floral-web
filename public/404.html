@@ -10,17 +10,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Poppins', 'sans-serif'], serif: ['Playfair Display', 'serif'] },
-                    colors: { brandFuchsia: '#c2185b', brandLightPink: '#e91e63', brandDark: '#353535', brandGray: '#f8f9fa' }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="/estilos-tailwind.css">
     <style>
         @keyframes petaloCaer{ 0%{ transform:translateY(-10px) rotate(0deg); opacity:0; } 15%{ opacity:1; } 100%{ transform:translateY(140px) rotate(220deg); opacity:0; } }
         .petalo{ position:absolute; animation: petaloCaer 3.5s ease-in infinite; }
@@ -34,7 +24,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center h-16">
                 <a href="/" class="flex items-center">
-                    <img src="/logo-reserva-floral.png" alt="Reserva Floral" class="w-[170px] h-12 object-contain" draggable="false">
+                    <img src="/logo-reserva-floral-claro-720.png" alt="Reserva Floral" class="w-[170px] h-12 object-contain" draggable="false">
                 </a>
             </div>
         </div>

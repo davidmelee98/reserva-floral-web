@@ -5,6 +5,11 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { Pool, types: tiposPg } = require('pg');
+const compression = require('compression');
+// sharp genera las copias ligeras de las fotos para las tarjetas. Si por algún
+// motivo no carga en el servidor, el sitio sigue funcionando con las originales.
+let sharp = null;
+try { sharp = require('sharp'); } catch (error) { console.error('sharp no está disponible; se usarán las fotos originales:', error?.message || error); }
 // Las columnas DATE (fecha de entrega, recordatorios, vigencia de cupones) son
 // fechas de CALENDARIO, sin hora. Por defecto la librería las convierte en
 // "medianoche UTC", y un navegador en México las mostraba como el día
@@ -76,6 +81,10 @@ app.set('trust proxy', 1);
 // - el navegador no "adivina" el tipo de un archivo subido;
 // - no se filtran direcciones completas a otros sitios al navegar;
 // - en producción, el navegador solo usa HTTPS para este dominio.
+// Comprime las páginas, estilos y datos (las páginas pesan 4-5 veces menos).
+// Las imágenes ya vienen comprimidas y no se tocan.
+app.use(compression());
+
 app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
@@ -202,7 +211,49 @@ fs.mkdirSync(CARPETA_SUBIDAS, { recursive: true });
 const CARPETA_FACTURAS = path.join(CARPETA_SUBIDAS, 'facturas');
 fs.mkdirSync(CARPETA_FACTURAS, { recursive: true });
 app.use('/uploads/facturas', (req, res) => res.status(404).end());
-app.use('/uploads', express.static(CARPETA_SUBIDAS));
+
+// Copias ligeras para las TARJETAS del catálogo (1000 px, WebP calidad 92).
+// Las tarjetas se ven a 586 px como máximo, así que la diferencia no se nota;
+// la foto grande del producto sigue usando la original, que nunca se modifica.
+// La copia se genera la primera vez que se pide y queda guardada.
+const CARPETA_TARJETAS = path.join(CARPETA_SUBIDAS, 'tarjeta');
+fs.mkdirSync(CARPETA_TARJETAS, { recursive: true });
+const generandoTarjetasRF = new Map();
+app.get('/uploads/tarjeta/:archivo', async (req, res) => {
+  const archivo = path.basename(req.params.archivo);
+  if (!/^[\w.-]+\.(jpe?g|png|webp|avif)$/i.test(archivo)) return res.status(404).end();
+  const origen = path.join(CARPETA_SUBIDAS, archivo);
+  if (!fs.existsSync(origen)) return res.status(404).end();
+  const original = `/uploads/${encodeURIComponent(archivo)}`;
+  if (!sharp) return res.redirect(302, original);
+  const destino = path.join(CARPETA_TARJETAS, `${archivo}.webp`);
+  try {
+    if (!fs.existsSync(destino)) {
+      // Si dos personas la piden al mismo tiempo, se genera una sola vez.
+      if (!generandoTarjetasRF.has(destino)) {
+        const temporal = `${destino}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+        generandoTarjetasRF.set(destino, sharp(origen, { failOn: 'none' })
+          .rotate() // respeta la orientación de las fotos tomadas con celular
+          .resize({ width: 1000, height: 1000, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 92 })
+          .toFile(temporal)
+          .then(() => fs.renameSync(temporal, destino))
+          .finally(() => generandoTarjetasRF.delete(destino)));
+      }
+      await generandoTarjetasRF.get(destino);
+    }
+    res.set('Cache-Control', 'public, max-age=2592000, immutable');
+    res.type('image/webp');
+    res.sendFile(destino);
+  } catch (error) {
+    console.error('No se pudo generar la copia para tarjeta; se usa la original:', error?.message || error);
+    res.redirect(302, original);
+  }
+});
+
+// Las fotos subidas tienen nombres únicos y nunca cambian: el navegador las
+// puede guardar 30 días en lugar de volver a pedirlas en cada visita.
+app.use('/uploads', express.static(CARPETA_SUBIDAS, { maxAge: '30d', immutable: true }));
 
 const storageSubidas = multer.diskStorage({
   destination: (req, file, cb) => cb(null, CARPETA_SUBIDAS),
@@ -302,7 +353,16 @@ app.get('/sitemap.xml', limitadorGeneral, async (req, res) => {
   }
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+// Archivos del sitio: las páginas siempre se revisan (para que un cambio se
+// vea de inmediato); logos, íconos y estilos se guardan un día en el navegador.
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, ruta) => {
+    // Páginas, estilos y scripts se revisan en cada visita (si no cambiaron, el
+    // navegador usa lo que ya tiene): así un cambio se ve de inmediato.
+    if (/\.(html|css|js)$/.test(ruta)) res.setHeader('Cache-Control', 'no-cache');
+    else res.setHeader('Cache-Control', 'public, max-age=86400');
+  }
+}));
 
 // Las páginas de producto usan el mismo cascarón de la tienda; el frontend carga el ID desde la URL.
 app.get('/producto/:id', async (req, res) => {
@@ -1043,13 +1103,12 @@ app.post('/api/cuenta/registro', limitadorRegistro, async (req, res) => {
       [nombre.trim(), apellido.trim(), genero || null, email.trim().toLowerCase(), telefono?.trim() || null, hash]
     );
     const cliente = resultado.rows[0];
-    // Si ya había hecho pedidos como invitado con este mismo correo, se los
-    // ligamos a la cuenta nueva -- así puede verlos en "Mis pedidos" y sus
-    // puntos ya cuentan desde antes de haberse registrado.
-    await pool.query(
-      `UPDATE ordenes SET cliente_cuenta_id=$1 WHERE cliente_cuenta_id IS NULL AND email_contacto=$2`,
-      [cliente.id, cliente.email]
-    );
+    // Los pedidos hechos antes SIN cuenta con este correo NO se ligan solos:
+    // el registro no comprueba que el correo sea de quien se registra, y
+    // cualquiera podía ver así los pedidos (dirección, teléfono, dedicatoria)
+    // de otra persona. Se le manda un enlace a ese correo: solo quien tiene
+    // acceso a la bandeja puede vincularlos.
+    ofrecerVincularPedidosRF(cliente);
     req.session.regenerate((err) => {
       if (err) return res.status(500).json({ error: 'No se pudo crear la cuenta.' });
       req.session.clienteId = cliente.id;
@@ -1178,6 +1237,9 @@ app.post('/api/cuenta/restablecer-password', limitadorLogin, async (req, res) =>
     }
     const hash = await bcrypt.hash(password, 12);
     await pool.query('UPDATE clientes_cuenta SET password_hash=$1, reset_token_hash=NULL, reset_token_expira=NULL WHERE id=$2', [hash, cliente.id]);
+    // Recuperar la contraseña ya comprobó que la bandeja es suya: sus pedidos
+    // anteriores hechos sin cuenta se vinculan ahora.
+    await vincularPedidosDeInvitadoRF(cliente.id, cliente.email);
     res.json({ exito: true });
   } catch (error) {
     console.error('POST /api/cuenta/restablecer-password:', error);
@@ -1559,6 +1621,68 @@ app.delete('/api/admin/correos/bajas/:email', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('DELETE /api/admin/correos/bajas:', error);
     res.status(500).json({ error: 'No se pudo quitar.' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Vincular a una cuenta los pedidos hechos antes sin cuenta con el mismo correo.
+// Solo ocurre cuando se comprobó que la bandeja es de esa persona: con el
+// enlace firmado del correo, al recuperar la contraseña, o al entrar con Google.
+// ---------------------------------------------------------------------------
+async function vincularPedidosDeInvitadoRF(clienteId, email) {
+  const r = await pool.query(
+    'UPDATE ordenes SET cliente_cuenta_id=$1 WHERE cliente_cuenta_id IS NULL AND LOWER(email_contacto)=LOWER($2)',
+    [clienteId, String(email || '').trim()]
+  );
+  return r.rowCount;
+}
+const DIAS_VIGENCIA_VINCULAR = 14;
+function firmaVincularRF(clienteId, email, marca) {
+  return crypto.createHmac('sha256', String(sessionSecret))
+    .update(`vincular:${clienteId}:${String(email).trim().toLowerCase()}:${marca}`).digest('hex').slice(0, 40);
+}
+async function ofrecerVincularPedidosRF(cliente) {
+  try {
+    const r = await pool.query('SELECT COUNT(*)::int AS n FROM ordenes WHERE cliente_cuenta_id IS NULL AND LOWER(email_contacto)=LOWER($1)', [cliente.email]);
+    const n = r.rows[0].n;
+    if (!n || !resendClient) return;
+    const marca = Date.now();
+    const enlace = `${URL_SITIO}/api/cuenta/vincular-pedidos?c=${cliente.id}&m=${marca}&f=${firmaVincularRF(cliente.id, cliente.email, marca)}`;
+    const cuerpo = `
+      <h2 style="font-size:16px;margin:0 0 8px;">Encontramos ${n === 1 ? 'un pedido anterior' : `${n} pedidos anteriores`} con tu correo</h2>
+      <p style="font-size:13px;color:#666;margin:0 0 16px;">Antes de crear tu cuenta ya habías comprado con este correo. Si ${n === 1 ? 'ese pedido es tuyo' : 'esos pedidos son tuyos'}, vincúla${n === 1 ? 'lo' : 'los'} para verlos en "Mis pedidos" y sumar sus puntos.</p>
+      <p style="margin:0 0 16px;"><a href="${enlace}" style="background:#c2185b;color:#fff;padding:10px 22px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:600;">Vincular mis pedidos</a></p>
+      <p style="font-size:12px;color:#999;">Si no creaste una cuenta en Reserva Floral, ignora este correo: sin este enlace nadie puede ver tus pedidos.</p>
+    `;
+    await resendClient.emails.send({
+      from: CORREO_REMITENTE, to: cliente.email,
+      subject: 'Vincula tus pedidos anteriores — Reserva Floral',
+      html: await plantillaBaseCorreo('Vincula tus pedidos', cuerpo)
+    });
+  } catch (error) {
+    console.error('No se pudo ofrecer vincular pedidos:', error?.message || error);
+  }
+}
+app.get('/api/cuenta/vincular-pedidos', async (req, res) => {
+  const clienteId = Number(req.query.c);
+  const marca = Number(req.query.m);
+  const firma = String(req.query.f || '');
+  const invalido = () => res.status(400).send(paginaBajaRF('Enlace no válido', 'Este enlace está incompleto o ya venció. Inicia sesión y, si hace falta, escríbenos para ayudarte a recuperar tus pedidos.', `<a class="btn" href="/cuenta">Ir a mi cuenta</a>`));
+  if (!Number.isInteger(clienteId) || clienteId <= 0 || !Number.isFinite(marca) || !/^[a-f0-9]{40}$/.test(firma)) return invalido();
+  if (Date.now() - marca > DIAS_VIGENCIA_VINCULAR * 86400000 || marca > Date.now() + 60000) return invalido();
+  try {
+    const r = await pool.query('SELECT id, email FROM clientes_cuenta WHERE id=$1', [clienteId]);
+    const cliente = r.rows[0];
+    if (!cliente) return invalido();
+    const esperada = firmaVincularRF(cliente.id, cliente.email, marca);
+    if (!crypto.timingSafeEqual(Buffer.from(firma), Buffer.from(esperada))) return invalido();
+    const n = await vincularPedidosDeInvitadoRF(cliente.id, cliente.email);
+    res.send(paginaBajaRF('Listo', n > 0
+      ? `Vinculamos ${n === 1 ? 'tu pedido anterior' : `tus ${n} pedidos anteriores`} a tu cuenta. Ya ${n === 1 ? 'aparece' : 'aparecen'} en "Mis pedidos".`
+      : 'Tus pedidos ya estaban vinculados a tu cuenta.', `<a class="btn" href="/cuenta#pedidos">Ver mis pedidos</a>`));
+  } catch (error) {
+    console.error('GET /api/cuenta/vincular-pedidos:', error);
+    res.status(500).send(paginaBajaRF('Algo salió mal', 'No pudimos vincular tus pedidos. Intenta de nuevo en un momento.'));
   }
 });
 
