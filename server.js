@@ -324,7 +324,7 @@ app.get('/producto/:id', async (req, res) => {
     const descripcionPlana = String(p.descripcion || 'Arreglo floral con entrega a domicilio.').replace(/</g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
     const imagenAbsoluta = p.imagen_url
       ? (p.imagen_url.startsWith('http') ? p.imagen_url : `${URL_SITIO}${p.imagen_url}`)
-      : `${URL_SITIO}/logo-reserva-floral.png`;
+      : `${URL_SITIO}/imagen-compartir.png`;
     const tituloProducto = `${nombreEscapado} | Reserva Floral`;
 
     html = html
@@ -887,7 +887,10 @@ app.get('/api/admin/auth/estado', async (req, res) => {
       return res.json({
         autenticado: true,
         requiereConfiguracionInicial: false,
-        usuario: { id: req.session.usuarioId, nombre: req.session.nombre, email: req.session.email, rol: req.session.rol }
+        usuario: { id: req.session.usuarioId, nombre: req.session.nombre, email: req.session.email, rol: req.session.rol },
+        // Si hay cobro en línea, un pedido "Pendiente" sin pagar todavía no se
+        // debe preparar: el panel los cuenta aparte.
+        cobroEnLinea: !!mpClient
       });
     }
     res.json({ autenticado: false, requiereConfiguracionInicial });
@@ -2439,7 +2442,9 @@ function encabezadosBajaRF(email) {
 }
 
 async function plantillaBaseCorreo(tituloInterno, cuerpoHtml, opciones = {}) {
-  const logoUrl = `${URL_SITIO}/logo-reserva-floral.png`;
+  // Versión del logo para fondo claro: el oficial tiene las letras en crema
+  // y sobre el encabezado blanco del correo no se leían.
+  const logoUrl = `${URL_SITIO}/logo-reserva-floral-oscuro.png`;
   let whatsappBoton = '';
   try {
     const cfg = await pool.query("SELECT clave, valor FROM configuracion WHERE clave = 'whatsapp_numero'");
@@ -2453,7 +2458,9 @@ async function plantillaBaseCorreo(tituloInterno, cuerpoHtml, opciones = {}) {
   } catch (error) {
     console.error('No se pudo cargar el número de WhatsApp para el correo:', error?.message || error);
   }
-  return `
+  // La declaración de codificación va dentro del propio correo: algunos
+  // programas ignoran la del envío y mostrarían «DirecciÃ³n» en vez de «Dirección».
+  return `<meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7eef2;padding:32px 16px;font-family:'Helvetica Neue',Arial,sans-serif;">
       <tr><td align="center">
         <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;">
@@ -3729,7 +3736,10 @@ app.get('/api/admin/dashboard', requireAuth, async (req, res) => {
       pedidos: {
         hoy: contarEnRango(hoy),
         semana: contarEnRango(inicioSemana),
-        pendientes: ordenesRecientes.rows.filter(o => o.estado === 'Pendiente').length,
+        // "Por atender" = pendientes que ya se pueden preparar (pagados, o
+        // todos si no hay cobro en línea). Los que esperan pago van aparte.
+        pendientes: ordenesRecientes.rows.filter(o => o.estado === 'Pendiente' && (!mpClient || o.estado_pago === 'aprobado')).length,
+        esperandoPago: mpClient ? ordenesRecientes.rows.filter(o => o.estado === 'Pendiente' && o.estado_pago !== 'aprobado').length : 0,
         totalHistorico: ordenesRecientes.rows.length
       },
       ingresos: {
