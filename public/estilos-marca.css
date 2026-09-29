@@ -1,0 +1,36 @@
+/* =====================================================================
+   Paleta "Rubor" de Reserva Floral
+   Frambuesa (#A3284F, el color del círculo del logo) como acento; rubor en
+   encabezado y pie; tinta berenjena para el texto. Los colores de Tailwind
+   (brandFuchsia, brandLightPink, brandDark, brandGray, pink-*) ya usan esta
+   paleta; aquí van las piezas de marca que no son clases sueltas.
+   ===================================================================== */
+:root {
+  --rf-rubor: #F8E6EA;
+  --rf-rubor-claro: #FDF3F5;
+  --rf-linea: #EFD3DA;
+  --rf-frambuesa: #A3284F;
+  --rf-frambuesa-oscura: #86203F;
+  --rf-tinta: #3A2130;
+  --rf-fondo: #FFFAFB;
+}
+body.bg-white { background-color: var(--rf-fondo); }
+
+/* Encabezado */
+.rf-encabezado, .rf-encabezado-busqueda { background: var(--rf-rubor); color: var(--rf-tinta); }
+.rf-encabezado { box-shadow: 0 1px 0 var(--rf-linea); }
+:where(.rf-encabezado) .text-white:not([class*="bg-"]) { color: var(--rf-tinta); }
+.rf-encabezado .hover\:text-gray-200:hover { color: var(--rf-frambuesa); }
+.rf-encabezado .rounded-full.bg-white.text-brandFuchsia { background: var(--rf-frambuesa); color: #fff; }
+.rf-encabezado input.bg-white, .rf-encabezado-busqueda input.bg-white { border: 1px solid var(--rf-linea); }
+
+/* Fila del menú bajo el encabezado */
+nav.bg-white.border-b.sticky { background: var(--rf-rubor-claro); border-color: var(--rf-linea); }
+
+/* Pie de página */
+footer.bg-white { background: var(--rf-rubor); border-color: var(--rf-linea); }
+footer .rf-pie-marca { border-color: var(--rf-linea); }
+
+/* Botones del encabezado en celular: tenían el color blanco fijo */
+.rf-encabezado .rf-mobile-menu-button, .rf-encabezado .rf-mobile-action { color: var(--rf-tinta); }
+.rf-encabezado .rf-mobile-menu-button:active, .rf-encabezado .rf-mobile-action:active { background: rgba(163, 40, 79, .08); }

@@ -13,6 +13,7 @@
     <!-- El SDK de Google Maps se carga después, dinámicamente, en cuanto sabemos
          que la clave está configurada (ver inicializarGoogleMaps más abajo). -->
     <link rel="stylesheet" href="/estilos-tailwind.css">
+    <link rel="stylesheet" href="/estilos-marca.css">
     <style>
         .co-input{ width:100%; height:2.6rem; box-sizing:border-box; border:1px solid #d1d5db; border-radius:10px; padding:.65rem .85rem; font-size:.875rem; outline:none; transition:border-color .15s ease, box-shadow .15s ease; background:#fff; }
         /* Los <select> traen su propio "look" nativo en cada navegador (más
@@ -24,27 +25,27 @@
             background-repeat:no-repeat; background-position:right .6rem center; background-size:1.1rem;
             padding-right:1.9rem;
         }
-        .co-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.10); }
+        .co-input:focus{ border-color:#a3284f; box-shadow:0 0 0 3px rgba(163,40,79,.10); }
         .co-input-error{ border-color:#dc2626 !important; background:#fef2f2; }
         .co-input-error:focus{ box-shadow:0 0 0 3px rgba(220,38,38,.12); }
         .co-input.is-invalid{ border-color:#dc2626; }
         .co-label{ font-size:.72rem; color:#6b6b6b; font-weight:500; margin-bottom:.25rem; display:block; }
-        .co-circulo{ width:28px; height:28px; border-radius:999px; border:2px solid #c2185b; color:#c2185b; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; flex:0 0 auto; transition:all .15s ease; }
-        .co-circulo.is-lleno{ background:#c2185b; color:#fff; }
+        .co-circulo{ width:28px; height:28px; border-radius:999px; border:2px solid #a3284f; color:#a3284f; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; flex:0 0 auto; transition:all .15s ease; }
+        .co-circulo.is-lleno{ background:#a3284f; color:#fff; }
         .co-card{ background:#fff; border:1px solid #ececec; border-radius:16px; padding:1.5rem; transition:opacity .15s ease; scroll-margin-top:90px; }
         .rf-badge-pago{ display:inline-flex; align-items:center; justify-content:center; height:20px; padding:0 7px; border-radius:4px; color:#fff; font-size:9.5px; font-weight:800; letter-spacing:.02em; font-style:normal; line-height:1; }
         .co-card.is-inactiva{ opacity:.55; }
         .co-slot{ border:1px solid #d1d5db; border-radius:999px; padding:.6rem 1.1rem; font-size:.82rem; font-weight:500; cursor:pointer; transition:all .12s ease; }
-        .co-slot:hover{ border-color:#c2185b; }
-        .co-slot.is-activo{ background:#c2185b; border-color:#c2185b; color:#fff; }
+        .co-slot:hover{ border-color:#a3284f; }
+        .co-slot.is-activo{ background:#a3284f; border-color:#a3284f; color:#fff; }
         .co-sugerencia{ padding:.6rem .85rem; font-size:.82rem; cursor:pointer; border-bottom:1px solid #f0f0f0; }
         .co-sugerencia:hover{ background:#fdf1f6; }
         .co-tab{ padding:.4rem .1rem; font-size:.8rem; font-weight:500; color:#8a8a8a; white-space:nowrap; cursor:pointer; border-bottom:2px solid transparent; }
-        .co-tab.is-activo{ color:#c2185b; font-weight:700; border-bottom-color:#c2185b; }
+        .co-tab.is-activo{ color:#a3284f; font-weight:700; border-bottom-color:#a3284f; }
         .co-msg-opcion{ display:flex; gap:.6rem; padding:.65rem 0; border-bottom:1px solid #f3f3f3; cursor:pointer; }
         .co-radio{ width:16px; height:16px; border-radius:999px; border:2px solid #c9c9c9; flex:0 0 auto; margin-top:2px; display:flex; align-items:center; justify-content:center; }
-        .co-radio.is-activo{ border-color:#c2185b; }
-        .co-radio.is-activo::after{ content:''; width:8px; height:8px; border-radius:999px; background:#c2185b; }
+        .co-radio.is-activo{ border-color:#a3284f; }
+        .co-radio.is-activo::after{ content:''; width:8px; height:8px; border-radius:999px; background:#a3284f; }
         #mapa-direccion{ z-index:0; }
         .rf-map-pin{ filter:drop-shadow(0 3px 6px rgba(0,0,0,.35)); }
         #tabs-mensajes{ scrollbar-width:none; -ms-overflow-style:none; }
@@ -86,7 +87,7 @@
             left: 0;
             width: 100%;
             height: 2px;
-            background-color: #c2185b;
+            background-color: #a3284f;
         }
 /* Navegación móvil jerárquica */
 .rf-mobile-menu-button{display:none;align-items:center;justify-content:center;width:42px;height:42px;border:0;background:transparent;color:#fff;border-radius:10px;cursor:pointer;flex:0 0 auto}
@@ -104,7 +105,7 @@
 .rf-mobile-row.is-parent{font-weight:700}
 .rf-mobile-row.is-viewall{color:#8a8a8a;font-weight:400}
 .rf-mobile-row:last-child{border-bottom:0}
-.rf-mobile-row:active{color:#c2185b}
+.rf-mobile-row:active{color:#a3284f}
 .rf-mobile-row-label{min-width:0}
 .rf-mobile-arrow{width:22px;height:22px;flex:0 0 auto;color:#555}
 .rf-mobile-action{display:none;align-items:center;justify-content:center;width:36px;height:42px;padding:0;border:0;background:transparent;color:#fff;border-radius:10px;cursor:pointer;flex:0 0 36px}.rf-mobile-action:active{background:rgba(255,255,255,.12)}
@@ -138,7 +139,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 </head>
 <body class="bg-brandGray font-sans text-brandDark antialiased min-h-screen">
 
-    <header class="bg-brandFuchsia text-white z-50 sticky top-0">
+    <header class="rf-encabezado z-50 sticky top-0">
         <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <button type="button" id="rf-mobile-menu-button" class="rf-mobile-menu-button md:hidden" aria-label="Abrir categorías">
@@ -147,7 +148,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
                 <!-- Logo -->
                 <div class="rf-mobile-logo flex-shrink-0 flex items-center cursor-pointer" onclick="location.href='/'">
-                    <img src="/logo-reserva-floral-claro-720.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
+                    <img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
                 </div>
                 
                 <!-- Buscador global -->
@@ -184,7 +185,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     </header>
 
     <!-- Barra de búsqueda móvil: oculta hasta que se toque la lupa del header -->
-    <div id="barra-busqueda-movil" class="hidden md:hidden bg-brandFuchsia px-4 pb-3 sticky top-16 z-40">
+    <div id="barra-busqueda-movil" class="hidden md:hidden rf-encabezado-busqueda px-4 pb-3 sticky top-16 z-40">
         <form onsubmit="event.preventDefault(); buscarEnCatalogo(document.getElementById('input-busqueda-movil').value);" class="relative">
             <input type="text" id="input-busqueda-movil" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
             <button type="submit" aria-label="Buscar" class="absolute right-3 top-2.5">
@@ -696,7 +697,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
 <style>
     .cta-input{ width:100%; border:1px solid #d1d5db; border-radius:10px; padding:.65rem .85rem; font-size:.875rem; outline:none; }
-    .cta-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.10); }
+    .cta-input:focus{ border-color:#a3284f; box-shadow:0 0 0 3px rgba(163,40,79,.10); }
 </style>
 
 <script>

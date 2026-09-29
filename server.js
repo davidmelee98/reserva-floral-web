@@ -1268,7 +1268,7 @@ app.post('/api/cuenta/recuperar-password', limitadorLogin, async (req, res) => {
       const cuerpo = `
         <h2 style="font-size:16px;margin:0 0 8px;">Restablece tu contraseña</h2>
         <p style="font-size:13px;color:#666;margin:0 0 16px;">Alguien (probablemente tú) pidió restablecer la contraseña de tu cuenta en Reserva Floral. Si no fuiste tú, puedes ignorar este correo -- tu contraseña actual sigue funcionando igual.</p>
-        <p style="margin:0 0 16px;"><a href="${enlace}" style="background:#c2185b;color:#fff;padding:10px 24px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:600;">Elegir una nueva contraseña</a></p>
+        <p style="margin:0 0 16px;"><a href="${enlace}" style="background:#a3284f;color:#fff;padding:10px 24px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:600;">Elegir una nueva contraseña</a></p>
         <p style="font-size:12px;color:#999;">Este enlace vale por 1 hora.</p>
       `;
       await resendClient.emails.send({
@@ -1556,7 +1556,7 @@ async function procesarSolicitudFacturaRF(req, res, condicion, valorCondicion) {
             <p style="font-size:13px;color:#666;">El pedido <strong>#${id}</strong> tiene una solicitud de factura nueva, pendiente de subir.</p>
             <p style="font-size:13px;margin:4px 0;"><strong>RFC:</strong> ${escaparHtmlServidorRF(rfc.trim().toUpperCase())}</p>
             <p style="font-size:13px;margin:4px 0;"><strong>Razón social:</strong> ${escaparHtmlServidorRF(razonSocial.trim())}</p>
-            <p style="margin-top:16px;"><a href="${URL_SITIO}/admin" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver en el panel</a></p>
+            <p style="margin-top:16px;"><a href="${URL_SITIO}/admin" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver en el panel</a></p>
           `;
           const htmlCorreo = await plantillaBaseCorreo('Nueva solicitud de factura', cuerpo);
           await Promise.all(admins.rows.map(a => resendClient.emails.send({
@@ -1625,8 +1625,8 @@ app.post('/api/ordenes/:id/descartar', async (req, res) => {
 // algunos programas de correo abren los enlaces solos para revisarlos.
 function paginaBajaRF(titulo, mensaje, formulario = '') {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titulo} — Reserva Floral</title>
-  <style>body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f7eef2;margin:0;padding:40px 16px;color:#3a3a3a}.caja{max-width:420px;margin:0 auto;background:#fff;border-radius:20px;padding:32px 24px;text-align:center}img{height:44px}h1{font-size:18px;margin:20px 0 8px}p{font-size:14px;color:#666;line-height:1.5}button,a.btn{display:inline-block;margin-top:16px;background:#c2185b;color:#fff;border:0;padding:11px 24px;border-radius:999px;font-size:14px;cursor:pointer;text-decoration:none}</style></head>
-  <body><div class="caja"><img src="/logo-reserva-floral.png" alt="Reserva Floral"><h1>${titulo}</h1><p>${mensaje}</p>${formulario}</div></body></html>`;
+  <style>body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f7eef2;margin:0;padding:40px 16px;color:#3a3a3a}.caja{max-width:420px;margin:0 auto;background:#fff;border-radius:20px;padding:32px 24px;text-align:center}img{height:44px}h1{font-size:18px;margin:20px 0 8px}p{font-size:14px;color:#666;line-height:1.5}button,a.btn{display:inline-block;margin-top:16px;background:#a3284f;color:#fff;border:0;padding:11px 24px;border-radius:999px;font-size:14px;cursor:pointer;text-decoration:none}</style></head>
+  <body><div class="caja"><img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral"><h1>${titulo}</h1><p>${mensaje}</p>${formulario}</div></body></html>`;
 }
 function bajaValidaRF(email, firma) {
   if (!email || !firma || typeof firma !== 'string') return false;
@@ -1714,7 +1714,7 @@ async function ofrecerVincularPedidosRF(cliente) {
     const cuerpo = `
       <h2 style="font-size:16px;margin:0 0 8px;">Encontramos ${n === 1 ? 'un pedido anterior' : `${n} pedidos anteriores`} con tu correo</h2>
       <p style="font-size:13px;color:#666;margin:0 0 16px;">Antes de crear tu cuenta ya habías comprado con este correo. Si ${n === 1 ? 'ese pedido es tuyo' : 'esos pedidos son tuyos'}, vincúla${n === 1 ? 'lo' : 'los'} para verlos en "Mis pedidos" y sumar sus puntos.</p>
-      <p style="margin:0 0 16px;"><a href="${enlace}" style="background:#c2185b;color:#fff;padding:10px 22px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:600;">Vincular mis pedidos</a></p>
+      <p style="margin:0 0 16px;"><a href="${enlace}" style="background:#a3284f;color:#fff;padding:10px 22px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:600;">Vincular mis pedidos</a></p>
       <p style="font-size:12px;color:#999;">Si no creaste una cuenta en Reserva Floral, ignora este correo: sin este enlace nadie puede ver tus pedidos.</p>
     `;
     await resendClient.emails.send({
@@ -2679,7 +2679,7 @@ async function plantillaBaseCorreo(tituloInterno, cuerpoHtml, opciones = {}) {
     if (numero) {
       whatsappBoton = `
         <tr><td align="center" style="padding-top:18px;">
-          <a href="https://wa.me/${numero}" style="display:inline-block;background:#ffffff;color:#c2185b;text-decoration:none;font-size:12px;font-weight:600;padding:9px 18px;border-radius:999px;">¿Dudas? Escríbenos por WhatsApp</a>
+          <a href="https://wa.me/${numero}" style="display:inline-block;background:#ffffff;color:#a3284f;text-decoration:none;font-size:12px;font-weight:600;padding:9px 18px;border-radius:999px;">¿Dudas? Escríbenos por WhatsApp</a>
         </td></tr>`;
     }
   } catch (error) {
@@ -2697,7 +2697,7 @@ async function plantillaBaseCorreo(tituloInterno, cuerpoHtml, opciones = {}) {
           <tr><td style="background:#ffffff;padding:6px 32px 32px;color:#3a3a3a;line-height:1.55;">
             ${cuerpoHtml}
           </td></tr>
-          <tr><td style="background:#c2185b;border-radius:0 0 20px 20px;padding:20px 24px;">
+          <tr><td style="background:#a3284f;border-radius:0 0 20px 20px;padding:20px 24px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               ${whatsappBoton}
             </table>
@@ -2741,7 +2741,7 @@ function construirCorreoConfirmacion(orden) {
     <p style="font-size:13px;margin:4px 0;"><strong>Total:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${escaparHtmlServidorRF(orden.direccion_entrega)}</p>
-    ${orden.token_invitado ? `<p style="font-size:12px;color:#888;margin:16px 0 0;"><a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#c2185b;">Consulta el estado de tu pedido o solicita tu factura aquí</a>.</p>` : ''}
+    ${orden.token_invitado ? `<p style="font-size:12px;color:#888;margin:16px 0 0;"><a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#a3284f;">Consulta el estado de tu pedido o solicita tu factura aquí</a>.</p>` : ''}
   `;
   return { titulo: 'Confirmación de pedido', asunto: `Recibimos tu pedido #${orden.id} — Reserva Floral`, cuerpo };
 }
@@ -2774,7 +2774,7 @@ function construirCorreoEstadoActualizado(orden, estadoNuevo) {
     <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${escaparHtmlServidorRF(orden.direccion_entrega || '')}</p>
     ${estadoNuevo === 'Cancelado' && orden.estado_pago === 'aprobado' ? `<p style="font-size:13px;color:#3a3a3a;background:#f7eef2;border-radius:10px;padding:10px 12px;margin:14px 0 0;">Como ya habías pagado, te reembolsaremos <strong>$${Number(orden.total || 0).toFixed(2)}</strong> en el mismo método de pago que usaste. Dependiendo de tu banco, puede tardar algunos días en reflejarse.</p>` : ''}
-    ${!orden.cliente_cuenta_id && orden.token_invitado ? `<p style="margin-top:16px;"><a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#c2185b;font-size:13px;">Ver mi pedido</a></p>` : ''}
+    ${!orden.cliente_cuenta_id && orden.token_invitado ? `<p style="margin-top:16px;"><a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#a3284f;font-size:13px;">Ver mi pedido</a></p>` : ''}
   `;
   return { titulo: mensaje.titulo, asunto: `${mensaje.asunto} — Pedido #${orden.id}`, cuerpo };
 }
@@ -2789,7 +2789,7 @@ function construirCorreoCarritoAbandonado(carritoAbandonado) {
     <p style="font-size:13px;color:#666;margin:0 0 16px;">${carritoAbandonado.nombre ? `Hola ${escaparHtmlServidorRF(carritoAbandonado.nombre)}, v` : 'V'}imos que dejaste estos productos listos, pero no llegaste a terminar tu compra. Aquí siguen esperándote:</p>
     ${listaHtml}
     <p style="font-size:13px;margin:16px 0 4px;"><strong>Total: $${Number(carritoAbandonado.total || 0).toFixed(2)} MXN</strong></p>
-    <p style="margin-top:20px;"><a href="${URL_SITIO}/carrito" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Terminar mi compra</a></p>
+    <p style="margin-top:20px;"><a href="${URL_SITIO}/carrito" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Terminar mi compra</a></p>
   `;
   return { titulo: 'Tu carrito te espera', asunto: 'Se te quedó algo en el carrito 🌸', cuerpo };
 }
@@ -2819,7 +2819,7 @@ function construirCorreoRecordatorioRF(recordatorio, fechaEvento, dias, nombreCl
     <h2 style="font-size:16px;margin:0 0 8px;">🎁 ${titulo} ${cuando}</h2>
     <p style="font-size:13px;color:#666;margin:0 0 16px;">${nombreCliente ? `Hola ${escaparHtmlServidorRF(nombreCliente)}, t` : 'T'}e recordamos que el <strong>${formatearFechaCorreo(fechaEvento)}</strong> es una fecha que guardaste en tu cuenta. ¿Ya tienes el regalo?</p>
     <p style="font-size:12px;color:#888;margin:0 0 16px;">Para entregas el mismo día, haz tu pedido antes de las 2:00 pm.</p>
-    <p style="margin-top:8px;"><a href="${URL_SITIO}/" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Elegir un regalo</a></p>
+    <p style="margin-top:8px;"><a href="${URL_SITIO}/" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Elegir un regalo</a></p>
   `;
   return { titulo: 'Recordatorio', asunto: `🎁 ${recordatorio.titulo} ${cuando} — Reserva Floral`, cuerpo };
 }
@@ -2866,7 +2866,7 @@ async function avisarAdminsRF(asunto, cuerpoHtml) {
   try {
     const admins = await pool.query("SELECT email FROM usuarios_admin WHERE rol='admin' AND activo=true");
     if (!admins.rows.length) return;
-    const html = await plantillaBaseCorreo(asunto, cuerpoHtml + `<p style="margin-top:16px;"><a href="${URL_SITIO}/admin" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Abrir el panel</a></p>`);
+    const html = await plantillaBaseCorreo(asunto, cuerpoHtml + `<p style="margin-top:16px;"><a href="${URL_SITIO}/admin" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Abrir el panel</a></p>`);
     await Promise.all(admins.rows.map(a => resendClient.emails.send({ from: CORREO_REMITENTE, to: a.email, subject: asunto, html })
       .catch(err => console.error('No se pudo avisar a un administrador:', err?.message || err))));
   } catch (error) {
@@ -2931,7 +2931,7 @@ async function enviarCorreoCancelacionPorPagoRF(orden) {
       <h2 style="font-size:16px;margin:0 0 8px;">Tu pedido #${orden.id} se canceló</h2>
       <p style="font-size:13px;color:#666;margin:0 0 16px;">No recibimos el pago de tu pedido a tiempo, así que lo cancelamos para liberar los productos. No se te hizo ningún cargo por este pedido.</p>
       <p style="font-size:13px;color:#666;margin:0 0 16px;">Si todavía quieres enviarlo, puedes volver a hacerlo cuando gustes.</p>
-      <p style="margin-top:8px;"><a href="${URL_SITIO}/" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Volver a la tienda</a></p>
+      <p style="margin-top:8px;"><a href="${URL_SITIO}/" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Volver a la tienda</a></p>
     `;
     await resendClient.emails.send({
       from: CORREO_REMITENTE, to: orden.email_contacto,
@@ -2988,7 +2988,7 @@ async function avisarRestockRF(productoId, nombreProducto) {
     const cuerpo = `
       <h2 style="font-size:16px;margin:0 0 8px;">🌸 ¡Ya volvió a haber!</h2>
       <p style="font-size:13px;color:#666;">"${nombreProducto}" ya está disponible de nuevo -- por si todavía te interesa, aquí tienes el enlace directo antes de que se vuelva a agotar.</p>
-      <p style="margin-top:16px;"><a href="${URL_SITIO}/producto/${productoId}" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver el producto</a></p>
+      <p style="margin-top:16px;"><a href="${URL_SITIO}/producto/${productoId}" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver el producto</a></p>
     `;
     const html = await plantillaBaseCorreo('Ya volvió a haber', cuerpo);
     await Promise.all(espera.rows.map(a => resendClient.emails.send({
@@ -3854,7 +3854,7 @@ app.post('/api/admin/ordenes/:id/factura', requireAuth, (req, res) => {
         const cuerpo = `
           <h2 style="font-size:16px;margin:0 0 8px;">🧾 Tu factura ya está lista</h2>
           <p style="font-size:13px;color:#666;">La factura de tu pedido <strong>#${orden.id}</strong> ya está disponible. Puedes descargarla desde "Mis pedidos" en tu cuenta.</p>
-          <p style="margin-top:16px;"><a href="${orden.cliente_cuenta_id ? `${URL_SITIO}/cuenta#pedidos` : `${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}`}" style="background:#c2185b;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver mi factura</a></p>
+          <p style="margin-top:16px;"><a href="${orden.cliente_cuenta_id ? `${URL_SITIO}/cuenta#pedidos` : `${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}`}" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver mi factura</a></p>
         `;
         resendClient.emails.send({
           from: CORREO_REMITENTE, to: orden.factura_email, subject: `Tu factura está lista — Pedido #${orden.id}`,

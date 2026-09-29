@@ -11,6 +11,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/estilos-tailwind.css">
+    <link rel="stylesheet" href="/estilos-marca.css">
     <style>
         #carrito-lateral {
             opacity: 0;
@@ -46,7 +47,7 @@
         }
         @media (hover: hover) and (pointer: fine) {
             #complementos-container .rf-complemento-card:hover {
-                border-color: #c2185b;
+                border-color: #a3284f;
             }
         }
         @media (hover: none) {
@@ -97,7 +98,7 @@
             left: 0;
             width: 100%;
             height: 2px;
-            background-color: #c2185b;
+            background-color: #a3284f;
         }
 
         /* Modal de ubicación obligatoria antes de navegar por categorías */
@@ -111,45 +112,45 @@
 .rf-home-trigger{position:relative;width:100%;border:0;outline:0;background:transparent;text-align:left;font-size:.875rem;line-height:1.25rem;padding:.25rem 1.9rem .15rem 0;color:#374151;cursor:pointer;}
 .rf-home-trigger:disabled{color:#9ca3af;cursor:not-allowed;opacity:.9;}
 .rf-home-chevron{pointer-events:none;position:absolute;right:4px;top:50%;transform:translateY(-25%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #6b7280;transition:transform .16s ease,border-color .16s ease;}
-.rf-home-trigger[aria-expanded="true"] .rf-home-chevron{transform:translateY(-45%) rotate(180deg);border-top-color:#c2185b;}
+.rf-home-trigger[aria-expanded="true"] .rf-home-chevron{transform:translateY(-45%) rotate(180deg);border-top-color:#a3284f;}
 .rf-home-menu{position:absolute;left:6px;right:6px;top:calc(100% + 7px);background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 16px 32px rgba(17,24,39,.14);padding:6px;z-index:2000;max-height:220px;overflow:auto;animation:rfDropdownIn .14s ease-out;}
 .rf-home-menu::-webkit-scrollbar{width:7px;}
 .rf-home-menu::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:999px;}
 .rf-home-option{display:block;width:100%;border:0;background:transparent;border-radius:10px;padding:10px 12px;text-align:left;color:#374151;font-size:.875rem;cursor:pointer;transition:background .15s ease,color .15s ease;}
-.rf-home-option:hover,.rf-home-option.is-selected{background:#fdf0f6;color:#c2185b;}
+.rf-home-option:hover,.rf-home-option.is-selected{background:#fdf0f6;color:#a3284f;}
 .rf-home-date-wrap{margin:5px 4px 4px;padding:10px 8px 7px;border-top:1px solid #f0f0f0;}
 .rf-home-date-title{font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:6px;}
 .rf-home-date-input{width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:9px 10px;outline:none;background:#fff;color:#374151;font-size:.875rem;}
-.rf-home-date-input:focus{border-color:#d1d5db;box-shadow:0 0 0 3px rgba(194,24,91,.06);}
+.rf-home-date-input:focus{border-color:#d1d5db;box-shadow:0 0 0 3px rgba(163,40,79,.06);}
 
 /* Reserva Floral — dropdowns personalizados */
 .rf-custom-select { position:relative; z-index:20; }
 .rf-custom-select.is-open { z-index:10000; }
-.rf-custom-select:focus-within { border-color:#d1d5db; box-shadow:0 0 0 3px rgba(194,24,91,.06); }
+.rf-custom-select:focus-within { border-color:#d1d5db; box-shadow:0 0 0 3px rgba(163,40,79,.06); }
 .rf-select-trigger { position:relative; width:100%; border:0; outline:0; background:transparent; text-align:left; font-size:.875rem; line-height:1.25rem; padding:.25rem 1.9rem .15rem 0; color:#374151; cursor:pointer; }
 .rf-select-trigger.is-disabled { color:#9ca3af; cursor:not-allowed; }
 .rf-custom-chevron { pointer-events:none; position:absolute; right:3px; top:50%; transform:translateY(-20%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6b7280; transition:transform .16s ease, border-color .16s ease; }
-.rf-select-trigger[aria-expanded="true"] .rf-custom-chevron { transform:translateY(-45%) rotate(180deg); border-top-color:#c2185b; }
+.rf-select-trigger[aria-expanded="true"] .rf-custom-chevron { transform:translateY(-45%) rotate(180deg); border-top-color:#a3284f; }
 .rf-custom-menu { position:absolute; left:6px; right:6px; top:calc(100% + 7px); background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 16px 32px rgba(17,24,39,.14); padding:6px; z-index:1000; max-height:220px; overflow:auto; animation:rfDropdownIn .14s ease-out; }
 .rf-custom-menu::-webkit-scrollbar { width:7px; }
 .rf-custom-menu::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:999px; }
 .rf-option { display:block; width:100%; border:0; background:transparent; border-radius:10px; padding:10px 12px; text-align:left; color:#374151; font-size:.875rem; cursor:pointer; transition:background .15s ease, color .15s ease; }
-.rf-option:hover, .rf-option.is-selected { background:#fdf0f6; color:#c2185b; }
+.rf-option:hover, .rf-option.is-selected { background:#fdf0f6; color:#a3284f; }
 .rf-option.is-disabled { color:#c2c2c2; cursor:not-allowed; pointer-events:none; }
 .rf-option.is-disabled:hover { background:transparent; color:#c2c2c2; }
 .rf-date-picker-wrap { margin:5px 4px 4px; padding:10px 8px 7px; border-top:1px solid #f0f0f0; }
 .rf-date-picker-title { font-size:10px; color:#6b7280; text-transform:uppercase; margin-bottom:6px; }
 .rf-date-picker-input { width:100%; border:1px solid #e5e7eb; border-radius:10px; padding:9px 10px; outline:none; background:#fff; color:#374151; font-size:.875rem; }
-.rf-date-picker-input:focus { border-color:#d1d5db; box-shadow:0 0 0 3px rgba(194,24,91,.06); }
+.rf-date-picker-input:focus { border-color:#d1d5db; box-shadow:0 0 0 3px rgba(163,40,79,.06); }
 @keyframes rfDropdownIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
 /* Reserva Floral — controles de ubicación premium */
 .rf-location-field { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; transition: border-color .18s ease, box-shadow .18s ease; }
-.rf-location-field:focus-within { border-color: #d1d5db; box-shadow: 0 0 0 3px rgba(194,24,91,.06); }
+.rf-location-field:focus-within { border-color: #d1d5db; box-shadow: 0 0 0 3px rgba(163,40,79,.06); }
 .rf-location-field select, .rf-location-field input[type="date"] { appearance: none; -webkit-appearance: none; border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent; width: 100%; }
 .rf-location-field select { cursor: pointer; padding-right: 2.25rem; }
 .rf-location-field select:disabled { cursor: not-allowed; color: #9ca3af; }
 .rf-location-field .rf-chevron { pointer-events:none; position:absolute; right:14px; top:50%; transform:translateY(-25%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6b7280; }
-.rf-location-field select:focus + .rf-chevron { border-top-color:#c2185b; }
+.rf-location-field select:focus + .rf-chevron { border-top-color:#a3284f; }
 .rf-location-field input[type="date"]::-webkit-calendar-picker-indicator { opacity:.72; cursor:pointer; }
 .rf-location-field label { pointer-events:none; }
 .rf-home-trigger:disabled { cursor: not-allowed; color: #9ca3af; opacity: .75; }
@@ -176,12 +177,12 @@
 /* Carrusel de productos inspirado en la sección Trending de referencia */
 .rf-trending-heading{position:relative;text-align:center;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;min-height:48px;}
 .rf-trending-heading h2{margin:0;font-family:Poppins,sans-serif;font-size:clamp(24px,2.1vw,34px);font-weight:600;line-height:1.2;color:#353535;}
-.rf-trending-heading .rf-view-all-catalog{position:absolute;right:0;top:50%;transform:translateY(-50%);color:#e91e63;font-size:13px;font-weight:500;text-decoration:none;}
+.rf-trending-heading .rf-view-all-catalog{position:absolute;right:0;top:50%;transform:translateY(-50%);color:#b73a61;font-size:13px;font-weight:500;text-decoration:none;}
 .rf-trending-heading .rf-view-all-catalog:hover{text-decoration:underline;}
 .rf-trending-tabs{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin:0 auto 26px;}
 .rf-trending-tab{appearance:none;border:1px solid #202020;background:#fff;color:#353535;border-radius:999px;padding:10px 20px;font-family:Poppins,sans-serif;font-size:14px;line-height:1;cursor:pointer;transition:all .2s ease;white-space:nowrap;}
 .rf-trending-tab:hover{background:#f8f6fb;}
-.rf-trending-tab.is-active{background:#c2185b;border-color:#c2185b;color:#fff;}
+.rf-trending-tab.is-active{background:#a3284f;border-color:#a3284f;color:#fff;}
 .rf-trending-products-wrap{margin-top:0;}
 @media (max-width:767px){
   .rf-trending-heading{justify-content:flex-start;margin-bottom:12px;}
@@ -254,7 +255,7 @@
 .rf-mobile-row.is-parent{font-weight:700}
 .rf-mobile-row.is-viewall{color:#8a8a8a;font-weight:400}
 .rf-mobile-row:last-child{border-bottom:0}
-.rf-mobile-row:active{color:#c2185b}
+.rf-mobile-row:active{color:#a3284f}
 .rf-mobile-row-label{min-width:0}
 .rf-mobile-arrow{width:22px;height:22px;flex:0 0 auto;color:#555}
 .rf-mobile-action{display:none;align-items:center;justify-content:center;width:36px;height:42px;padding:0;border:0;background:transparent;color:#fff;border-radius:10px;cursor:pointer;flex:0 0 36px}.rf-mobile-action:active{background:rgba(255,255,255,.12)}
@@ -504,7 +505,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
             .rf-mobile-gallery-dot.is-active {
                 width: 10px;
-                background: #e91e63;
+                background: #b73a61;
             }
         }
         @media (min-width: 1024px) {
@@ -548,7 +549,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 <body class="bg-white font-sans text-brandDark antialiased">
 
     <!-- Top Bar (Fucsia) -->
-    <header class="bg-brandFuchsia text-white z-50 sticky top-0">
+    <header class="rf-encabezado z-50 sticky top-0">
         <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <button type="button" id="rf-mobile-menu-button" class="rf-mobile-menu-button md:hidden" aria-label="Abrir categorías">
@@ -557,7 +558,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
                 <!-- Logo -->
                 <div class="rf-mobile-logo flex-shrink-0 flex items-center cursor-pointer" onclick="location.href='/'">
-                    <img src="/logo-reserva-floral-claro-720.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
+                    <img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
                 </div>
                 
                 <!-- Buscador global -->
@@ -594,7 +595,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     </header>
 
     <!-- Barra de búsqueda móvil: oculta hasta que se toque la lupa del header -->
-    <div id="barra-busqueda-movil" class="hidden md:hidden bg-brandFuchsia px-4 pb-3 sticky top-16 z-40">
+    <div id="barra-busqueda-movil" class="hidden md:hidden rf-encabezado-busqueda px-4 pb-3 sticky top-16 z-40">
         <form onsubmit="event.preventDefault(); buscarEnCatalogo(document.getElementById('input-busqueda-movil').value);" class="relative">
             <input type="text" id="input-busqueda-movil" placeholder="¿Qué regalo tienes en mente?" class="w-full bg-white text-gray-900 rounded-full py-2 px-5 pr-10 focus:outline-none focus:ring-2 focus:ring-brandLightPink">
             <button type="submit" aria-label="Buscar" class="absolute right-3 top-2.5">
@@ -2819,7 +2820,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
 <style>
     .cta-input{ width:100%; border:1px solid #d1d5db; border-radius:10px; padding:.65rem .85rem; font-size:.875rem; outline:none; }
-    .cta-input:focus{ border-color:#c2185b; box-shadow:0 0 0 3px rgba(194,24,91,.10); }
+    .cta-input:focus{ border-color:#a3284f; box-shadow:0 0 0 3px rgba(163,40,79,.10); }
 </style>
 
 <script>
