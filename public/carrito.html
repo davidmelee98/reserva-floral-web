@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Carrito | Reserva Floral</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/estilos-tailwind.css">
     <link rel="stylesheet" href="/estilos-marca.css">
@@ -23,7 +23,7 @@
         #carrito-lateral.carrito-abierto { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
         #carrito-lateral.carrito-cerrado { opacity: 0; visibility: hidden; transform: translateY(-8px) scale(.98); }
         #items-carrito::-webkit-scrollbar { width: 7px; }
-        #items-carrito::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
+        #items-carrito::-webkit-scrollbar-thumb { background: #d8ced1; border-radius: 999px; }
         #items-carrito::-webkit-scrollbar-track { background: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -76,7 +76,7 @@
             width: 100%;
             background: white;
             z-index: 40;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e9e2e4;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
         
@@ -109,56 +109,56 @@
 /* Reserva Floral — selector principal de ubicación */
 .rf-home-select{position:relative;z-index:30;}
 .rf-home-select.is-open{z-index:10000;}
-.rf-home-trigger{position:relative;width:100%;border:0;outline:0;background:transparent;text-align:left;font-size:.875rem;line-height:1.25rem;padding:.25rem 1.9rem .15rem 0;color:#374151;cursor:pointer;}
-.rf-home-trigger:disabled{color:#9ca3af;cursor:not-allowed;opacity:.9;}
-.rf-home-chevron{pointer-events:none;position:absolute;right:4px;top:50%;transform:translateY(-25%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #6b7280;transition:transform .16s ease,border-color .16s ease;}
+.rf-home-trigger{position:relative;width:100%;border:0;outline:0;background:transparent;text-align:left;font-size:.875rem;line-height:1.25rem;padding:.25rem 1.9rem .15rem 0;color:#3f353a;cursor:pointer;}
+.rf-home-trigger:disabled{color:#a0939a;cursor:not-allowed;opacity:.9;}
+.rf-home-chevron{pointer-events:none;position:absolute;right:4px;top:50%;transform:translateY(-25%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #6f6268;transition:transform .16s ease,border-color .16s ease;}
 .rf-home-trigger[aria-expanded="true"] .rf-home-chevron{transform:translateY(-45%) rotate(180deg);border-top-color:#a3284f;}
-.rf-home-menu{position:absolute;left:6px;right:6px;top:calc(100% + 7px);background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 16px 32px rgba(17,24,39,.14);padding:6px;z-index:2000;max-height:220px;overflow:auto;animation:rfDropdownIn .14s ease-out;}
+.rf-home-menu{position:absolute;left:6px;right:6px;top:calc(100% + 7px);background:#fff;border:1px solid #e9e2e4;border-radius:14px;box-shadow:0 16px 32px rgba(17,24,39,.14);padding:6px;z-index:2000;max-height:220px;overflow:auto;animation:rfDropdownIn .14s ease-out;}
 .rf-home-menu::-webkit-scrollbar{width:7px;}
-.rf-home-menu::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:999px;}
-.rf-home-option{display:block;width:100%;border:0;background:transparent;border-radius:10px;padding:10px 12px;text-align:left;color:#374151;font-size:.875rem;cursor:pointer;transition:background .15s ease,color .15s ease;}
+.rf-home-menu::-webkit-scrollbar-thumb{background:#d8ced1;border-radius:999px;}
+.rf-home-option{display:block;width:100%;border:0;background:transparent;border-radius:10px;padding:10px 12px;text-align:left;color:#3f353a;font-size:.875rem;cursor:pointer;transition:background .15s ease,color .15s ease;}
 .rf-home-option:hover,.rf-home-option.is-selected{background:#fdf0f6;color:#a3284f;}
-.rf-home-date-wrap{margin:5px 4px 4px;padding:10px 8px 7px;border-top:1px solid #f0f0f0;}
-.rf-home-date-title{font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:6px;}
-.rf-home-date-input{width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:9px 10px;outline:none;background:#fff;color:#374151;font-size:.875rem;}
-.rf-home-date-input:focus{border-color:#d1d5db;box-shadow:0 0 0 3px rgba(163,40,79,.06);}
+.rf-home-date-wrap{margin:5px 4px 4px;padding:10px 8px 7px;border-top:1px solid #f1ecee;}
+.rf-home-date-title{font-size:10px;color:#6f6268;text-transform:uppercase;margin-bottom:6px;}
+.rf-home-date-input{width:100%;border:1px solid #e9e2e4;border-radius:10px;padding:9px 10px;outline:none;background:#fff;color:#3f353a;font-size:.875rem;}
+.rf-home-date-input:focus{border-color:#d8ced1;box-shadow:0 0 0 3px rgba(163,40,79,.06);}
 
 /* Reserva Floral — dropdowns personalizados */
 .rf-custom-select { position:relative; z-index:20; }
 .rf-custom-select.is-open { z-index:10000; }
-.rf-custom-select:focus-within { border-color:#d1d5db; box-shadow:0 0 0 3px rgba(163,40,79,.06); }
-.rf-select-trigger { position:relative; width:100%; border:0; outline:0; background:transparent; text-align:left; font-size:.875rem; line-height:1.25rem; padding:.25rem 1.9rem .15rem 0; color:#374151; cursor:pointer; }
-.rf-select-trigger.is-disabled { color:#9ca3af; cursor:not-allowed; }
-.rf-custom-chevron { pointer-events:none; position:absolute; right:3px; top:50%; transform:translateY(-20%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6b7280; transition:transform .16s ease, border-color .16s ease; }
+.rf-custom-select:focus-within { border-color:#d8ced1; box-shadow:0 0 0 3px rgba(163,40,79,.06); }
+.rf-select-trigger { position:relative; width:100%; border:0; outline:0; background:transparent; text-align:left; font-size:.875rem; line-height:1.25rem; padding:.25rem 1.9rem .15rem 0; color:#3f353a; cursor:pointer; }
+.rf-select-trigger.is-disabled { color:#a0939a; cursor:not-allowed; }
+.rf-custom-chevron { pointer-events:none; position:absolute; right:3px; top:50%; transform:translateY(-20%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6f6268; transition:transform .16s ease, border-color .16s ease; }
 .rf-select-trigger[aria-expanded="true"] .rf-custom-chevron { transform:translateY(-45%) rotate(180deg); border-top-color:#a3284f; }
-.rf-custom-menu { position:absolute; left:6px; right:6px; top:calc(100% + 7px); background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 16px 32px rgba(17,24,39,.14); padding:6px; z-index:1000; max-height:220px; overflow:auto; animation:rfDropdownIn .14s ease-out; }
+.rf-custom-menu { position:absolute; left:6px; right:6px; top:calc(100% + 7px); background:#fff; border:1px solid #e9e2e4; border-radius:14px; box-shadow:0 16px 32px rgba(17,24,39,.14); padding:6px; z-index:1000; max-height:220px; overflow:auto; animation:rfDropdownIn .14s ease-out; }
 .rf-custom-menu::-webkit-scrollbar { width:7px; }
-.rf-custom-menu::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:999px; }
-.rf-option { display:block; width:100%; border:0; background:transparent; border-radius:10px; padding:10px 12px; text-align:left; color:#374151; font-size:.875rem; cursor:pointer; transition:background .15s ease, color .15s ease; }
+.rf-custom-menu::-webkit-scrollbar-thumb { background:#d8ced1; border-radius:999px; }
+.rf-option { display:block; width:100%; border:0; background:transparent; border-radius:10px; padding:10px 12px; text-align:left; color:#3f353a; font-size:.875rem; cursor:pointer; transition:background .15s ease, color .15s ease; }
 .rf-option:hover, .rf-option.is-selected { background:#fdf0f6; color:#a3284f; }
 .rf-option.is-disabled { color:#c2c2c2; cursor:not-allowed; pointer-events:none; }
 .rf-option.is-disabled:hover { background:transparent; color:#c2c2c2; }
-.rf-date-picker-wrap { margin:5px 4px 4px; padding:10px 8px 7px; border-top:1px solid #f0f0f0; }
-.rf-date-picker-title { font-size:10px; color:#6b7280; text-transform:uppercase; margin-bottom:6px; }
-.rf-date-picker-input { width:100%; border:1px solid #e5e7eb; border-radius:10px; padding:9px 10px; outline:none; background:#fff; color:#374151; font-size:.875rem; }
-.rf-date-picker-input:focus { border-color:#d1d5db; box-shadow:0 0 0 3px rgba(163,40,79,.06); }
+.rf-date-picker-wrap { margin:5px 4px 4px; padding:10px 8px 7px; border-top:1px solid #f1ecee; }
+.rf-date-picker-title { font-size:10px; color:#6f6268; text-transform:uppercase; margin-bottom:6px; }
+.rf-date-picker-input { width:100%; border:1px solid #e9e2e4; border-radius:10px; padding:9px 10px; outline:none; background:#fff; color:#3f353a; font-size:.875rem; }
+.rf-date-picker-input:focus { border-color:#d8ced1; box-shadow:0 0 0 3px rgba(163,40,79,.06); }
 @keyframes rfDropdownIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
 /* Reserva Floral — controles de ubicación premium */
-.rf-location-field { position: relative; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; transition: border-color .18s ease, box-shadow .18s ease; }
-.rf-location-field:focus-within { border-color: #d1d5db; box-shadow: 0 0 0 3px rgba(163,40,79,.06); }
+.rf-location-field { position: relative; background: #fff; border: 1px solid #e9e2e4; border-radius: 12px; transition: border-color .18s ease, box-shadow .18s ease; }
+.rf-location-field:focus-within { border-color: #d8ced1; box-shadow: 0 0 0 3px rgba(163,40,79,.06); }
 .rf-location-field select, .rf-location-field input[type="date"] { appearance: none; -webkit-appearance: none; border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent; width: 100%; }
 .rf-location-field select { cursor: pointer; padding-right: 2.25rem; }
-.rf-location-field select:disabled { cursor: not-allowed; color: #9ca3af; }
-.rf-location-field .rf-chevron { pointer-events:none; position:absolute; right:14px; top:50%; transform:translateY(-25%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6b7280; }
+.rf-location-field select:disabled { cursor: not-allowed; color: #a0939a; }
+.rf-location-field .rf-chevron { pointer-events:none; position:absolute; right:14px; top:50%; transform:translateY(-25%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6f6268; }
 .rf-location-field select:focus + .rf-chevron { border-top-color:#a3284f; }
 .rf-location-field input[type="date"]::-webkit-calendar-picker-indicator { opacity:.72; cursor:pointer; }
 .rf-location-field label { pointer-events:none; }
-.rf-home-trigger:disabled { cursor: not-allowed; color: #9ca3af; opacity: .75; }
-.rf-select-trigger.is-disabled, .rf-select-trigger:disabled { cursor: not-allowed; color: #9ca3af; opacity: .7; }
+.rf-home-trigger:disabled { cursor: not-allowed; color: #a0939a; opacity: .75; }
+.rf-select-trigger.is-disabled, .rf-select-trigger:disabled { cursor: not-allowed; color: #a0939a; opacity: .7; }
 
-.rf-dropdown-panel { border:1px solid #e5e7eb !important; border-radius:14px !important; box-shadow:0 14px 30px rgba(17,24,39,.12) !important; }
+.rf-dropdown-panel { border:1px solid #e9e2e4 !important; border-radius:14px !important; box-shadow:0 14px 30px rgba(17,24,39,.12) !important; }
 .rf-dropdown-panel::-webkit-scrollbar { width:7px; }
-.rf-dropdown-panel::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:999px; }
+.rf-dropdown-panel::-webkit-scrollbar-thumb { background:#d8ced1; border-radius:999px; }
 
 
 .rf-category-carousel-wrap{position:relative;display:flex;align-items:center;}
@@ -196,9 +196,9 @@
 .rf-favorites-carousel-wrap{position:relative;display:flex;align-items:center;}
 .rf-favorites-track{display:flex;gap:18px;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 10px;width:100%;}
 .rf-favorites-track::-webkit-scrollbar{display:none;}
-.rf-favorite-card{position:relative;flex:0 0 clamp(280px,20.5vw,395px);scroll-snap-align:start;background:#fff;border:1px solid #edf0f2;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
-.rf-favorite-card-image{aspect-ratio:1/1;overflow:hidden;background:#f7f7f7;position:relative;}
-.rf-etiqueta-agotado{position:absolute;top:8px;left:8px;z-index:2;background:rgba(255,255,255,.94);color:#6b7280;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.rf-favorite-card{position:relative;flex:0 0 clamp(280px,20.5vw,395px);scroll-snap-align:start;background:#fff;border:1px solid #efe8ea;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
+.rf-favorite-card-image{aspect-ratio:1/1;overflow:hidden;background:#f7f3f4;position:relative;}
+.rf-etiqueta-agotado{position:absolute;top:8px;left:8px;z-index:2;background:rgba(255,255,255,.94);color:#6f6268;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.08);}
 .rf-favorite-card-image img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s ease;}
 .rf-favorite-card:hover .rf-favorite-card-image img{transform:scale(1.045);}
 .rf-favorite-card-body{padding:16px;min-height:84px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;}
@@ -251,7 +251,7 @@
 .rf-mobile-close,.rf-mobile-back{border:0;background:transparent;color:#252525;width:34px;height:34px;flex:0 0 auto;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .rf-mobile-close:active,.rf-mobile-back:active{background:#f6f6f6}
 .rf-mobile-list{padding:8px 16px 26px;overflow:auto;flex:1}
-.rf-mobile-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;border:0;border-bottom:1px solid #f0f0f0;background:#fff;padding:18px 0;text-align:left;color:#000;font:400 18px/1.35 Poppins,sans-serif;cursor:pointer}
+.rf-mobile-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;border:0;border-bottom:1px solid #f1ecee;background:#fff;padding:18px 0;text-align:left;color:#000;font:400 18px/1.35 Poppins,sans-serif;cursor:pointer}
 .rf-mobile-row.is-parent{font-weight:700}
 .rf-mobile-row.is-viewall{color:#8a8a8a;font-weight:400}
 .rf-mobile-row:last-child{border-bottom:0}
@@ -558,7 +558,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
                 <!-- Logo -->
                 <div class="rf-mobile-logo flex-shrink-0 flex items-center cursor-pointer" onclick="location.href='/'">
-                    <img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
+                    <img src="/logo-reserva-floral-oscuro.png?v=2" alt="Reserva Floral" class="w-[190px] h-14 object-contain object-left" draggable="false">
                 </div>
                 
                 <!-- Buscador global -->
@@ -971,13 +971,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         function mostrarGaleria(producto) {
             const imagenes = obtenerImagenes(producto);
-            const principal = imagenes[0] || '/sin-foto.svg';
+            const principal = imagenes[0] || '/sin-foto.svg?v=2';
             const main = document.getElementById('modal-img');
             const thumbs = document.getElementById('modal-thumbnails');
             const mobileTrack = document.getElementById('modal-mobile-gallery-track');
             const mobileDots = document.getElementById('modal-mobile-gallery-dots');
             main.src = principal;
-            main.onerror = () => { main.onerror = null; main.src = '/sin-foto.svg'; };
+            main.onerror = () => { main.onerror = null; main.src = '/sin-foto.svg?v=2'; };
             thumbs.innerHTML = '';
             if (mobileTrack) mobileTrack.innerHTML = '';
             if (mobileDots) mobileDots.innerHTML = '';
@@ -1098,12 +1098,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 }
 
                 arreglos.forEach(arreglo => {
-                    const urlImagen = (obtenerImagenes(arreglo)[0]) || '/sin-foto.svg';
+                    const urlImagen = (obtenerImagenes(arreglo)[0]) || '/sin-foto.svg?v=2';
                     const arregloData = encodeURIComponent(JSON.stringify(arreglo));
                     contenedor.innerHTML += `
                         <div onclick="abrirProducto('${arregloData}', '${urlImagen}')" class="rf-favorite-card group cursor-pointer">
                             <div class="rf-favorite-card-image">
-                                <img loading="lazy" decoding="async" src="${urlTarjetaRF(urlImagen)}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='/sin-foto.svg'">
+                                <img loading="lazy" decoding="async" src="${urlTarjetaRF(urlImagen)}" alt="${arreglo.nombre}" onerror="this.onerror=null;this.src='/sin-foto.svg?v=2'">
                                 ${etiquetaAgotadoHtmlRF(arreglo)}
                             </div>
                             <div class="rf-favorite-card-body">
@@ -1204,7 +1204,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 return;
             }
             cont.innerHTML = lista.map(p => {
-                const urlImagen = (obtenerImagenes(p)[0]) || '/sin-foto.svg';
+                const urlImagen = (obtenerImagenes(p)[0]) || '/sin-foto.svg?v=2';
                 const data = encodeURIComponent(JSON.stringify(p));
                 const tieneVariantes = obtenerVariantes(p).length > 0;
                 const accionMas = tieneVariantes
@@ -1213,7 +1213,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 return `
                     <div class="shrink-0 w-[150px] group relative">
                         <div onclick="abrirProducto('${data}', '${urlImagen}')" class="w-[150px] h-[150px] rounded-xl overflow-hidden bg-gray-100 cursor-pointer relative">
-                            <img loading="lazy" decoding="async" src="${urlTarjetaRF(urlImagen)}" alt="${escaparHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='/sin-foto.svg'">
+                            <img loading="lazy" decoding="async" src="${urlTarjetaRF(urlImagen)}" alt="${escaparHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='/sin-foto.svg?v=2'">
                         </div>
                         <button type="button" onclick="event.stopPropagation(); ${accionMas}" title="Agregar al carrito" aria-label="Agregar al carrito" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-white shadow-md flex items-center justify-center text-brandFuchsia hover:bg-brandFuchsia hover:text-white transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
@@ -1321,19 +1321,45 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
         // "También te puede interesar": otros productos de la misma categoría,
         // para que la vista de producto no sea un callejón sin salida.
+        // Flechas de "También te puede interesar": avanzan una "página" de
+        // productos, se atenúan al inicio/final y solo aparecen si hay más
+        // productos de los que caben.
+        function moverRelacionadosRF(direccion) {
+            const track = document.getElementById('modal-relacionados-track');
+            if (!track) return;
+            track.scrollBy({ left: direccion * Math.max(track.clientWidth * 0.85, 140), behavior: 'smooth' });
+        }
+        window.moverRelacionadosRF = moverRelacionadosRF;
+        function actualizarFlechasRelacionadosRF() {
+            const track = document.getElementById('modal-relacionados-track');
+            const flechas = document.querySelector('.rf-relacionados-flechas');
+            if (!track || !flechas) return;
+            const desborda = track.scrollWidth > track.clientWidth + 4;
+            flechas.classList.toggle('hidden', !desborda);
+            flechas.querySelector('[data-direccion="-1"]').disabled = track.scrollLeft <= 4;
+            flechas.querySelector('[data-direccion="1"]').disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+        }
+        window.addEventListener('resize', actualizarFlechasRelacionadosRF);
+
         async function cargarProductosRelacionadosRF(id) {
             const wrap = document.getElementById('modal-relacionados-wrap');
             const track = document.getElementById('modal-relacionados-track');
             if (!wrap || !track) return;
+            // Se conecta aquí (no al cargar la página) porque la fila aparece más
+            // abajo en el HTML: al inicio todavía no existe.
+            if (!track.dataset.flechasConectadas) {
+                track.addEventListener('scroll', actualizarFlechasRelacionadosRF, { passive: true });
+                track.dataset.flechasConectadas = '1';
+            }
             wrap.classList.add('hidden');
             try {
                 const relacionados = await (await fetch(`/api/catalogo/${id}/relacionados`)).json();
                 if (!Array.isArray(relacionados) || relacionados.length === 0) return;
                 track.innerHTML = relacionados.map(p => {
-                    const urlImagen = (obtenerImagenes(p)[0]) || '/sin-foto.svg';
+                    const urlImagen = (obtenerImagenes(p)[0]) || '/sin-foto.svg?v=2';
                     const data = encodeURIComponent(JSON.stringify(p));
                     return `
-                        <div onclick="abrirProducto('${data}', '${urlImagen}')" class="shrink-0 w-[130px] text-left cursor-pointer">
+                        <div onclick="abrirProducto('${data}', '${urlImagen}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" aria-label="Ver ${escaparHtml(p.nombre)}" class="rf-relacionado shrink-0 w-[130px] text-left cursor-pointer">
                             <img src="${urlTarjetaRF(urlImagen)}" alt="${escaparHtml(p.nombre)}" loading="lazy" class="w-[130px] h-[130px] object-cover rounded-lg bg-gray-100" onerror="this.style.visibility='hidden'">
                             <p class="text-xs font-medium text-brandDark mt-2 line-clamp-2">${escaparHtml(p.nombre)}</p>
                             <p class="text-xs font-semibold text-brandDark mt-0.5">$${formatearPrecio(p.precio)}</p>
@@ -1341,6 +1367,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     `;
                 }).join('');
                 wrap.classList.remove('hidden');
+                track.scrollLeft = 0;
+                requestAnimationFrame(actualizarFlechasRelacionadosRF);
             } catch (error) {
                 console.error('No se pudieron cargar productos relacionados', error);
             }
@@ -1401,7 +1429,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             // El producto siempre debe abrir desde arriba, independientemente de dónde estaba el catálogo.
             window.scrollTo(0, 0);
             const imagenes = obtenerImagenes(productoActual);
-            const urlImagen = imagenes[0] || '/sin-foto.svg';
+            const urlImagen = imagenes[0] || '/sin-foto.svg?v=2';
             document.getElementById('modal-id').innerText = '00' + productoActual.id;
             document.getElementById('modal-nombre').innerText = productoActual.nombre;
             document.getElementById('modal-precio').innerText = '$' + formatearPrecio(productoActual.precio);
@@ -1595,7 +1623,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             
             if (complementos.length > 0) {
                 complementos.forEach((comp, index) => {
-                    const urlImagenComp = escaparHtml(comp.imagen_url || '/sin-foto.svg');
+                    const urlImagenComp = escaparHtml(comp.imagen_url || '/sin-foto.svg?v=2');
                     const safeName = escaparHtml(comp.nombre || 'Producto');
                     contenedorComp.innerHTML += `
                         <button type="button" data-complemento-index="${index}" class="rf-complemento-card border border-gray-200 rounded-xl p-3 text-center cursor-pointer transition-colors flex flex-col justify-between group/comp focus:outline-none focus:ring-0">
@@ -2691,8 +2719,20 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 </div>
 
                 <div id="modal-relacionados-wrap" class="mt-8 pt-8 border-t border-gray-100 hidden">
-                    <h4 class="font-medium text-sm text-brandDark mb-3">También te puede interesar</h4>
-                    <div id="modal-relacionados-track" class="flex gap-3 overflow-x-auto pb-1" style="scrollbar-width:none;"></div>
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <h4 class="font-medium text-sm text-brandDark">También te puede interesar</h4>
+                        <!-- Flechas para avanzar con clic: la fila se desliza con el dedo
+                             en celular, pero en computadora con ratón no había cómo. -->
+                        <div class="rf-relacionados-flechas hidden">
+                            <button type="button" class="rf-relacionados-flecha" data-direccion="-1" aria-label="Ver productos anteriores" onclick="moverRelacionadosRF(-1)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            <button type="button" class="rf-relacionados-flecha" data-direccion="1" aria-label="Ver más productos" onclick="moverRelacionadosRF(1)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="modal-relacionados-track" class="flex gap-3 overflow-x-auto pb-1" style="scrollbar-width:none; scroll-behavior:smooth;"></div>
                 </div>
             </div>
         </div>
@@ -2819,7 +2859,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     </div>
 
 <style>
-    .cta-input{ width:100%; border:1px solid #d1d5db; border-radius:10px; padding:.65rem .85rem; font-size:.875rem; outline:none; }
+    .cta-input{ width:100%; border:1px solid #d8ced1; border-radius:10px; padding:.65rem .85rem; font-size:.875rem; outline:none; }
     .cta-input:focus{ border-color:#a3284f; box-shadow:0 0 0 3px rgba(163,40,79,.10); }
 </style>
 
@@ -3258,7 +3298,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             <!-- #11 Franja de marca: logo + el mensaje y el horario que se editan
                  en el panel (Configuración). Antes esos campos no se mostraban. -->
             <div class="rf-pie-marca">
-                <a href="/" class="shrink-0" aria-label="Reserva Floral, ir al inicio"><img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="rf-pie-logo" loading="lazy"></a>
+                <a href="/" class="shrink-0" aria-label="Reserva Floral, ir al inicio"><img src="/logo-reserva-floral-oscuro.png?v=2" alt="Reserva Floral" class="rf-pie-logo" loading="lazy"></a>
                 <div class="rf-pie-marca-texto">
                     <p id="rf-pie-mensaje">Flores y regalos con entrega a domicilio.</p>
                     <p id="rf-pie-horario" class="hidden"></p>
@@ -3299,13 +3339,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <div id="pie-redes-sociales" class="flex items-center gap-3 mb-6"></div>
                     <h3 class="font-semibold text-brandDark mb-3">Métodos de pago</h3>
                     <div class="flex flex-wrap items-center gap-1.5">
-                        <img src="/iconos-pie/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-4 max-w-[34px] object-contain">
-                        <img src="/iconos-pie/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-4 max-w-[34px] object-contain">
-                        <img src="/iconos-pie/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-4 max-w-[34px] object-contain">
-                        <img src="/iconos-pie/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-4 max-w-[34px] object-contain">
-                        <img src="/iconos-pie/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-4 max-w-[34px] object-contain">
-                        <img src="/iconos-pie/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-4 max-w-[34px] object-contain">
-                        <img src="/iconos-pie/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-4 max-w-[34px] object-contain">
+                        <span class="rf-metodo-pago" title="Visa">Visa</span>
+                        <span class="rf-metodo-pago" title="Mastercard">Mastercard</span>
+                        <span class="rf-metodo-pago" title="American Express">Amex</span>
+                        <span class="rf-metodo-pago" title="Mercado Pago">Mercado Pago</span>
+                        <span class="rf-metodo-pago" title="OXXO">OXXO</span>
+                        <span class="rf-metodo-pago" title="SPEI">SPEI</span>
                     </div>
                 </div>
             </div>
@@ -3328,14 +3367,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 // configurado en el panel se ve atenuado y sin poder darle clic
                 // -- en cuanto se configure, queda activo solo.
                 const redes = [
-                    { url: numero ? `https://wa.me/${numero}` : null, img: '/iconos-pie/hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg', alt: 'WhatsApp' },
-                    { url: cfg.instagram_url || null, img: '/iconos-pie/1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg', alt: 'Instagram' },
-                    { url: cfg.facebook_url || null, img: '/iconos-pie/CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg', alt: 'Facebook' },
-                    { url: cfg.tiktok_url || null, img: '/iconos-pie/HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg', alt: 'TikTok' }
+                    { url: numero ? `https://wa.me/${numero}` : null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M20.5 11.8a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 20.5 11.8z"/><path fill="currentColor" d="M9 8.5c.2-.4.5-.5.8-.5h.5c.2 0 .4.1.5.4l.7 1.6c.1.2 0 .5-.1.7l-.5.6c.6 1.2 1.6 2.2 2.8 2.8l.6-.5c.2-.2.5-.2.7-.1l1.6.7c.3.1.4.3.4.5v.5c0 .3-.1.6-.5.8-.6.4-1.6.5-2.9-.1-1.9-.8-3.5-2.4-4.3-4.3-.5-1.3-.4-2.3 0-2.9z"/></svg>', alt: 'WhatsApp' },
+                    { url: cfg.instagram_url || null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg>', alt: 'Instagram' },
+                    { url: cfg.facebook_url || null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true"><path fill="currentColor" d="M14.5 3H12a3.5 3.5 0 0 0-3.5 3.5V9H6.5v3h2v9h3.2v-9h2.6l.5-3h-3.1V7a1 1 0 0 1 1-1h1.8z"/></svg>', alt: 'Facebook' },
+                    { url: cfg.tiktok_url || null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true"><path fill="currentColor" d="M15.8 3c.3 2.2 1.8 3.8 4.2 4.1v3c-1.6 0-3-.5-4.2-1.3v6.4A5.8 5.8 0 1 1 10 9.4v3.1a2.8 2.8 0 1 0 2.8 2.8V3h3z"/></svg>', alt: 'TikTok' }
                 ];
                 cont.innerHTML = redes.map(r => r.url
-                    ? `<a href="${r.url}" target="_blank" rel="noopener"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6"></a>`
-                    : `<span title="Próximamente"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6 opacity-30"></span>`
+                    ? `<a href="${r.url}" target="_blank" rel="noopener" class="rf-red" aria-label="${r.alt}" title="${r.alt}">${r.img}</a>`
+                    : `<span class="rf-red is-inactivo" aria-label="${r.alt} (próximamente)" title="${r.alt}: próximamente">${r.img}</span>`
                 ).join('');
             }).catch(() => {});
         })();
@@ -3549,6 +3588,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         #modal-producto .rf-desktop-product-main{ flex:0 1 auto; width:100%; aspect-ratio:1/1; max-width:min(100%, calc(100vh - 150px)); max-height:calc(100vh - 150px); margin:0 auto; }
         #modal-producto .rf-product-info-mobile > .space-y-6.flex-1{ flex:0 0 auto; }
     }
+    /* Flechas de "También te puede interesar" */
+    .rf-relacionados-flechas{ display:flex; gap:6px; flex-shrink:0; }
+    .rf-relacionados-flechas.hidden{ display:none; }
+    .rf-relacionados-flecha{ width:32px; height:32px; border-radius:999px; border:1px solid #EFD3DA; background:#fff; color:#A3284F; display:inline-flex; align-items:center; justify-content:center; transition:background-color .15s ease, opacity .15s ease; }
+    .rf-relacionados-flecha:hover:not(:disabled){ background:#F8E6EA; }
+    .rf-relacionados-flecha:disabled{ opacity:.35; cursor:default; }
+    .rf-relacionados-flecha:focus-visible, .rf-relacionado:focus-visible{ outline:2px solid #A3284F; outline-offset:2px; border-radius:10px; }
 </style>
 <script>
     (function () {

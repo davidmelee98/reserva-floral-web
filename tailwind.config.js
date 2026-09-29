@@ -15,6 +15,9 @@ module.exports = {
         brandLightPink: '#B73A61', // frambuesa clara: enlaces y estados hover
         brandDark: '#3A2130',      // tinta
         brandGray: '#FFFAFB',      // fondo
+        // Grises cálidos (con un toque rosado) en lugar de los grises azulados de
+        // Tailwind; tienen igual o mejor contraste que los originales.
+        gray: { 50: '#FAF8F8', 100: '#F4F0F1', 200: '#E9E2E4', 300: '#D8CED1', 400: '#A0939A', 500: '#6F6268', 600: '#524850', 700: '#3F353A', 800: '#2A2226', 900: '#1A1417' },
         pink: { 50: '#FCF1F4', 100: '#F8E6EA', 200: '#EFD3DA', 300: '#E2AFBD', 400: '#CE7892', 500: '#B8466B', 600: '#A3284F', 700: '#86203F', 800: '#6A1932', 900: '#521327' }
       }
     }

@@ -34,3 +34,29 @@ footer .rf-pie-marca { border-color: var(--rf-linea); }
 /* Botones del encabezado en celular: tenían el color blanco fijo */
 .rf-encabezado .rf-mobile-menu-button, .rf-encabezado .rf-mobile-action { color: var(--rf-tinta); }
 .rf-encabezado .rf-mobile-menu-button:active, .rf-encabezado .rf-mobile-action:active { background: rgba(163, 40, 79, .08); }
+
+/* Métodos de pago: etiquetas con el nombre (los logotipos son marcas de terceros) */
+.rf-metodo-pago { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px solid var(--rf-linea); border-radius: 6px; background: #fff; color: #524850; font-size: 10.5px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; }
+/* Redes sociales: íconos de línea en tinta; frambuesa al pasar el cursor */
+.rf-red { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 999px; background: #fff; border: 1px solid var(--rf-linea); color: var(--rf-tinta); transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
+a.rf-red:hover { background: var(--rf-frambuesa); border-color: var(--rf-frambuesa); color: #fff; }
+a.rf-red:focus-visible { outline: 2px solid var(--rf-frambuesa); outline-offset: 2px; }
+.rf-red.is-inactivo { opacity: .35; }
+
+/* Sección principal suave (Pedidos corporativos): rubor en lugar de frambuesa sólido */
+.rf-hero-suave { background: linear-gradient(135deg, #FCF1F4 0%, var(--rf-rubor) 55%, #F3DCE2 100%); color: var(--rf-tinta); }
+
+/* Tarjeta de contacto (Centro de Ayuda y Cobertura) */
+.rf-ayuda-contacto { margin-top: 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; padding: 22px 26px; border-radius: 18px; background: var(--rf-rubor-claro); border: 1px solid var(--rf-linea); }
+.rf-ayuda-contacto-titulo { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; color: var(--rf-tinta); }
+.rf-ayuda-contacto-texto { font-size: 13.5px; color: #6F6268; margin-top: 2px; }
+.rf-ayuda-contacto-boton { display: inline-flex; align-items: center; padding: 10px 20px; border-radius: 999px; background: var(--rf-frambuesa); color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; transition: background-color .15s ease; }
+.rf-ayuda-contacto-boton:hover { background: var(--rf-frambuesa-oscura); }
+
+/* Cobertura: una tarjeta por estado con sus ciudades */
+.rf-cobertura-estado { background: #fff; border: 1px solid var(--rf-linea); border-radius: 18px; padding: 20px 22px; }
+.rf-cobertura-encabezado { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.rf-cobertura-encabezado h2 { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 600; color: var(--rf-tinta); }
+.rf-cobertura-encabezado span { font-size: 12px; color: #6F6268; white-space: nowrap; }
+.rf-cobertura-ciudades { display: flex; flex-wrap: wrap; gap: 8px; }
+.rf-cobertura-ciudades li { padding: 6px 12px; border-radius: 999px; background: var(--rf-rubor-claro); border: 1px solid var(--rf-linea); font-size: 13px; color: var(--rf-tinta); }

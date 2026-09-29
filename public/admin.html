@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Panel de Administración | Reserva Floral</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/estilos-tailwind.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
@@ -29,7 +29,7 @@
         .adm-switch input{ opacity:0; width:0; height:0; }
         .adm-switch-track{ position:absolute; inset:0; background:#d8d8d8; border-radius:999px; transition:background .15s ease; cursor:pointer; }
         .adm-switch-track::before{ content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .15s ease; box-shadow:0 1px 3px rgba(0,0,0,.25); }
-        .adm-switch input:checked + .adm-switch-track{ background:#22c55e; }
+        .adm-switch input:checked + .adm-switch-track{ background:#5b7f5f; }
         .adm-switch input:checked + .adm-switch-track::before{ transform:translateX(16px); }
         .adm-badge{ display:inline-flex; align-items:center; gap:.32rem; font-size:.68rem; font-weight:700; padding:.2rem .6rem; border-radius:999px; letter-spacing:.02em; }
         .adm-badge::before{ content:''; width:5px; height:5px; border-radius:999px; background:currentColor; }
@@ -267,6 +267,60 @@
             .adm-pedido-lado{ width:100%; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; text-align:left; border-top:1px solid #f1ecee; padding-top:12px; }
         }
         @media (prefers-reduced-motion: reduce){ .adm-sidebar, .adm-fondo-menu{ transition:none; } }
+    
+        /* Tarjeta de pedido: entrega destacada e íconos de línea */
+        .adm-ico{ width:14px; height:14px; flex-shrink:0; }
+        .adm-entrega{ display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:10px; font-size:12.5px; font-weight:600; background:#F4F0F1; color:#3F353A; }
+        .adm-entrega.es-hoy{ background:#F8E6EA; color:#86203F; }
+        .adm-entrega.es-manana{ background:#FBF3E4; color:#94621A; }
+        .adm-entrega-sep{ width:1px; height:12px; background:currentColor; opacity:.25; margin:0 3px; }
+        .adm-dato{ display:flex; align-items:flex-start; gap:7px; font-size:12.5px; color:#6F6268; margin-top:6px; line-height:1.45; }
+        .adm-dato > .adm-ico{ margin-top:2px; color:#A0939A; }
+        .adm-resaltado{ animation:admResaltar 2.2s ease; }
+        @keyframes admResaltar{ 0%,40%{ background:#FBEEF2; } 100%{ background:transparent; } }
+        @media (prefers-reduced-motion: reduce){ .adm-resaltado{ animation:none; background:#FBEEF2; } }
+        /* Resumen: entregas de hoy y lo que requiere atención */
+        .adm-hoy-grupo + .adm-hoy-grupo{ margin-top:14px; }
+        .adm-hoy-horario{ display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#86203F; margin-bottom:6px; }
+        .adm-hoy-item{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid #EFE6EA; border-radius:12px; background:#fff; text-align:left; transition:border-color .15s ease, background-color .15s ease; }
+        .adm-hoy-item + .adm-hoy-item{ margin-top:6px; }
+        .adm-hoy-item:hover{ border-color:#E2AFBD; background:#FFFAFB; }
+        .adm-hoy-item.is-entregado{ opacity:.6; }
+        .adm-atencion-item{ width:100%; display:flex; align-items:center; gap:12px; padding:9px 6px; border-radius:10px; transition:background-color .15s ease; }
+        .adm-atencion-item + .adm-atencion-item{ border-top:1px solid #F4F0F1; }
+        .adm-atencion-item:hover{ background:#FBF6F8; }
+        .adm-atencion-numero{ min-width:30px; height:30px; padding:0 8px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
+        .tono-frambuesa{ background:#F8E6EA; color:#86203F; } .tono-rojo{ background:#FDECEC; color:#B42318; }
+        .tono-ambar{ background:#FBF3E4; color:#94621A; } .tono-gris{ background:#F4F0F1; color:#524850; }
+        .adm-todo-en-orden{ display:flex; align-items:center; gap:8px; font-size:13.5px; color:#4A6B4E; background:#EDF3ED; border-radius:12px; padding:12px 14px; }
+    
+        /* Paneles deslizables (Envíos, Cupones, Equipo) */
+        .adm-cajon{ position:fixed !important; top:0; right:0; bottom:0; width:min(460px, 100vw); z-index:160; margin:0 !important; border-radius:0 !important; overflow-y:auto; transform:translateX(104%); transition:transform .24s ease; box-shadow:-20px 0 44px rgba(40,10,25,.18); padding:28px 28px 40px !important; }
+        .adm-cajon.is-abierto{ transform:none; }
+        .adm-cajon h2{ padding-right:42px; }
+        .adm-cajon-cerrar{ position:absolute; top:18px; right:16px; width:36px; height:36px; border-radius:999px; display:flex; align-items:center; justify-content:center; color:#6F6268; }
+        .adm-cajon-cerrar:hover{ background:#F4F0F1; color:#2f2a2c; }
+        .adm-cajon-cerrar:focus-visible{ outline:2px solid #A3284F; outline-offset:2px; }
+        .adm-cajon-fondo{ position:fixed; inset:0; z-index:155; background:rgba(40,20,30,.32); opacity:0; pointer-events:none; transition:opacity .2s ease; }
+        .adm-cajon-fondo.is-visible{ opacity:1; pointer-events:auto; }
+        @media (prefers-reduced-motion: reduce){ .adm-cajon, .adm-cajon-fondo{ transition:none; } }
+    
+        /* Configuración: índice lateral, grupos con título y campos en dos columnas */
+        .adm-config-cuerpo{ display:grid; grid-template-columns:190px minmax(0,1fr); gap:36px; margin-top:18px; align-items:start; }
+        .adm-config-indice{ position:sticky; top:100px; display:flex; flex-direction:column; gap:2px; }
+        .adm-config-indice button{ text-align:left; padding:8px 10px; border-radius:10px; font-size:13.5px; color:#6F6268; }
+        .adm-config-indice button:hover{ background:#FBF6F8; color:#2f2a2c; }
+        .adm-config-form{ max-width:820px; }
+        .adm-config-grupo{ padding:24px 0; border-top:1px solid #F1ECEE; scroll-margin-top:100px; }
+        .adm-config-grupo:first-child{ border-top:0; padding-top:0; }
+        .adm-config-titulo{ font-family:'Playfair Display', serif; font-size:1.12rem; font-weight:600; color:#2f2a2c; margin-bottom:2px; }
+        .adm-config-ayuda, .adm-config-grupo > p.text-xs{ font-size:12.5px; color:#8a7f83; margin-bottom:14px; }
+        .adm-config-titulo + .adm-config-campos{ margin-top:12px; }
+        .adm-config-campos{ display:grid; grid-template-columns:1fr 1fr; gap:16px 20px; }
+        .adm-config-campos > div:has(textarea){ grid-column:1 / -1; }
+        .adm-config-guardar{ position:sticky; bottom:0; margin:8px -24px -24px; padding:14px 24px; background:rgba(255,255,255,.96); border-top:1px solid #F1ECEE; display:flex; justify-content:flex-end; border-radius:0 0 16px 16px; }
+        @media (max-width:1023px){ .adm-config-cuerpo{ grid-template-columns:1fr; } .adm-config-indice{ display:none; } }
+        @media (max-width:639px){ .adm-config-campos{ grid-template-columns:1fr; } }
     </style>
 <script>
     // Las tarjetas del catálogo usan una copia ligera de la foto (1000 px),
@@ -287,7 +341,7 @@
 <!-- ============================================================= -->
 <div id="pantalla-carga" class="fixed inset-0 z-[300] bg-brandGray flex items-center justify-center">
     <div class="flex flex-col items-center gap-5">
-        <img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="h-12 w-auto" draggable="false">
+        <img src="/logo-reserva-floral-oscuro.png?v=2" alt="Reserva Floral" class="h-12 w-auto" draggable="false">
         <div class="flex items-center gap-2.5">
             <div class="w-4 h-4 border-2 border-brandFuchsia border-t-transparent rounded-full animate-spin"></div>
             <p class="text-xs text-gray-400">Cargando panel...</p>
@@ -300,7 +354,7 @@
 <!-- ============================================================= -->
 <div id="pantalla-bootstrap" class="hidden fixed inset-0 z-[290] bg-gradient-to-br from-[#FCF1F4] via-[#F8E6EA] to-[#EFD3DA] items-center justify-center px-4">
     <div class="w-full max-w-[420px] flex flex-col items-center">
-    <img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="h-16 w-auto mb-7" draggable="false">
+    <img src="/logo-reserva-floral-oscuro.png?v=2" alt="Reserva Floral" class="h-16 w-auto mb-7" draggable="false">
     <div class="adm-scale-in bg-white rounded-2xl shadow-2xl w-full p-8">
         <h1 class="text-xl font-serif font-semibold text-brandDark">Configura tu panel</h1>
         <p class="text-sm text-gray-500 mt-1 mb-6">Es la primera vez que se abre este panel. Crea la cuenta principal de administrador para continuar.</p>
@@ -329,7 +383,7 @@
 <!-- ============================================================= -->
 <div id="pantalla-login" class="hidden fixed inset-0 z-[280] bg-gradient-to-br from-[#FCF1F4] via-[#F8E6EA] to-[#EFD3DA] items-center justify-center px-4">
     <div class="w-full max-w-[380px] flex flex-col items-center">
-    <img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="h-16 w-auto mb-7" draggable="false">
+    <img src="/logo-reserva-floral-oscuro.png?v=2" alt="Reserva Floral" class="h-16 w-auto mb-7" draggable="false">
     <div class="adm-scale-in bg-white rounded-2xl shadow-2xl w-full p-8">
         <h1 class="text-xl font-serif font-semibold text-brandDark">Inicia sesión</h1>
         <p class="text-sm text-gray-500 mt-1 mb-6">Entra con tu correo para administrar la tienda.</p>
@@ -357,7 +411,7 @@
     <!-- Sidebar -->
     <aside id="adm-barra-lateral" class="adm-sidebar bg-white border-r border-gray-200 lg:min-h-screen lg:sticky lg:top-0 lg:h-screen flex flex-col">
         <div class="px-5 py-5 border-b border-gray-100">
-            <img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral" class="h-10 w-auto" draggable="false">
+            <img src="/logo-reserva-floral-oscuro.png?v=2" alt="Reserva Floral" class="h-10 w-auto" draggable="false">
             <p class="text-[11px] text-gray-400 mt-2">Panel de administración</p>
         </div>
         <nav id="sidebar-nav" class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
@@ -473,6 +527,20 @@
                     </div>
                 </div>
 
+                <!-- Lo primero que necesita el equipo al empezar el día -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="adm-card p-5 lg:col-span-2">
+                        <div class="flex items-baseline justify-between gap-3 mb-3">
+                            <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark">Entregas de hoy</h3>
+                            <span id="hoy-resumen" class="text-xs text-gray-500"></span>
+                        </div>
+                        <div id="hoy-entregas"></div>
+                    </div>
+                    <div class="adm-card p-5">
+                        <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark mb-3">Requiere atención</h3>
+                        <div id="hoy-atencion"></div>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="adm-card p-5 lg:col-span-2">
                         <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark mb-3">Pedidos recientes</h3>
@@ -808,8 +876,9 @@
 
             <!-- ============ ENVÍOS / COBERTURA ============ -->
             <section id="vista-envios" class="hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                    <div class="adm-card p-6">
+                <div class="grid grid-cols-1 gap-6 items-start">
+                    <div class="adm-card p-6 adm-cajon" id="cajon-zona" role="dialog" aria-modal="true" aria-label="Zona de envío">
+                        <button type="button" class="adm-cajon-cerrar" onclick="cerrarCajonRF()" aria-label="Cerrar"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
                         <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Agregar zona de envío</h2>
                         <p class="text-xs text-gray-400 mb-4">Estas zonas son las que puedes marcar en la cobertura de cada producto del catálogo.</p>
                         <form id="form-zona" class="space-y-4">
@@ -832,7 +901,7 @@
                             </div>
                             <div class="flex gap-2">
                                 <button type="submit" class="flex-1 bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">Guardar zona</button>
-                                <button type="button" onclick="limpiarFormularioZona()" class="bg-gray-100 hover:bg-gray-200 text-brandDark font-semibold py-2.5 px-4 rounded-lg text-sm transition">Cancelar</button>
+                                <button type="button" onclick="limpiarFormularioZona(); cerrarCajonRF()" class="bg-gray-100 hover:bg-gray-200 text-brandDark font-semibold py-2.5 px-4 rounded-lg text-sm transition">Cancelar</button>
                             </div>
                         </form>
                     </div>
@@ -843,6 +912,7 @@
                                 <p class="text-xs text-gray-400 mt-0.5">Lo que agregues, edites o desactives aquí se refleja directamente en el selector de ubicación de la tienda y en qué categorías se ven según la ciudad.</p>
                             </div>
                             <div class="w-full md:w-64 shrink-0"><input type="text" id="buscador-zonas" placeholder="Buscar ciudad o estado..." class="adm-input text-sm"></div>
+                            <button type="button" onclick="nuevaZonaRF()" class="ed-btn-primario shrink-0">+ Agregar zona</button>
                         </div>
                         <div id="lista-zonas" class="divide-y divide-gray-100"></div>
                     </div>
@@ -851,8 +921,9 @@
 
             <!-- ============ CUPONES ============ -->
             <section id="vista-cupones" class="hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                    <div class="adm-card p-6">
+                <div class="grid grid-cols-1 gap-6 items-start">
+                    <div class="adm-card p-6 adm-cajon" id="cajon-cupon" role="dialog" aria-modal="true" aria-label="Crear cupón">
+                        <button type="button" class="adm-cajon-cerrar" onclick="cerrarCajonRF()" aria-label="Cerrar"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
                         <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Crear cupón</h2>
                         <p class="text-xs text-gray-400 mb-4">Los cupones se aplican en el checkout con un código. Los que salen de canjear puntos se crean solos y no aparecen aquí para editar.</p>
                         <form id="form-cupon" class="space-y-4">
@@ -895,9 +966,12 @@
                         </form>
                     </div>
                     <div class="adm-card overflow-hidden lg:col-span-2">
-                        <div class="px-6 py-4 border-b border-gray-100">
-                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Cupones</h2>
-                            <p class="text-xs text-gray-400 mt-0.5">Los marcados con una cuenta son de un cliente específico (normalmente, canjeados con puntos).</p>
+                        <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="adm-titulo text-lg font-semibold text-brandDark">Cupones</h2>
+                                <p class="text-xs text-gray-400 mt-0.5">Los marcados con una cuenta son de un cliente específico (normalmente, canjeados con puntos).</p>
+                            </div>
+                            <button type="button" onclick="nuevoCuponRF()" class="ed-btn-primario shrink-0">+ Crear cupón</button>
                         </div>
                         <div id="lista-cupones" class="divide-y divide-gray-100"></div>
                     </div>
@@ -906,11 +980,13 @@
 
             <!-- ============ PÁGINA DE INICIO ============ -->
             <section id="vista-inicio-web" class="hidden">
-                <div class="adm-card p-6 max-w-2xl mb-6">
+                <!-- Portada e imagen de "no disponible", lado a lado y con vista previa grande -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="adm-card p-6">
                     <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Portada</h2>
                     <p class="text-xs text-gray-400 mb-4">La foto grande hasta arriba de la página de inicio.</p>
-                    <div class="flex items-center gap-4 mb-3">
-                        <img id="ib-preview-hero" alt="" class="w-28 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50">
+                    <div class="space-y-3 mb-3">
+                        <img id="ib-preview-hero" alt="" class="w-full aspect-[16/7] object-cover rounded-xl border border-gray-200 bg-gray-50">
                         <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
                             <span id="ib-texto-hero">Subir un archivo</span>
                             <input type="file" accept="image/*" id="ib-archivo-hero" class="hidden">
@@ -922,11 +998,11 @@
                     </div>
                 </div>
 
-                <div class="adm-card p-6 max-w-2xl mb-6">
+                <div class="adm-card p-6">
                     <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Imagen de "Categoría no disponible"</h2>
                     <p class="text-xs text-gray-400 mb-4">Aparece cuando alguien entra a una categoría que, por ahora, no tiene productos disponibles en su ciudad.</p>
-                    <div class="flex items-center gap-4 mb-3">
-                        <img id="ib-preview-no-disponible" alt="" class="w-28 h-16 object-cover rounded-lg border border-gray-200 bg-gray-50">
+                    <div class="space-y-3 mb-3">
+                        <img id="ib-preview-no-disponible" alt="" class="w-full aspect-[16/9] object-cover rounded-xl border border-gray-200 bg-gray-50">
                         <label class="text-xs font-semibold text-brandFuchsia cursor-pointer hover:underline">
                             <span id="ib-texto-no-disponible">Subir un archivo</span>
                             <input type="file" accept="image/*" id="ib-archivo-no-disponible" class="hidden">
@@ -936,6 +1012,7 @@
                         <input type="text" id="ib-link-no-disponible" placeholder="https://..." class="adm-input text-sm flex-1">
                         <button type="button" onclick="guardarImagenPorLinkRF('ib-link-no-disponible', 'imagen_categoria_no_disponible', 'ib-preview-no-disponible')" class="shrink-0 bg-gray-100 hover:bg-gray-200 text-brandDark text-xs font-semibold px-4 py-2.5 rounded-lg transition">Poner un link</button>
                     </div>
+                </div>
                 </div>
 
                 <div class="adm-card p-6 mb-6">
@@ -1060,8 +1137,9 @@
 
             <!-- ============ EQUIPO ============ -->
             <section id="vista-equipo" class="hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                    <div class="adm-card p-6">
+                <div class="grid grid-cols-1 gap-6 items-start">
+                    <div class="adm-card p-6 adm-cajon" id="cajon-usuario" role="dialog" aria-modal="true" aria-label="Agregar integrante">
+                        <button type="button" class="adm-cajon-cerrar" onclick="cerrarCajonRF()" aria-label="Cerrar"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
                         <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Agregar integrante</h2>
                         <p class="text-xs text-gray-400 mb-4">Los "editores" pueden gestionar catálogo y pedidos, pero no el equipo, la configuración, los cupones ni las finanzas.</p>
                         <form id="form-usuario" class="space-y-4">
@@ -1087,7 +1165,15 @@
                             <button type="submit" class="w-full bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">Crear cuenta</button>
                         </form>
 
-                        <div class="border-t border-gray-100 mt-6 pt-5">
+                    </div>
+                    <div class="adm-card overflow-hidden lg:col-span-2">
+                        <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Cuentas del panel</h2>
+                            <button type="button" onclick="nuevoUsuarioRF()" class="ed-btn-primario shrink-0">+ Agregar integrante</button>
+                        </div>
+                        <div id="lista-usuarios" class="divide-y divide-gray-100"></div>
+                    </div>
+                        <div class="adm-card p-6 max-w-md">
                             <h3 class="adm-titulo adm-titulo-chico text-sm font-semibold text-brandDark mb-3">Cambiar mi contraseña</h3>
                             <form id="form-cambiar-password" class="space-y-3">
                                 <input type="password" id="pw_actual" placeholder="Contraseña actual" required autocomplete="current-password" class="adm-input">
@@ -1095,13 +1181,6 @@
                                 <button type="submit" class="w-full bg-gray-100 hover:bg-gray-200 text-brandDark font-semibold py-2.5 rounded-lg text-sm transition">Actualizar contraseña</button>
                             </form>
                         </div>
-                    </div>
-                    <div class="adm-card overflow-hidden lg:col-span-2">
-                        <div class="px-6 py-4 border-b border-gray-100">
-                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Cuentas del panel</h2>
-                        </div>
-                        <div id="lista-usuarios" class="divide-y divide-gray-100"></div>
-                    </div>
                 </div>
 
                 <div class="adm-card overflow-hidden mt-6">
@@ -1115,10 +1194,21 @@
 
             <!-- ============ CONFIGURACIÓN ============ -->
             <section id="vista-configuracion" class="hidden">
-                <div class="adm-card p-6 max-w-2xl">
+                <div class="adm-card p-6 adm-config">
                     <h2 class="adm-titulo text-lg font-semibold text-brandDark mb-1">Configuración de la tienda</h2>
                     <p class="text-xs text-gray-400 mb-5">Estos datos ya están conectados a las páginas públicas del sitio (WhatsApp, imágenes, redes sociales).</p>
-                    <form id="form-configuracion" class="space-y-4">
+                    <div class="adm-config-cuerpo">
+                        <nav class="adm-config-indice" aria-label="Secciones de la configuración">
+                            <button type="button" onclick="document.getElementById('cfg-sec-contacto').scrollIntoView({behavior:'smooth', block:'start'})">Contacto y entregas</button>
+                            <button type="button" onclick="document.getElementById('cfg-sec-redes').scrollIntoView({behavior:'smooth', block:'start'})">Redes sociales</button>
+                            <button type="button" onclick="document.getElementById('cfg-sec-analitica').scrollIntoView({behavior:'smooth', block:'start'})">Analítica</button>
+                            <button type="button" onclick="document.getElementById('cfg-sec-correos').scrollIntoView({behavior:'smooth', block:'start'})">Correos automáticos</button>
+                        </nav>
+                    <form id="form-configuracion" class="adm-config-form">
+                        <div class="adm-config-grupo" id="cfg-sec-contacto">
+                            <p class="adm-config-titulo">Contacto y entregas</p>
+                            <p class="adm-config-ayuda">Cómo te encuentran tus clientes y lo que se les cobra por el envío.</p>
+                            <div class="adm-config-campos">
                         <div>
                             <label class="adm-label">WhatsApp de atención (con código de país, ej. 528331234567)</label>
                             <input type="text" id="cfg_whatsapp_numero" class="adm-input">
@@ -1141,9 +1231,11 @@
                             <textarea id="cfg_mensaje_footer" rows="3" class="adm-input"></textarea>
                         </div>
 
-                        <div class="border-t border-gray-100 pt-4 mt-2">
-                            <p class="text-sm font-semibold text-brandDark mb-3">Redes sociales <span class="text-xs font-normal text-gray-400">(deja en blanco la que no uses -- su ícono no se mostrará)</span></p>
-                            <div class="space-y-3">
+                            </div>
+                        </div>
+                        <div class="adm-config-grupo" id="cfg-sec-redes">
+                            <p class="adm-config-titulo">Redes sociales <span class="text-xs font-normal text-gray-400">(deja en blanco la que no uses -- su ícono no se mostrará)</span></p>
+                            <div class="adm-config-campos">
                                 <div>
                                     <label class="adm-label">Instagram (link completo)</label>
                                     <input type="text" id="cfg_instagram_url" placeholder="https://instagram.com/reservafloral" class="adm-input">
@@ -1163,10 +1255,10 @@
                             </div>
                         </div>
 
-                        <div class="border-t border-gray-100 pt-4 mt-2">
-                            <p class="text-sm font-semibold text-brandDark mb-1">Analítica</p>
+                        <div class="adm-config-grupo" id="cfg-sec-analitica">
+                            <p class="adm-config-titulo">Analítica</p>
                             <p class="text-xs text-gray-400 mb-3">Para saber cuánta gente visita tu tienda, de dónde viene y en qué parte del pago se van sin comprar. Deja en blanco lo que no uses.</p>
-                            <div class="space-y-3">
+                            <div class="adm-config-campos">
                                 <div>
                                     <label class="adm-label">ID de Google Analytics (GA4, ej. G-XXXXXXXXXX)</label>
                                     <input type="text" id="cfg_google_analytics_id" placeholder="G-XXXXXXXXXX" class="adm-input">
@@ -1178,8 +1270,8 @@
                             </div>
                         </div>
 
-                        <div class="border-t border-gray-100 pt-4 mt-2">
-                            <p class="text-sm font-semibold text-brandDark mb-1">Correos automáticos</p>
+                        <div class="adm-config-grupo" id="cfg-sec-correos">
+                            <p class="adm-config-titulo">Correos automáticos</p>
                             <p class="text-xs text-gray-400 mb-3">Estos correos se le mandan solos al cliente en cada momento de su compra. Apaga los que no quieras usar, y dale a "Ver ejemplo" para ver exactamente cómo se ven antes de decidir.</p>
                             <div class="space-y-2" id="lista-correos-automaticos">
                                 <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2.5">
@@ -1245,8 +1337,11 @@
                             </div>
                         </div>
 
+                        <div class="adm-config-guardar">
                         <button type="submit" class="bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 px-6 rounded-lg text-sm transition">Guardar configuración</button>
+                        </div>
                     </form>
+                    </div>
                 </div>
 
             </section>
@@ -1500,6 +1595,7 @@
   </form>
 </div>
 
+<div id="adm-cajon-fondo" class="adm-cajon-fondo" onclick="cerrarCajonRF()"></div>
 <div id="toast-container" class="fixed bottom-5 right-5 z-[200] flex flex-col gap-2"></div>
 
 <!-- Modal de confirmación -->
@@ -1562,6 +1658,33 @@
     let zonas = [];
     let cupones = [];
     let usuarios = [];
+
+    // Íconos de línea para la tarjeta de pedido y el Resumen (antes eran emojis).
+    const ICONOS_RF = {
+        calendario: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5',
+        reloj: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z',
+        telefono: 'M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z',
+        ubicacion: 'M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z',
+        corazon: 'M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z',
+        lapiz: 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z',
+        palomita: 'M4.5 12.75l6 6 9-13.5'
+    };
+    function icoRF(nombre) {
+        return `<svg class="adm-ico" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="${ICONOS_RF[nombre]}"/></svg>`;
+    }
+    // Fecha de hoy en México (AAAA-MM-DD), sin importar la zona del navegador.
+    function hoyMexicoPanelRF(desplazamientoDias = 0) {
+        const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        if (!desplazamientoDias) return hoy;
+        const d = new Date(hoy + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + desplazamientoDias); return d.toISOString().slice(0, 10);
+    }
+    function diaEntregaRF(fecha) {
+        const f = String(fecha || '').slice(0, 10);
+        if (!f) return { texto: 'Sin fecha', clase: '' };
+        if (f === hoyMexicoPanelRF()) return { texto: 'Hoy', clase: 'es-hoy' };
+        if (f === hoyMexicoPanelRF(1)) return { texto: 'Mañana', clase: 'es-manana' };
+        return { texto: formatearFechaAdmin(f), clase: '' };
+    }
     let usuarioActual = null;
     // Si la tienda cobra en línea (Mercado Pago), un pedido "Pendiente" sin
     // pagar todavía no se debe preparar. Lo dice el servidor al iniciar sesión.
@@ -1908,6 +2031,7 @@
                 </div>
             `).join('') : '<p class="text-sm text-gray-400 py-4">Aún no hay pedidos.</p>';
 
+            stockBajoCantidadRF = (d.stockBajo || []).length; renderHoyRF();
             const contStock = document.getElementById('dash-stock-bajo');
             contStock.innerHTML = d.stockBajo.length ? d.stockBajo.map(p => `
                 <div class="flex items-center justify-between text-xs">
@@ -2958,11 +3082,85 @@
             ordenes = await jsonOError(respuesta);
             cursorPedidosAnterioresRF = respuesta.headers.get('X-Cursor-Anteriores');
             hayPedidosAnterioresRF = respuesta.headers.get('X-Hay-Anteriores') === '1';
-            renderStatsPedidos(); renderListaPedidos(); actualizarBadgePedidos();
+            renderStatsPedidos(); renderListaPedidos(); actualizarBadgePedidos(); renderHoyRF();
         } catch (error) {
             console.error('Error cargando pedidos', error);
         }
     }
+    // ---------------- Resumen: "Entregas de hoy" y "Requiere atención" ----------------
+    let facturasPendientesCantidadRF = 0;
+    let stockBajoCantidadRF = 0;
+    function minutosDeHorarioRF(horario) {
+        const m = /(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(horario || ''));
+        if (!m) return 99999;
+        let h = Number(m[1]) % 12; if (!m[3] || m[3].toLowerCase() === 'pm') { if (m[3]) h += 12; else h = Number(m[1]); }
+        return h * 60 + Number(m[2]);
+    }
+    function renderHoyRF() {
+        const cont = document.getElementById('hoy-entregas');
+        if (!cont) return;
+        const hoy = hoyMexicoPanelRF();
+        const entregas = ordenes.filter(o => String(o.fecha_entrega || '').slice(0, 10) === hoy && o.estado !== 'Cancelado' && !o.descartado && !pedidoEsperandoPagoRF(o));
+        const entregadas = entregas.filter(o => o.estado === 'Entregado').length;
+        document.getElementById('hoy-resumen').innerText = entregas.length
+            ? `${entregas.length} entrega${entregas.length === 1 ? '' : 's'}${entregadas ? ` · ${entregadas} ya entregada${entregadas === 1 ? '' : 's'}` : ''}` : '';
+        if (!entregas.length) {
+            const manana = ordenes.filter(o => String(o.fecha_entrega || '').slice(0, 10) === hoyMexicoPanelRF(1) && o.estado !== 'Cancelado' && !o.descartado && !pedidoEsperandoPagoRF(o)).length;
+            cont.innerHTML = `<p class="text-sm text-gray-500 py-3">No hay entregas programadas para hoy.${manana ? ` Mañana hay <strong class="text-brandDark">${manana}</strong>.` : ''}</p>`;
+        } else {
+            const grupos = {};
+            entregas.forEach(o => { const h = o.horario_entrega || 'Sin horario'; (grupos[h] = grupos[h] || []).push(o); });
+            const orden = Object.keys(grupos).sort((a, b) => minutosDeHorarioRF(a) - minutosDeHorarioRF(b));
+            cont.innerHTML = orden.map(h => `
+                <div class="adm-hoy-grupo">
+                    <p class="adm-hoy-horario">${icoRF('reloj')}${escaparHtmlAdmin(h)}</p>
+                    ${grupos[h].map(o => `
+                        <button type="button" class="adm-hoy-item ${o.estado === 'Entregado' ? 'is-entregado' : ''}" onclick="irAPedidoRF(${o.id})">
+                            <span class="min-w-0">
+                                <span class="block text-sm font-medium text-brandDark truncate">${escaparHtmlAdmin(o.cliente_nombre)} <span class="text-gray-400 font-normal">#${o.id}</span></span>
+                                <span class="block text-xs text-gray-500 truncate">${escaparHtmlAdmin(o.direccion_entrega || '')}</span>
+                            </span>
+                            <span class="adm-badge ${ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500'} shrink-0">${escaparHtmlAdmin(o.estado)}</span>
+                        </button>`).join('')}
+                </div>`).join('');
+        }
+        const porAtender = ordenes.filter(pedidoPorAtenderRF).length;
+        const esperandoPago = ordenes.filter(pedidoEsperandoPagoRF).length;
+        const reembolsos = ordenes.filter(o => o.estado === 'Cancelado' && o.estado_pago === 'aprobado').length;
+        const puntos = [
+            porAtender && { n: porAtender, texto: `pedido${porAtender === 1 ? '' : 's'} pagado${porAtender === 1 ? '' : 's'} por preparar`, accion: "irAPedidosFiltradosRF('Pendiente')", tono: 'frambuesa' },
+            reembolsos && { n: reembolsos, texto: `reembolso${reembolsos === 1 ? '' : 's'} pendiente${reembolsos === 1 ? '' : 's'}`, accion: "irAPedidosFiltradosRF('Cancelado')", tono: 'rojo' },
+            facturasPendientesCantidadRF && { n: facturasPendientesCantidadRF, texto: `factura${facturasPendientesCantidadRF === 1 ? '' : 's'} por enviar`, accion: "cambiarVista('pedidos')", tono: 'ambar' },
+            stockBajoCantidadRF && { n: stockBajoCantidadRF, texto: `producto${stockBajoCantidadRF === 1 ? '' : 's'} con poco inventario`, accion: "cambiarVista('catalogo')", tono: 'ambar' },
+            esperandoPago && { n: esperandoPago, texto: `pedido${esperandoPago === 1 ? '' : 's'} esperando pago (no preparar aún)`, accion: "irAPedidosFiltradosRF('Pendiente')", tono: 'gris' }
+        ].filter(Boolean);
+        document.getElementById('hoy-atencion').innerHTML = puntos.length ? puntos.map(p => `
+            <button type="button" class="adm-atencion-item" onclick="${p.accion}">
+                <span class="adm-atencion-numero tono-${p.tono}">${p.n}</span>
+                <span class="text-sm text-brandDark text-left">${p.texto}</span>
+                <svg class="w-4 h-4 text-gray-400 ml-auto shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>`).join('') : `<p class="adm-todo-en-orden">${icoRF('palomita')}<span>Todo en orden: no hay nada pendiente.</span></p>`;
+    }
+    function irAPedidosFiltradosRF(estado) {
+        cambiarVista('pedidos');
+        if (typeof cambiarVistaPedidos === 'function') cambiarVistaPedidos('lista');
+        document.getElementById('filtro-pedido-busqueda').value = '';
+        document.getElementById('filtro-pedido-estado').value = estado || '';
+        renderListaPedidos();
+    }
+    window.irAPedidosFiltradosRF = irAPedidosFiltradosRF;
+    function irAPedidoRF(id) {
+        irAPedidosFiltradosRF('');
+        const posicion = ordenesFiltradas().findIndex(o => o.id === id);
+        if (posicion >= limiteVisiblePedidosRF) { limiteVisiblePedidosRF = posicion + 1; renderListaPedidos(); }
+        const tarjeta = document.getElementById('pedido-' + id);
+        if (tarjeta) {
+            tarjeta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            tarjeta.classList.add('adm-resaltado'); setTimeout(() => tarjeta.classList.remove('adm-resaltado'), 2200);
+        }
+    }
+    window.irAPedidoRF = irAPedidoRF;
+
     function actualizarBadgePedidos() {
         // El globo solo cuenta lo que ya se puede preparar (pagado).
         const pendientes = ordenes.filter(pedidoPorAtenderRF).length;
@@ -3128,28 +3326,32 @@
             const colorEstado = ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500';
             const colorEstadoPago = { aprobado: 'bg-green-50 text-green-600', pendiente: 'bg-amber-50 text-amber-600', rechazado: 'bg-red-50 text-red-600', reembolsado: 'bg-gray-100 text-gray-500' }[o.estado_pago] || 'bg-gray-100 text-gray-500';
             const etiquetaEstadoPago = { aprobado: '✓ Pago confirmado', pendiente: 'Pago pendiente', rechazado: 'Pago rechazado', reembolsado: 'Pago reembolsado' }[o.estado_pago] || 'Pago pendiente';
-            const iconoTipo = { Casa: '🏠', Hotel: '🛏️', Restaurante: '🍴', 'Capilla Funeral': '✝️', Oficinas: '🏢', Hospital: '🏥' }[o.tipo_domicilio] || '📍';
+            const dia = diaEntregaRF(o.fecha_entrega);
             const tieneMapa = o.lat && o.lng;
             const envio = Number(o.envio || 0);
             const subtotal = Number(o.total || 0) - envio;
             return `
-                <div class="px-6 py-4">
+                <div class="px-6 py-4" id="pedido-${o.id}">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <p class="font-semibold text-brandDark text-sm">${escaparHtmlAdmin(o.cliente_nombre)}</p>
+                            <div class="adm-entrega ${dia.clase}">
+                                ${icoRF('calendario')}<span>${escaparHtmlAdmin(dia.texto)}</span>
+                                ${o.horario_entrega ? `<span class="adm-entrega-sep"></span>${icoRF('reloj')}<span>${escaparHtmlAdmin(o.horario_entrega)}</span>` : ''}
+                            </div>
+                            <div class="flex items-center gap-2 flex-wrap mt-2">
+                                <p class="font-semibold text-brandDark text-[15px]">${escaparHtmlAdmin(o.cliente_nombre)}</p>
+                                <span class="text-[11px] text-gray-400">Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</span>
                                 <span class="adm-badge ${colorEstado}">${escaparHtmlAdmin(o.estado || 'Pendiente')}</span>
                                 <span class="adm-badge ${colorEstadoPago}">${etiquetaEstadoPago}</span>
                                 ${o.descartado ? '<span class="adm-badge bg-gray-100 text-gray-500" title="El cliente corrigió sus datos antes de pagar y se generó un pedido nuevo">Descartado</span>' : ''}
                                 ${o.estado === 'Cancelado' && o.estado_pago === 'aprobado' ? '<span class="adm-badge bg-red-50 text-red-600" title="Este pedido se canceló pero su pago sigue sin reembolsarse. Al reembolsar en Mercado Pago, esta etiqueta desaparece sola.">⚠️ Reembolso pendiente</span>' : ''}
                             </div>
-                            <p class="text-xs text-gray-500 mt-0.5">☎️ Contacto: ${escaparHtmlAdmin(o.cliente_telefono)}${o.email_contacto ? ` · ${escaparHtmlAdmin(o.email_contacto)}` : ''}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''} · Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">${iconoTipo} ${escaparHtmlAdmin(o.direccion_entrega)}
+                            <p class="adm-dato">${icoRF('telefono')}<span>${escaparHtmlAdmin(o.cliente_telefono)}${o.email_contacto ? ` · ${escaparHtmlAdmin(o.email_contacto)}` : ''}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''}</span></p>
+                            <p class="adm-dato">${icoRF('ubicacion')}<span>${o.tipo_domicilio ? `<span class="text-gray-400">${escaparHtmlAdmin(o.tipo_domicilio)} ·</span> ` : ''}${escaparHtmlAdmin(o.direccion_entrega)}
                                 ${tieneMapa ? ` · <a href="https://www.openstreetmap.org/?mlat=${o.lat}&mlon=${o.lng}#map=18/${o.lat}/${o.lng}" target="_blank" class="text-brandFuchsia font-medium hover:underline">Ver ubicación en el mapa</a>` : ''}
-                            </p>
-                            ${o.notas_entrega ? `<p class="text-xs text-gray-400 mt-0.5">Notas: ${escaparHtmlAdmin(o.notas_entrega)}</p>` : ''}
-                            <p class="text-xs text-gray-500 mt-0.5">🚚 Entrega: ${formatearFechaAdmin(o.fecha_entrega)}${o.horario_entrega ? ` · ${escaparHtmlAdmin(o.horario_entrega)}` : ''}</p>
-                            ${o.dedicatoria ? `<p class="text-xs text-gray-500 mt-0.5 italic">💌 "${escaparHtmlAdmin(o.dedicatoria)}" ${o.es_anonimo ? '<span class="text-gray-400">(anónimo)</span>' : (o.firma ? `<span class="text-gray-400">— ${escaparHtmlAdmin(o.firma)}</span>` : '')}</p>` : ''}
+                            </span></p>
+                            ${o.notas_entrega ? `<p class="adm-dato">${icoRF('lapiz')}<span>Notas: ${escaparHtmlAdmin(o.notas_entrega)}</span></p>` : ''}
+                            ${o.dedicatoria ? `<p class="adm-dato italic">${icoRF('corazon')}<span>"${escaparHtmlAdmin(o.dedicatoria)}" ${o.es_anonimo ? '<span class="text-gray-400">(anónimo)</span>' : (o.firma ? `<span class="text-gray-400">— ${escaparHtmlAdmin(o.firma)}</span>` : '')}</span></p>` : ''}
                         </div>
                         <div class="adm-pedido-lado shrink-0">
                           <div>
@@ -3172,7 +3374,7 @@
                         <div class="mt-2 border border-gray-100 rounded-lg px-3 py-1 bg-gray-50">${itemsHtml}</div>
                     </details>
                     <details class="mt-2" ontoggle="if(this.open) cargarNotasPedido(${o.id})">
-                        <summary class="text-xs text-gray-500 font-medium cursor-pointer select-none">📝 Notas internas del equipo</summary>
+                        <summary class="text-xs text-gray-500 font-medium cursor-pointer select-none"><span class="inline-flex items-center gap-1.5">${icoRF('lapiz')}Notas internas del equipo</span></summary>
                         <div id="notas-pedido-${o.id}" class="mt-2 space-y-1.5">
                             <p class="text-xs text-gray-400">Cargando...</p>
                         </div>
@@ -3201,7 +3403,7 @@
             const o = ordenes.find(x => x.id === id);
             if (o) o.estado = estado;
             mostrarToast(`Pedido #${id} actualizado a "${estado}" — se le avisó al cliente por correo.`);
-            renderStatsPedidos(); renderListaPedidos(); actualizarBadgePedidos();
+            renderStatsPedidos(); renderListaPedidos(); actualizarBadgePedidos(); renderHoyRF();
         } catch (error) {
             mostrarToast(error.message, 'error');
         }
@@ -3449,6 +3651,7 @@
         if (!tarjeta || !cont) return;
         try {
             const solicitudes = await jsonOError(await fetch('/api/admin/facturas-pendientes'));
+            facturasPendientesCantidadRF = solicitudes.length; renderHoyRF();
             tarjeta.classList.toggle('hidden', solicitudes.length === 0);
             cont.innerHTML = solicitudes.map(o => `
                 <div class="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2.5 text-xs">
@@ -3736,6 +3939,7 @@
             }
             mostrarToast('Zona guardada.');
             limpiarFormularioZona();
+            cerrarCajonRF();
             cargarZonas();
         } catch (error) {
             mostrarToast(error.message, 'error');
@@ -3748,7 +3952,8 @@
         document.getElementById('zona_estado').value = z.estado || '';
         poblarCiudadesZona(z.estado || '', z.etiqueta);
         document.getElementById('zona_activa').checked = z.activa;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const tituloZona = document.querySelector('#cajon-zona h2'); if (tituloZona) tituloZona.innerText = 'Editar zona de envío';
+        abrirCajonRF('cajon-zona');
     }
     window.editarZona = editarZona;
     function limpiarFormularioZona() {
@@ -3757,8 +3962,34 @@
         document.getElementById('zona_etiqueta').innerHTML = '<option value="" disabled selected>Primero elige un estado</option>';
         document.getElementById('zona_etiqueta').disabled = true;
         document.getElementById('zona_activa').checked = true;
+        const tituloZona = document.querySelector('#cajon-zona h2'); if (tituloZona) tituloZona.innerText = 'Agregar zona de envío';
     }
     window.limpiarFormularioZona = limpiarFormularioZona;
+
+    // ---------------- Paneles deslizables (Envíos, Cupones, Equipo) ----------------
+    function abrirCajonRF(id) {
+        document.querySelectorAll('.adm-cajon.is-abierto').forEach(x => x.classList.remove('is-abierto'));
+        const cajon = document.getElementById(id);
+        if (!cajon) return;
+        cajon.classList.add('is-abierto'); cajon.scrollTop = 0;
+        document.getElementById('adm-cajon-fondo').classList.add('is-visible');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => cajon.querySelector('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea')?.focus({ preventScroll: true }), 80);
+    }
+    function cerrarCajonRF() {
+        document.querySelectorAll('.adm-cajon.is-abierto').forEach(x => x.classList.remove('is-abierto'));
+        document.getElementById('adm-cajon-fondo')?.classList.remove('is-visible');
+        if (!(typeof editorAbiertoRF !== 'undefined' && editorAbiertoRF)) document.body.style.overflow = '';
+    }
+    function nuevaZonaRF() { limpiarFormularioZona(); abrirCajonRF('cajon-zona'); }
+    function nuevoCuponRF() { document.getElementById('form-cupon').reset(); abrirCajonRF('cajon-cupon'); }
+    function nuevoUsuarioRF() { document.getElementById('form-usuario').reset(); abrirCajonRF('cajon-usuario'); }
+    Object.assign(window, { abrirCajonRF, cerrarCajonRF, nuevaZonaRF, nuevoCuponRF, nuevoUsuarioRF });
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || !document.querySelector('.adm-cajon.is-abierto')) return;
+        if (!document.getElementById('modal-confirmar').classList.contains('hidden')) return;
+        cerrarCajonRF();
+    });
     async function toggleZonaActiva(id, activa) {
         try {
             await jsonOError(await fetch(`/api/admin/zonas/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activa }) }));
@@ -3853,6 +4084,7 @@
             await jsonOError(await fetch('/api/admin/cupones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
             mostrarToast('Cupón creado.');
             document.getElementById('form-cupon').reset();
+            cerrarCajonRF();
             cargarCupones();
         } catch (error) {
             mostrarToast(error.message, 'error');
@@ -3945,6 +4177,7 @@
             }));
             mostrarToast('Cuenta creada.');
             document.getElementById('form-usuario').reset();
+            cerrarCajonRF();
             cargarUsuarios();
         } catch (error) {
             mostrarToast(error.message, 'error');

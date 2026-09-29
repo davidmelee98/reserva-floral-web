@@ -251,59 +251,6 @@ app.get('/uploads/tarjeta/:archivo', async (req, res) => {
   }
 });
 
-// Íconos del pie de página (redes sociales y métodos de pago). Son EXACTAMENTE
-// las mismas imágenes que antes se cargaban directo desde un servidor ajeno
-// (d1ojcbkdb9gxnh.cloudfront.net): el servidor las descarga una sola vez, byte
-// por byte, las guarda en el almacenamiento propio y desde ahí las entrega.
-// Solo se aceptan estas 11; si una descarga falla, se usa la dirección original.
-const ORIGEN_ICONOS_PIE = 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/';
-const ICONOS_PIE_PERMITIDOS = new Set([
-  '1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg',
-  'CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg',
-  'HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg',
-  'LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png',
-  'THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg',
-  'VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg',
-  'egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png',
-  'hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg',
-  'mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg',
-  'rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg',
-  'yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg'
-]);
-const CARPETA_ICONOS_PIE = path.join(CARPETA_SUBIDAS, 'iconos-pie');
-fs.mkdirSync(CARPETA_ICONOS_PIE, { recursive: true });
-const descargandoIconosPieRF = new Map();
-app.get('/iconos-pie/:archivo', async (req, res) => {
-  const archivo = path.basename(req.params.archivo);
-  if (!ICONOS_PIE_PERMITIDOS.has(archivo)) return res.status(404).end();
-  const original = ORIGEN_ICONOS_PIE + archivo;
-  const destino = path.join(CARPETA_ICONOS_PIE, archivo);
-  try {
-    if (!fs.existsSync(destino)) {
-      if (typeof fetch !== 'function') return res.redirect(302, original);
-      if (!descargandoIconosPieRF.has(archivo)) {
-        descargandoIconosPieRF.set(archivo, (async () => {
-          const respuesta = await fetch(original, { signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
-          if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-          const datos = Buffer.from(await respuesta.arrayBuffer());
-          const temporal = `${destino}.${crypto.randomBytes(4).toString('hex')}.tmp`;
-          await fs.promises.writeFile(temporal, datos);
-          await fs.promises.rename(temporal, destino);
-        })().finally(() => descargandoIconosPieRF.delete(archivo)));
-      }
-      await descargandoIconosPieRF.get(archivo);
-    }
-    res.set('Cache-Control', 'public, max-age=2592000, immutable');
-    // Un SVG de un tercero nunca debe poder ejecutar código en el dominio propio.
-    if (archivo.endsWith('.svg')) res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
-    res.type(archivo.endsWith('.svg') ? 'image/svg+xml' : 'image/png');
-    res.sendFile(destino);
-  } catch (error) {
-    console.error('No se pudo guardar el ícono del pie de página; se usa la dirección original:', archivo, error?.message || error);
-    res.redirect(302, original);
-  }
-});
-
 // Las fotos subidas tienen nombres únicos y nunca cambian: el navegador las
 // puede guardar 30 días en lugar de volver a pedirlas en cada visita.
 app.use('/uploads', express.static(CARPETA_SUBIDAS, { maxAge: '30d', immutable: true }));
@@ -406,6 +353,11 @@ app.get('/sitemap.xml', limitadorGeneral, async (req, res) => {
   }
 });
 
+// IMPORTANTE: logos, íconos e imágenes del sitio se guardan un día en el
+// navegador. Si reemplazas uno CONSERVANDO su nombre de archivo, sube la
+// versión en sus direcciones (?v=2 -> ?v=3) en las páginas y en este archivo:
+// así los navegadores descargan el nuevo de inmediato en lugar de mostrar el
+// que tenían guardado.
 // Archivos del sitio: las páginas siempre se revisan (para que un cambio se
 // vea de inmediato); logos, íconos y estilos se guardan un día en el navegador.
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -437,7 +389,7 @@ app.get('/producto/:id', async (req, res) => {
     const descripcionPlana = String(p.descripcion || 'Arreglo floral con entrega a domicilio.').replace(/</g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
     const imagenAbsoluta = p.imagen_url
       ? (p.imagen_url.startsWith('http') ? p.imagen_url : `${URL_SITIO}${p.imagen_url}`)
-      : `${URL_SITIO}/imagen-compartir.png`;
+      : `${URL_SITIO}/imagen-compartir.png?v=2`;
     const tituloProducto = `${nombreEscapado} | Reserva Floral`;
 
     html = html
@@ -1626,7 +1578,7 @@ app.post('/api/ordenes/:id/descartar', async (req, res) => {
 function paginaBajaRF(titulo, mensaje, formulario = '') {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titulo} — Reserva Floral</title>
   <style>body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f7eef2;margin:0;padding:40px 16px;color:#3a3a3a}.caja{max-width:420px;margin:0 auto;background:#fff;border-radius:20px;padding:32px 24px;text-align:center}img{height:44px}h1{font-size:18px;margin:20px 0 8px}p{font-size:14px;color:#666;line-height:1.5}button,a.btn{display:inline-block;margin-top:16px;background:#a3284f;color:#fff;border:0;padding:11px 24px;border-radius:999px;font-size:14px;cursor:pointer;text-decoration:none}</style></head>
-  <body><div class="caja"><img src="/logo-reserva-floral-oscuro.png" alt="Reserva Floral"><h1>${titulo}</h1><p>${mensaje}</p>${formulario}</div></body></html>`;
+  <body><div class="caja"><img src="/logo-reserva-floral-oscuro.png?v=2" alt="Reserva Floral"><h1>${titulo}</h1><p>${mensaje}</p>${formulario}</div></body></html>`;
 }
 function bajaValidaRF(email, firma) {
   if (!email || !firma || typeof firma !== 'string') return false;
@@ -2671,7 +2623,7 @@ function encabezadosBajaRF(email) {
 async function plantillaBaseCorreo(tituloInterno, cuerpoHtml, opciones = {}) {
   // Versión del logo para fondo claro: el oficial tiene las letras en crema
   // y sobre el encabezado blanco del correo no se leían.
-  const logoUrl = `${URL_SITIO}/logo-reserva-floral-oscuro.png`;
+  const logoUrl = `${URL_SITIO}/logo-reserva-floral-oscuro.png?v=2`;
   let whatsappBoton = '';
   try {
     const cfg = await pool.query("SELECT clave, valor FROM configuracion WHERE clave = 'whatsapp_numero'");
