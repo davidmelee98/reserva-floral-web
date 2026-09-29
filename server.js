@@ -696,7 +696,17 @@ async function inicializarDB() {
     'ALTER TABLE recordatorios_cliente ADD COLUMN IF NOT EXISTS ultimo_aviso_para DATE',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descartado BOOLEAN DEFAULT false',
     'CREATE TABLE IF NOT EXISTS correos_bajas (email VARCHAR(150) PRIMARY KEY, origen VARCHAR(20), creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-    'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS un_uso_por_cliente BOOLEAN DEFAULT false'
+    'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS un_uso_por_cliente BOOLEAN DEFAULT false',
+    // Índices para las búsquedas frecuentes sobre pedidos: sin ellos, cada
+    // búsqueda recorre la tabla completa (se nota cuando hay miles de pedidos).
+    'CREATE INDEX IF NOT EXISTS idx_ordenes_creado_en ON ordenes(creado_en DESC)',
+    'CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON ordenes(estado)',
+    'CREATE INDEX IF NOT EXISTS idx_ordenes_cliente_cuenta ON ordenes(cliente_cuenta_id)',
+    'CREATE INDEX IF NOT EXISTS idx_ordenes_email ON ordenes(LOWER(email_contacto))',
+    'CREATE INDEX IF NOT EXISTS idx_ordenes_fecha_entrega ON ordenes(fecha_entrega)',
+    'CREATE INDEX IF NOT EXISTS idx_ordenes_token ON ordenes(token_invitado) WHERE token_invitado IS NOT NULL',
+    'CREATE INDEX IF NOT EXISTS idx_ordenes_cupon ON ordenes(UPPER(cupon_codigo)) WHERE cupon_codigo IS NOT NULL',
+    'CREATE INDEX IF NOT EXISTS idx_cupones_codigo ON cupones(UPPER(codigo))'
   ];
 
   for (const query of alterQueries) {
@@ -2330,7 +2340,7 @@ app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
     // Para saber si el producto "volvió a estar disponible" (y avisarle a
     // quien lo esperaba), hace falta el estado de ANTES de esta edición --
     // RETURNING * del UPDATE solo da el de después.
-    const antes = await pool.query('SELECT stock, disponible FROM arreglos_florales WHERE id=$1', [id]);
+    const antes = await pool.query('SELECT stock, disponible, imagen_url, imagenes FROM arreglos_florales WHERE id=$1', [id]);
     const estabaAgotado = antes.rows[0] && (antes.rows[0].disponible === false || Number(antes.rows[0].stock) <= 0);
 
     const result = await pool.query(`
@@ -2358,6 +2368,9 @@ app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
 
     const [conClasificaciones] = await adjuntarClasificaciones([result.rows[0]]);
     res.json(conClasificaciones);
+    // Si se reemplazó alguna foto, la anterior se libera del disco (solo si ya
+    // nada la usa: la revisión incluye al propio producto con sus fotos nuevas).
+    if (antes.rows[0]) borrarFotosSinUsoRF(archivosSubidosDeRF(antes.rows[0].imagen_url, antes.rows[0].imagenes));
   } catch (error) {
     console.error('PUT /api/catalogo/:id:', error);
     res.status(500).json({ error: 'Error al actualizar el producto.' });
@@ -2365,6 +2378,40 @@ app.put('/api/catalogo/:id', requireAuth, async (req, res) => {
 });
 
 // API: Eliminar producto. Requiere sesión.
+// Borra del disco las fotos que dejaron de usarse (y su copia para tarjetas),
+// SOLO si nada más las usa: otro producto (al duplicar se comparten), los
+// carruseles o la configuración de la página de inicio, o algún pedido (el
+// historial de pedidos muestra la foto de lo que se compró).
+function archivosSubidosDeRF(...valores) {
+  const nombres = new Set();
+  for (const v of valores) {
+    for (const url of String(v || '').split(',')) {
+      const m = /^(?:https?:\/\/[^/]+)?\/uploads\/([\w.-]+)$/.exec(url.trim());
+      if (m) nombres.add(m[1]);
+    }
+  }
+  return [...nombres];
+}
+async function borrarFotosSinUsoRF(nombres) {
+  for (const nombre of nombres) {
+    try {
+      const patron = `%${nombre}%`;
+      const r = await pool.query(`SELECT
+          EXISTS(SELECT 1 FROM arreglos_florales WHERE imagen_url LIKE $1 OR COALESCE(imagenes, '') LIKE $1)
+          OR EXISTS(SELECT 1 FROM carruseles_inicio WHERE imagen_url LIKE $1)
+          OR EXISTS(SELECT 1 FROM configuracion WHERE valor LIKE $1)
+          OR EXISTS(SELECT 1 FROM ordenes WHERE carrito::text LIKE $1) AS en_uso`, [patron]);
+      if (r.rows[0].en_uso) continue;
+      for (const ruta of [path.join(CARPETA_SUBIDAS, nombre), path.join(CARPETA_TARJETAS, `${nombre}.webp`)]) {
+        await fs.promises.unlink(ruta).catch(err => { if (err.code !== 'ENOENT') throw err; });
+      }
+      console.log('Foto sin uso borrada del disco:', nombre);
+    } catch (error) {
+      console.error('No se pudo revisar/borrar la foto', nombre, error?.message || error);
+    }
+  }
+}
+
 app.delete('/api/catalogo/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
@@ -2390,12 +2437,15 @@ app.delete('/api/catalogo/:id', requireAuth, async (req, res) => {
       }
     }
 
+    const fotos = await pool.query('SELECT imagen_url, imagenes FROM arreglos_florales WHERE id = $1', [id]);
     const result = await pool.query('DELETE FROM arreglos_florales WHERE id = $1', [id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Producto no encontrado.' });
     }
     await registrarBitacora(req, 'Eliminó un producto', `ID ${id}`);
     res.json({ exito: true });
+    // Después de responder: libera del disco las fotos que ya nadie usa.
+    if (fotos.rows[0]) borrarFotosSinUsoRF(archivosSubidosDeRF(fotos.rows[0].imagen_url, fotos.rows[0].imagenes));
   } catch (error) {
     console.error('DELETE /api/catalogo/:id:', error);
     res.status(500).json({ error: 'Error al eliminar el producto.' });
@@ -2902,6 +2952,10 @@ async function avisarRestockRF(productoId, nombreProducto) {
 // una sola vez por carrito.
 async function revisarCarritosAbandonadosRF() {
   try {
+    // Datos mínimos: el correo y los productos de quien nunca compró no se
+    // guardan para siempre. A los 60 días sin movimiento, se borran.
+    const borrados = await pool.query(`DELETE FROM carritos_abandonados WHERE COALESCE(actualizado_en, creado_en) < NOW() - INTERVAL '60 days'`);
+    if (borrados.rowCount) console.log(`Carritos abandonados con más de 60 días borrados: ${borrados.rowCount}`);
     const resultado = await pool.query(`
       SELECT * FROM carritos_abandonados
       WHERE recuperado = false AND correo_enviado = false
@@ -3574,9 +3628,33 @@ async function liberarPedidosSinPagarRF() {
 
 const ESTADOS_ORDEN_VALIDOS = ['Pendiente', 'Confirmado', 'En preparación', 'En camino', 'Entregado', 'Cancelado'];
 
+// Antes se mandaban TODOS los pedidos de la historia cada vez que se abría el
+// panel (con 3,000 pedidos, ~2.5 MB). Ahora se manda lo que se usa en el día a
+// día: todo lo que sigue en proceso (sin importar la fecha) + lo terminado de
+// los últimos 90 días. El historial más viejo se pide por partes (?antes=).
+const DIAS_VENTANA_PEDIDOS = 90;
+const PEDIDOS_POR_TANDA = 300;
 app.get('/api/admin/ordenes', requireAuth, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM ordenes ORDER BY id DESC');
+    let result, cursor;
+    if (req.query.antes) {
+      const antes = new Date(String(req.query.antes));
+      if (Number.isNaN(antes.getTime())) return res.status(400).json({ error: 'Fecha inválida.' });
+      result = await pool.query('SELECT * FROM ordenes WHERE creado_en < $1 ORDER BY creado_en DESC LIMIT $2', [antes.toISOString(), PEDIDOS_POR_TANDA]);
+      const ultimo = result.rows[result.rows.length - 1];
+      cursor = ultimo ? new Date(ultimo.creado_en).toISOString() : antes.toISOString();
+    } else {
+      result = await pool.query(
+        `SELECT * FROM ordenes
+         WHERE estado NOT IN ('Entregado', 'Cancelado') OR creado_en >= NOW() - ($1 || ' days')::interval
+         ORDER BY id DESC`,
+        [String(DIAS_VENTANA_PEDIDOS)]
+      );
+      cursor = new Date(Date.now() - DIAS_VENTANA_PEDIDOS * 86400000).toISOString();
+    }
+    const mas = await pool.query('SELECT EXISTS(SELECT 1 FROM ordenes WHERE creado_en < $1) AS hay', [cursor]);
+    res.set('X-Cursor-Anteriores', cursor);
+    res.set('X-Hay-Anteriores', mas.rows[0]?.hay ? '1' : '0');
     res.json(result.rows);
   } catch (error) {
     console.error('GET /api/admin/ordenes:', error);

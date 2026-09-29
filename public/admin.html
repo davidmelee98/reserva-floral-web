@@ -596,7 +596,7 @@
                         <div class="w-10 h-10 rounded-xl bg-gray-100 text-brandDark flex items-center justify-center shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z" /></svg>
                         </div>
-                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Pedidos totales</p><p id="stat-pedidos-total" class="text-xl font-bold text-brandDark">—</p></div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Pedidos (90 días)</p><p id="stat-pedidos-total" class="text-xl font-bold text-brandDark">—</p></div>
                     </div>
                     <div class="adm-card p-4 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
@@ -614,7 +614,7 @@
                         <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
-                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Ventas entregadas</p><p id="stat-pedidos-ventas" class="text-xl font-bold text-green-600">—</p></div>
+                        <div class="min-w-0"><p class="text-[11px] text-gray-500 font-medium">Entregado (90 días)</p><p id="stat-pedidos-ventas" class="text-xl font-bold text-green-600">—</p></div>
                     </div>
                 </div>
 
@@ -2944,9 +2944,20 @@
     // =======================================================================
     // PEDIDOS
     // =======================================================================
+    // El servidor manda lo que sigue en proceso + lo terminado de los últimos
+    // 90 días; el historial más viejo se trae con "Cargar pedidos anteriores".
+    // La lista se dibuja de 50 en 50 ("Mostrar más").
+    let cursorPedidosAnterioresRF = null;
+    let hayPedidosAnterioresRF = false;
+    let limiteVisiblePedidosRF = 50;
+    let claveFiltroPedidosRF = '';
+    const HACE_90_DIAS_RF = () => Date.now() - 90 * 86400000;
     async function cargarOrdenes() {
         try {
-            ordenes = await jsonOError(await fetch('/api/admin/ordenes'));
+            const respuesta = await fetch('/api/admin/ordenes');
+            ordenes = await jsonOError(respuesta);
+            cursorPedidosAnterioresRF = respuesta.headers.get('X-Cursor-Anteriores');
+            hayPedidosAnterioresRF = respuesta.headers.get('X-Hay-Anteriores') === '1';
             renderStatsPedidos(); renderListaPedidos(); actualizarBadgePedidos();
         } catch (error) {
             console.error('Error cargando pedidos', error);
@@ -2959,13 +2970,48 @@
         if (pendientes > 0) { badge.innerText = pendientes; badge.title = `${pendientes} pedido${pendientes === 1 ? '' : 's'} por atender`; badge.classList.remove('hidden'); }
         else badge.classList.add('hidden');
     }
+    async function cargarPedidosAnterioresRF(boton) {
+        if (!cursorPedidosAnterioresRF) return;
+        if (boton) { boton.disabled = true; boton.innerText = 'Cargando...'; }
+        try {
+            const respuesta = await fetch('/api/admin/ordenes?antes=' + encodeURIComponent(cursorPedidosAnterioresRF));
+            const anteriores = await jsonOError(respuesta);
+            const yaCargados = new Set(ordenes.map(o => o.id));
+            const nuevos = anteriores.filter(o => !yaCargados.has(o.id));
+            ordenes = ordenes.concat(nuevos);
+            cursorPedidosAnterioresRF = respuesta.headers.get('X-Cursor-Anteriores');
+            hayPedidosAnterioresRF = respuesta.headers.get('X-Hay-Anteriores') === '1';
+            limiteVisiblePedidosRF += 50;
+            renderStatsPedidos(); renderListaPedidos();
+            if (!document.getElementById('bloque-calendario-pedidos')?.classList.contains('hidden')) renderCalendarioPedidos();
+            mostrarToast(nuevos.length ? `Se cargaron ${nuevos.length} pedidos anteriores.` : 'No hay más pedidos anteriores.');
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+            if (boton) { boton.disabled = false; boton.innerText = 'Cargar pedidos anteriores'; }
+        }
+    }
+    window.cargarPedidosAnterioresRF = cargarPedidosAnterioresRF;
+    function mostrarMasPedidosRF() { limiteVisiblePedidosRF += 50; renderListaPedidos(); }
+    window.mostrarMasPedidosRF = mostrarMasPedidosRF;
+    function piePedidosRF(total, mostrados) {
+        if (total > mostrados) {
+            return `<div class="px-6 py-5 text-center"><button type="button" onclick="mostrarMasPedidosRF()" class="ed-btn-secundario">Mostrar más <span class="text-gray-400 font-normal ml-1">(${total - mostrados} más)</span></button></div>`;
+        }
+        if (hayPedidosAnterioresRF) {
+            return `<div class="px-6 py-5 text-center"><p class="text-xs text-gray-400 mb-2">Aquí están los pedidos en proceso y los terminados de los últimos 90 días.</p><button type="button" onclick="cargarPedidosAnterioresRF(this)" class="ed-btn-secundario">Cargar pedidos anteriores</button></div>`;
+        }
+        return '';
+    }
+
     function renderStatsPedidos() {
-        document.getElementById('stat-pedidos-total').innerText = ordenes.filter(o => !o.descartado).length;
+        const desde90 = HACE_90_DIAS_RF();
+        const recientes = ordenes.filter(o => !o.descartado && new Date(o.creado_en).getTime() >= desde90);
+        document.getElementById('stat-pedidos-total').innerText = recientes.length;
         const esperandoPago = ordenes.filter(pedidoEsperandoPagoRF).length;
         document.getElementById('stat-pedidos-pendientes').innerHTML = ordenes.filter(pedidoPorAtenderRF).length
             + (esperandoPago ? `<span class="adm-stat-nota">+${esperandoPago} esperando pago</span>` : '');
         document.getElementById('stat-pedidos-proceso').innerText = ordenes.filter(o => ['En preparación', 'En camino', 'Confirmado'].includes(o.estado)).length;
-        const ventas = ordenes.filter(o => o.estado === 'Entregado').reduce((s, o) => s + Number(o.total || 0), 0);
+        const ventas = recientes.filter(o => o.estado === 'Entregado').reduce((s, o) => s + Number(o.total || 0), 0);
         document.getElementById('stat-pedidos-ventas').innerText = '$' + formatearPrecioAdmin(ventas);
     }
     function ordenesFiltradas() {
@@ -3058,10 +3104,14 @@
     function renderListaPedidos() {
         const cont = document.getElementById('lista-pedidos');
         const lista = ordenesFiltradas();
-        document.getElementById('conteo-pedidos').innerText = `Mostrando ${lista.length} de ${ordenes.length} pedido${ordenes.length === 1 ? '' : 's'}`;
-        if (ordenes.length === 0) { cont.innerHTML = '<p class="text-center py-10 text-gray-500 text-sm">Todavía no ha llegado ningún pedido.</p>'; return; }
-        if (lista.length === 0) { cont.innerHTML = '<p class="text-center py-10 text-gray-500 text-sm">No hay pedidos que coincidan con el filtro.</p>'; return; }
-        cont.innerHTML = lista.map(o => {
+        // Si cambian el filtro o la búsqueda, se vuelve a empezar de 50 en 50.
+        const claveFiltro = (document.getElementById('filtro-pedido-estado')?.value || '') + '|' + (document.getElementById('filtro-pedido-busqueda')?.value || '');
+        if (claveFiltro !== claveFiltroPedidosRF) { claveFiltroPedidosRF = claveFiltro; limiteVisiblePedidosRF = 50; }
+        const visibles = lista.slice(0, limiteVisiblePedidosRF);
+        document.getElementById('conteo-pedidos').innerText = `Mostrando ${visibles.length} de ${lista.length} pedido${lista.length === 1 ? '' : 's'}`;
+        if (ordenes.length === 0) { cont.innerHTML = '<p class="text-center py-10 text-gray-500 text-sm">' + (hayPedidosAnterioresRF ? 'No hay pedidos en proceso ni de los últimos 90 días.' : 'Todavía no ha llegado ningún pedido.') + '</p>' + piePedidosRF(0, 0); return; }
+        if (lista.length === 0) { cont.innerHTML = '<p class="text-center py-10 text-gray-500 text-sm">No hay pedidos que coincidan con el filtro' + (hayPedidosAnterioresRF ? ' en los últimos 90 días' : '') + '.</p>' + piePedidosRF(0, 0); return; }
+        cont.innerHTML = visibles.map(o => {
             const items = Array.isArray(o.carrito) ? o.carrito : (typeof o.carrito === 'string' ? JSON.parse(o.carrito || '[]') : []);
             const itemsHtml = items.map(it => {
                 const cantidad = Math.max(1, Number(it.cantidad) || 1);
@@ -3132,7 +3182,7 @@
                         </form>
                     </details>
                 </div>`;
-        }).join('');
+        }).join('') + piePedidosRF(lista.length, visibles.length);
     }
     ['filtro-pedido-busqueda', 'filtro-pedido-estado'].forEach(id => {
         document.getElementById(id).addEventListener('input', renderListaPedidos);
