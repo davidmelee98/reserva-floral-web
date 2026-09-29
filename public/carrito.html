@@ -2214,17 +2214,15 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         // hora UTC primero: pasadas ciertas horas de la tarde/noche (según la
         // zona horaria de México), terminaría calculando "mañana" en vez de
         // "hoy". fechaIsoRF (definida más abajo) ya corrige esto.
-        // Después de la 1:00 pm ya no queda ningún horario de hoy con la
-        // anticipación mínima, así que esa opción se deshabilita (se ve en
-        // gris) el resto del día -- vuelve a estar disponible al día siguiente.
+        // Después de las 2:00 pm ya no da tiempo de preparar y entregar el
+        // mismo día, así que esa opción se deshabilita (se ve en gris) el
+        // resto del día -- vuelve a estar disponible al día siguiente.
         function entregaHoyDisponibleRF() {
-            // Misma regla que la página de pago y el servidor: "Hoy" se puede
-            // elegir mientras quede algún horario (8-12, 12-4, 4-7) que empiece
-            // al menos 3 horas después de ahora (hora de México) -- hasta la 1:00 pm.
+            // "Hoy" se puede elegir hasta las 2:00 pm (hora de México): es la
+            // hora límite del último horario del día (4:00 - 7:00 pm).
             const partes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
             const minutos = Number(partes.find(p => p.type === 'hour')?.value || 0) * 60 + Number(partes.find(p => p.type === 'minute')?.value || 0);
-            const INICIOS_HORARIOS = [8 * 60, 12 * 60, 16 * 60], ANTICIPACION = 3 * 60;
-            return INICIOS_HORARIOS.some(inicio => inicio - minutos >= ANTICIPACION);
+            return minutos < 14 * 60;
         }
 
         function abrirDropdownRF(menuId, trigger) {
@@ -2236,7 +2234,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 if (opcionHoy) {
                     opcionHoy.disabled = !hoyDisponible;
                     opcionHoy.classList.toggle('is-disabled', !hoyDisponible);
-                    opcionHoy.title = hoyDisponible ? '' : 'Ya no disponible después de la 1:00 pm';
+                    opcionHoy.title = hoyDisponible ? '' : 'Ya no disponible después de las 2:00 pm';
                     // Si "Hoy" quedó elegido de antes y ya se pasó la hora, se
                     // recae en "Mañana" para no dejar una opción inválida escogida.
                     if (!hoyDisponible && document.getElementById('rf-ubicacion-fecha').value === 'hoy') {

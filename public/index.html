@@ -726,7 +726,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 <label id="rf-solo-fecha-opcion-hoy" class="flex items-center justify-between px-3 py-3 border-b border-gray-100 cursor-pointer">
                     <span class="text-sm text-brandDark">
                         Hoy
-                        <span id="rf-solo-fecha-hoy-nota" class="hidden block text-[11px] text-gray-400 font-normal">Ya no disponible después de la 1:00 pm</span>
+                        <span id="rf-solo-fecha-hoy-nota" class="hidden block text-[11px] text-gray-400 font-normal">Ya no disponible después de las 2:00 pm</span>
                     </span>
                     <input type="radio" name="rf-solo-fecha-tipo" value="hoy" class="accent-brandFuchsia w-4 h-4">
                 </label>
@@ -2922,17 +2922,15 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             return fecha.getFullYear() + '-' + String(fecha.getMonth() + 1).padStart(2, '0') + '-' + String(fecha.getDate()).padStart(2, '0');
         }
 
-        // Después de la 1:00 pm ya no queda ningún horario de hoy con la
-        // anticipación mínima, así que esa opción se deshabilita (se ve en
-        // gris) el resto del día -- vuelve a estar disponible al día siguiente.
+        // Después de las 2:00 pm ya no da tiempo de preparar y entregar el
+        // mismo día, así que esa opción se deshabilita (se ve en gris) el
+        // resto del día -- vuelve a estar disponible al día siguiente.
         function entregaHoyDisponibleRF() {
-            // Misma regla que la página de pago y el servidor: "Hoy" se puede
-            // elegir mientras quede algún horario (8-12, 12-4, 4-7) que empiece
-            // al menos 3 horas después de ahora (hora de México) -- hasta la 1:00 pm.
+            // "Hoy" se puede elegir hasta las 2:00 pm (hora de México): es la
+            // hora límite del último horario del día (4:00 - 7:00 pm).
             const partes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
             const minutos = Number(partes.find(p => p.type === 'hour')?.value || 0) * 60 + Number(partes.find(p => p.type === 'minute')?.value || 0);
-            const INICIOS_HORARIOS = [8 * 60, 12 * 60, 16 * 60], ANTICIPACION = 3 * 60;
-            return INICIOS_HORARIOS.some(inicio => inicio - minutos >= ANTICIPACION);
+            return minutos < 14 * 60;
         }
 
         function abrirModalSoloFechaRF() {
@@ -2973,7 +2971,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const seleccionado = [...document.getElementsByName('rf-solo-fecha-tipo')].find(r => r.checked);
             let tipoFecha = seleccionado ? seleccionado.value : '';
             if (!tipoFecha) return;
-            // Por si el modal se quedó abierto desde antes de la 1:00 pm y se
+            // Por si el modal se quedó abierto desde antes de las 2:00 pm y se
             // confirma ya después: recae en "mañana" en vez de dejar pasar una
             // entrega para hoy que ya no da tiempo de preparar.
             if (tipoFecha === 'hoy' && !entregaHoyDisponibleRF()) tipoFecha = 'manana';

@@ -2596,18 +2596,17 @@ function fechaCalendarioRF(valor) {
   }
   return String(valor).slice(0, 10);
 }
-// Horarios de entrega de todo el sitio. Para entregas del MISMO día se pide
-// una anticipación mínima antes de que empiece el horario (tiempo para
-// preparar el arreglo y llevarlo). Con 3 horas: 12-4 pm se puede pedir para
-// hoy hasta las 9:00 am y 4-7 pm hasta la 1:00 pm; 8 am-12 pm nunca el mismo
-// día. Si se cambian, cambiarlos también en checkout.html, index.html y
-// carrito.html (mismos textos y la misma anticipación).
+// Horarios de entrega de todo el sitio, cada uno con su HORA LÍMITE para
+// pedirlo el mismo día (hora de México; se puede pedir ANTES de esa hora):
+//   8:00 AM - 12:00 PM -> nunca el mismo día
+//   12:00 PM - 4:00 PM -> hasta las 10:00 am
+//   4:00 PM - 7:00 PM  -> hasta las 2:00 pm (también es el límite de "Hoy")
+// Si se cambian, cambiarlos también en checkout.html, index.html y carrito.html.
 const HORARIOS_ENTREGA = [
-  { texto: '8:00 AM - 12:00 PM', inicioMinutos: 8 * 60 },
-  { texto: '12:00 PM - 4:00 PM', inicioMinutos: 12 * 60 },
-  { texto: '4:00 PM - 7:00 PM', inicioMinutos: 16 * 60 }
+  { texto: '8:00 AM - 12:00 PM', limiteMismoDiaMinutos: null },
+  { texto: '12:00 PM - 4:00 PM', limiteMismoDiaMinutos: 10 * 60 },
+  { texto: '4:00 PM - 7:00 PM', limiteMismoDiaMinutos: 14 * 60 }
 ];
-const HORAS_ANTICIPACION_ENTREGA = 3;
 function minutosMexicoRF() {
   const partes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
   const valor = tipo => Number(partes.find(p => p.type === tipo)?.value || 0);
@@ -2618,7 +2617,7 @@ function horarioEntregaRF(texto) {
   return HORARIOS_ENTREGA.find(h => h.texto.replace(/\s+/g, '') === normal) || null;
 }
 function horarioDisponibleHoyRF(horario) {
-  return horario.inicioMinutos - minutosMexicoRF() >= HORAS_ANTICIPACION_ENTREGA * 60;
+  return horario.limiteMismoDiaMinutos !== null && minutosMexicoRF() < horario.limiteMismoDiaMinutos;
 }
 
 function horaMexicoRF() {
@@ -2848,7 +2847,7 @@ function construirCorreoRecordatorioRF(recordatorio, fechaEvento, dias, nombreCl
   const cuerpo = `
     <h2 style="font-size:16px;margin:0 0 8px;">🎁 ${titulo} ${cuando}</h2>
     <p style="font-size:13px;color:#666;margin:0 0 16px;">${nombreCliente ? `Hola ${escaparHtmlServidorRF(nombreCliente)}, t` : 'T'}e recordamos que el <strong>${formatearFechaCorreo(fechaEvento)}</strong> es una fecha que guardaste en tu cuenta. ¿Ya tienes el regalo?</p>
-    <p style="font-size:12px;color:#888;margin:0 0 16px;">Para entregas el mismo día, haz tu pedido antes de la 1:00 pm.</p>
+    <p style="font-size:12px;color:#888;margin:0 0 16px;">Para entregas el mismo día, haz tu pedido antes de las 2:00 pm.</p>
     <p style="margin-top:8px;"><a href="${URL_SITIO}/" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Elegir un regalo</a></p>
   `;
   return { titulo: 'Recordatorio', asunto: `🎁 ${recordatorio.titulo} ${cuando} — Reserva Floral`, cuerpo };
@@ -3238,14 +3237,14 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha)) || !Number.isFinite(Date.parse(`${fecha}T12:00:00Z`)) || fecha < hoyMx) {
     return res.status(400).json({ error: 'La fecha de entrega no es válida.' });
   }
-  // Horario de entrega: solo los del sitio, y para HOY solo los que dejan la
-  // anticipación mínima (antes era un corte fijo a las 2:00 pm).
+  // Horario de entrega: solo los del sitio, y para HOY solo si todavía no pasa
+  // su hora límite (12-4 pm hasta las 10:00 am; 4-7 pm hasta las 2:00 pm).
   const horarioElegido = horarioEntregaRF(horarioEntrega);
   if (!horarioElegido) {
     return res.status(400).json({ error: 'Elige un horario de entrega válido.' });
   }
   if (fecha === hoyMx && !horarioDisponibleHoyRF(horarioElegido)) {
-    return res.status(400).json({ error: `Ese horario ya no está disponible para hoy: necesitamos al menos ${HORAS_ANTICIPACION_ENTREGA} horas para preparar y llevar tu pedido. Elige un horario más tarde u otra fecha.` });
+    return res.status(400).json({ error: 'Ese horario ya no está disponible para hoy. Para entregas del mismo día, el horario de 12:00 a 4:00 pm se pide antes de las 10:00 am y el de 4:00 a 7:00 pm antes de las 2:00 pm. Elige otro horario u otra fecha.' });
   }
 
   const idsCarrito = carrito.map(item => Number(item.id));

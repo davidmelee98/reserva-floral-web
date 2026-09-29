@@ -372,7 +372,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                                 <button type="button" class="co-slot" data-horario="12:00 PM - 4:00 PM" onclick="elegirHorario(this)">12:00PM - 4:00PM</button>
                                 <button type="button" class="co-slot" data-horario="4:00 PM - 7:00 PM" onclick="elegirHorario(this)">4:00PM - 7:00PM</button>
                             </div>
-                            <p id="nota-horarios-hoy" class="hidden text-xs text-gray-500 mt-2">Para entregas de hoy solo puedes elegir los horarios que empiezan al menos 3 horas después de ahora: es el tiempo que necesitamos para preparar y llevar tu pedido.</p>
+                            <p id="nota-horarios-hoy" class="hidden text-xs text-gray-500 mt-2">Para entregas de hoy: el horario de 12:00 a 4:00 pm se pide antes de las 10:00 am y el de 4:00 a 7:00 pm antes de las 2:00 pm. El de 8:00 am a 12:00 pm no está disponible el mismo día.</p>
                         </div>
                         <p class="hidden text-xs text-red-600" id="error-p3">Elige fecha y horario de entrega.</p>
                         <button type="button" onclick="confirmarPaso3()" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Siguiente</button>
@@ -1699,8 +1699,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const hoyStr = fechaLocalRF();
         const manana = new Date(); manana.setDate(manana.getDate() + 1);
         const mananaStr = fechaLocalRF(manana);
-        // Si para hoy ya no queda ningún horario con la anticipación mínima
-        // (después de la 1:00 pm), el mínimo seleccionable pasa a ser mañana
+        // Si para hoy ya no queda ningún horario disponible (después de las
+        // 2:00 pm), el mínimo seleccionable pasa a ser mañana
         // -- igual que en el selector rápido de la tienda.
         const hoyDisponible = hayHorarioHoyRF();
         input.min = hoyDisponible ? hoyStr : mananaStr;
@@ -1710,12 +1710,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         actualizarTextoFecha();
     }
     // ---------- Horarios de entrega (los mismos que valida el servidor) ----------
+    // Hora límite para pedir cada horario el MISMO día (hora de México).
     const HORARIOS_ENTREGA_RF = [
-        { texto: '8:00 AM - 12:00 PM', inicioMinutos: 8 * 60 },
-        { texto: '12:00 PM - 4:00 PM', inicioMinutos: 12 * 60 },
-        { texto: '4:00 PM - 7:00 PM', inicioMinutos: 16 * 60 }
+        { texto: '8:00 AM - 12:00 PM', limiteMismoDiaMinutos: null },     // nunca el mismo día
+        { texto: '12:00 PM - 4:00 PM', limiteMismoDiaMinutos: 10 * 60 },  // hasta las 10:00 am
+        { texto: '4:00 PM - 7:00 PM', limiteMismoDiaMinutos: 14 * 60 }    // hasta las 2:00 pm
     ];
-    const HORAS_ANTICIPACION_RF = 3;
     function ahoraMexicoRF() {
         const partes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
         const v = t => partes.find(p => p.type === t)?.value || '0';
@@ -1726,7 +1726,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         if (!h) return false;
         const ahora = ahoraMexicoRF();
         if (fecha !== ahora.fecha) return true;
-        return h.inicioMinutos - ahora.minutos >= HORAS_ANTICIPACION_RF * 60;
+        return h.limiteMismoDiaMinutos !== null && ahora.minutos < h.limiteMismoDiaMinutos;
     }
     function hayHorarioHoyRF() {
         const hoy = ahoraMexicoRF().fecha;
@@ -1823,7 +1823,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 mostrarToast('Para hoy ya no hay horarios disponibles. Elige otra fecha.', 'error');
                 prellenarFechaGuardada();
             } else {
-                mostrarToast(`Ese horario ya no está disponible para hoy (necesitamos al menos ${HORAS_ANTICIPACION_RF} horas). Elige uno más tarde u otra fecha.`, 'error');
+                mostrarToast('Ese horario ya no está disponible para hoy. Elige uno más tarde u otra fecha.', 'error');
             }
             return;
         }
