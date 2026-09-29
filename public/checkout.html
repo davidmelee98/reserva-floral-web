@@ -38,6 +38,8 @@
         .co-slot{ border:1px solid #d8ced1; border-radius:999px; padding:.6rem 1.1rem; font-size:.82rem; font-weight:500; cursor:pointer; transition:all .12s ease; }
         .co-slot:hover{ border-color:#a3284f; }
         .co-slot.is-activo{ background:#a3284f; border-color:#a3284f; color:#fff; }
+        .co-slot:disabled{ opacity:.4; cursor:not-allowed; text-decoration:line-through; }
+        .co-slot:disabled:hover{ border-color:#d8ced1; }
         .co-sugerencia{ padding:.6rem .85rem; font-size:.82rem; cursor:pointer; border-bottom:1px solid #f1ecee; }
         .co-sugerencia:hover{ background:#fdf1f6; }
         .co-tab{ padding:.4rem .1rem; font-size:.8rem; font-weight:500; color:#8a8a8a; white-space:nowrap; cursor:pointer; border-bottom:2px solid transparent; }
@@ -366,9 +368,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                             </p>
                             <p class="text-xs text-gray-500 mb-2">Cargo por envío: $80.00 <span class="text-[9px] align-top">MXN</span></p>
                             <div class="flex flex-wrap gap-2">
-                                <button type="button" class="co-slot" data-horario="9:00 AM - 1:00 PM" onclick="elegirHorario(this)">9:00AM - 1:00PM</button>
-                                <button type="button" class="co-slot" data-horario="1:00 PM - 5:00 PM" onclick="elegirHorario(this)">1:00PM - 5:00PM</button>
+                                <button type="button" class="co-slot" data-horario="8:00 AM - 12:00 PM" onclick="elegirHorario(this)">8:00AM - 12:00PM</button>
+                                <button type="button" class="co-slot" data-horario="12:00 PM - 4:00 PM" onclick="elegirHorario(this)">12:00PM - 4:00PM</button>
+                                <button type="button" class="co-slot" data-horario="4:00 PM - 7:00 PM" onclick="elegirHorario(this)">4:00PM - 7:00PM</button>
                             </div>
+                            <p id="nota-horarios-hoy" class="hidden text-xs text-gray-500 mt-2">Para entregas de hoy solo puedes elegir los horarios que empiezan al menos 3 horas después de ahora: es el tiempo que necesitamos para preparar y llevar tu pedido.</p>
                         </div>
                         <p class="hidden text-xs text-red-600" id="error-p3">Elige fecha y horario de entrega.</p>
                         <button type="button" onclick="confirmarPaso3()" class="bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-2.5 rounded-full text-sm transition">Siguiente</button>
@@ -433,9 +437,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                                         Tarjeta de crédito o débito
                                     </span>
                                     <span class="flex items-center gap-2">
-                                        <span class="rf-metodo-pago" title="Visa">Visa</span>
-                                        <span class="rf-metodo-pago" title="Mastercard">Mastercard</span>
-                                        <span class="rf-metodo-pago" title="American Express">Amex</span>
+                                        <img src="/iconos-pie/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-5 max-w-[38px] object-contain">
+                                        <img src="/iconos-pie/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-5 max-w-[38px] object-contain">
+                                        <img src="/iconos-pie/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-5 max-w-[38px] object-contain">
                                     </span>
                                 </label>
                                 <form id="form-checkout" class="p-4 space-y-3">
@@ -484,7 +488,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                                         Efectivo en OXXO
                                     </span>
                                     <span class="flex items-center gap-1">
-                                        <span class="rf-metodo-pago" title="OXXO">OXXO</span>
+                                        <img src="/iconos-pie/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-5 max-w-[38px] object-contain">
                                     </span>
                                 </label>
                                 <div id="bloque-oxxo" class="hidden px-1 pt-2">
@@ -499,7 +503,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                                         Transferencia SPEI
                                     </span>
                                     <span class="flex items-center gap-1">
-                                        <span class="rf-metodo-pago" title="SPEI">SPEI</span>
+                                        <img src="/iconos-pie/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-5 max-w-[38px] object-contain">
                                     </span>
                                 </label>
                                 <div id="bloque-spei" class="hidden px-1 pt-2">
@@ -513,7 +517,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                                     PayPal
                                 </span>
                                 <span class="flex items-center gap-2">
-                                    <span class="rf-metodo-pago" title="PayPal">PayPal</span>
+                                    <img src="/iconos-pie/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-5 max-w-[38px] object-contain">
                                     <span class="text-[11px] text-gray-400">Próximamente</span>
                                 </span>
                             </div>
@@ -524,7 +528,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                                     Mercado Pago
                                 </span>
                                 <span class="flex items-center gap-2">
-                                    <span class="rf-metodo-pago" title="Mercado Pago">Mercado Pago</span>
+                                    <img src="/iconos-pie/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-5 max-w-[38px] object-contain">
                                     <span class="text-[11px] text-gray-400">Próximamente</span>
                                 </span>
                             </div>
@@ -1695,19 +1699,61 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const hoyStr = fechaLocalRF();
         const manana = new Date(); manana.setDate(manana.getDate() + 1);
         const mananaStr = fechaLocalRF(manana);
-        // Después de las 2:00 pm ya no da tiempo de preparar y entregar el
-        // mismo día, así que el mínimo seleccionable pasa a ser mañana --
-        // igual que en el selector rápido de la tienda.
-        const hoyDisponible = new Date().getHours() < 14;
+        // Si para hoy ya no queda ningún horario con la anticipación mínima
+        // (después de la 1:00 pm), el mínimo seleccionable pasa a ser mañana
+        // -- igual que en el selector rápido de la tienda.
+        const hoyDisponible = hayHorarioHoyRF();
         input.min = hoyDisponible ? hoyStr : mananaStr;
         const fechaPrellenada = (fechaGuardada && fechaGuardada >= input.min) ? fechaGuardada : mananaStr;
         input.value = fechaPrellenada;
         estado.entrega.fecha = input.value;
         actualizarTextoFecha();
     }
+    // ---------- Horarios de entrega (los mismos que valida el servidor) ----------
+    const HORARIOS_ENTREGA_RF = [
+        { texto: '8:00 AM - 12:00 PM', inicioMinutos: 8 * 60 },
+        { texto: '12:00 PM - 4:00 PM', inicioMinutos: 12 * 60 },
+        { texto: '4:00 PM - 7:00 PM', inicioMinutos: 16 * 60 }
+    ];
+    const HORAS_ANTICIPACION_RF = 3;
+    function ahoraMexicoRF() {
+        const partes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+        const v = t => partes.find(p => p.type === t)?.value || '0';
+        return { fecha: `${v('year')}-${v('month')}-${v('day')}`, minutos: Number(v('hour')) * 60 + Number(v('minute')) };
+    }
+    function horarioDisponibleRF(texto, fecha) {
+        const h = HORARIOS_ENTREGA_RF.find(x => x.texto === texto);
+        if (!h) return false;
+        const ahora = ahoraMexicoRF();
+        if (fecha !== ahora.fecha) return true;
+        return h.inicioMinutos - ahora.minutos >= HORAS_ANTICIPACION_RF * 60;
+    }
+    function hayHorarioHoyRF() {
+        const hoy = ahoraMexicoRF().fecha;
+        return HORARIOS_ENTREGA_RF.some(h => horarioDisponibleRF(h.texto, hoy));
+    }
+    function actualizarHorariosRF() {
+        const fecha = estado.entrega.fecha;
+        let hayDeshabilitados = false;
+        document.querySelectorAll('.co-slot').forEach(btn => {
+            const disponible = horarioDisponibleRF(btn.dataset.horario, fecha);
+            btn.disabled = !disponible;
+            btn.title = disponible ? '' : 'Para hoy ya no da tiempo en este horario';
+            if (!disponible) {
+                hayDeshabilitados = true;
+                if (btn.classList.contains('is-activo')) { btn.classList.remove('is-activo'); estado.entrega.horario = ''; }
+            }
+        });
+        document.getElementById('nota-horarios-hoy')?.classList.toggle('hidden', !hayDeshabilitados);
+    }
+    window.actualizarHorariosRF = actualizarHorariosRF;
+    // Si la página se queda abierta, los horarios de hoy se revisan cada minuto.
+    setInterval(() => { if (estado.entrega.fecha) actualizarHorariosRF(); }, 60000);
+
     function actualizarTextoFecha() {
         const valor = document.getElementById('p3-fecha').value;
         estado.entrega.fecha = valor;
+        actualizarHorariosRF();
         if (!valor) { document.getElementById('p3-fecha-texto').innerText = 'Selecciona una fecha'; return; }
         const d = new Date(valor + 'T00:00:00');
         document.getElementById('p3-fecha-texto').innerText = d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -1759,6 +1805,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     }
 
     function elegirHorario(btn) {
+        if (btn.disabled) return;
         document.querySelectorAll('.co-slot').forEach(b => b.classList.remove('is-activo'));
         btn.classList.add('is-activo');
         estado.entrega.horario = btn.dataset.horario;
@@ -1768,11 +1815,16 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     async function confirmarPaso3() {
         if (!estado.entrega.fecha || !estado.entrega.horario) { marcarError('error-p3', true); return; }
         marcarError('error-p3', false);
-        // Corte de las 2 pm: se vuelve a revisar al confirmar, por si la página
-        // se quedó abierta desde antes de esa hora.
-        if (estado.entrega.fecha === fechaLocalRF() && new Date().getHours() >= 14) {
-            mostrarToast('Ya pasó la hora límite (2:00 pm) para entregas de hoy. Elige otra fecha.', 'error');
-            prellenarFechaGuardada();
+        // Se vuelve a revisar al confirmar, por si la página se quedó abierta
+        // y el horario elegido ya no deja la anticipación mínima.
+        if (!horarioDisponibleRF(estado.entrega.horario, estado.entrega.fecha)) {
+            actualizarHorariosRF();
+            if (estado.entrega.fecha === ahoraMexicoRF().fecha && !hayHorarioHoyRF()) {
+                mostrarToast('Para hoy ya no hay horarios disponibles. Elige otra fecha.', 'error');
+                prellenarFechaGuardada();
+            } else {
+                mostrarToast(`Ese horario ya no está disponible para hoy (necesitamos al menos ${HORAS_ANTICIPACION_RF} horas). Elige uno más tarde u otra fecha.`, 'error');
+            }
             return;
         }
         await verificarTiempoEntregaRF();
@@ -2311,12 +2363,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <div id="pie-redes-sociales" class="flex items-center gap-3 mb-6"></div>
                     <h3 class="font-semibold text-brandDark mb-3">Métodos de pago</h3>
                     <div class="flex flex-wrap items-center gap-1.5">
-                        <span class="rf-metodo-pago" title="Visa">Visa</span>
-                        <span class="rf-metodo-pago" title="Mastercard">Mastercard</span>
-                        <span class="rf-metodo-pago" title="American Express">Amex</span>
-                        <span class="rf-metodo-pago" title="Mercado Pago">Mercado Pago</span>
-                        <span class="rf-metodo-pago" title="OXXO">OXXO</span>
-                        <span class="rf-metodo-pago" title="SPEI">SPEI</span>
+                        <img src="/iconos-pie/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-4 max-w-[34px] object-contain">
                     </div>
                 </div>
             </div>
@@ -2339,14 +2392,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 // configurado en el panel se ve atenuado y sin poder darle clic
                 // -- en cuanto se configure, queda activo solo.
                 const redes = [
-                    { url: numero ? `https://wa.me/${numero}` : null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M20.5 11.8a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 20.5 11.8z"/><path fill="currentColor" d="M9 8.5c.2-.4.5-.5.8-.5h.5c.2 0 .4.1.5.4l.7 1.6c.1.2 0 .5-.1.7l-.5.6c.6 1.2 1.6 2.2 2.8 2.8l.6-.5c.2-.2.5-.2.7-.1l1.6.7c.3.1.4.3.4.5v.5c0 .3-.1.6-.5.8-.6.4-1.6.5-2.9-.1-1.9-.8-3.5-2.4-4.3-4.3-.5-1.3-.4-2.3 0-2.9z"/></svg>', alt: 'WhatsApp' },
-                    { url: cfg.instagram_url || null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg>', alt: 'Instagram' },
-                    { url: cfg.facebook_url || null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true"><path fill="currentColor" d="M14.5 3H12a3.5 3.5 0 0 0-3.5 3.5V9H6.5v3h2v9h3.2v-9h2.6l.5-3h-3.1V7a1 1 0 0 1 1-1h1.8z"/></svg>', alt: 'Facebook' },
-                    { url: cfg.tiktok_url || null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true"><path fill="currentColor" d="M15.8 3c.3 2.2 1.8 3.8 4.2 4.1v3c-1.6 0-3-.5-4.2-1.3v6.4A5.8 5.8 0 1 1 10 9.4v3.1a2.8 2.8 0 1 0 2.8 2.8V3h3z"/></svg>', alt: 'TikTok' }
+                    { url: numero ? `https://wa.me/${numero}` : null, img: '/iconos-pie/hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg', alt: 'WhatsApp' },
+                    { url: cfg.instagram_url || null, img: '/iconos-pie/1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg', alt: 'Instagram' },
+                    { url: cfg.facebook_url || null, img: '/iconos-pie/CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg', alt: 'Facebook' },
+                    { url: cfg.tiktok_url || null, img: '/iconos-pie/HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg', alt: 'TikTok' }
                 ];
                 cont.innerHTML = redes.map(r => r.url
-                    ? `<a href="${r.url}" target="_blank" rel="noopener" class="rf-red" aria-label="${r.alt}" title="${r.alt}">${r.img}</a>`
-                    : `<span class="rf-red is-inactivo" aria-label="${r.alt} (próximamente)" title="${r.alt}: próximamente">${r.img}</span>`
+                    ? `<a href="${r.url}" target="_blank" rel="noopener"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6"></a>`
+                    : `<span title="Próximamente"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6 opacity-30"></span>`
                 ).join('');
             }).catch(() => {});
         })();

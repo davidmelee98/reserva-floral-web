@@ -251,6 +251,59 @@ app.get('/uploads/tarjeta/:archivo', async (req, res) => {
   }
 });
 
+// Íconos del pie de página (redes sociales y métodos de pago). Son EXACTAMENTE
+// las mismas imágenes que antes se cargaban directo desde un servidor ajeno
+// (d1ojcbkdb9gxnh.cloudfront.net): el servidor las descarga una sola vez, byte
+// por byte, las guarda en el almacenamiento propio y desde ahí las entrega.
+// Solo se aceptan estas 11; si una descarga falla, se usa la dirección original.
+const ORIGEN_ICONOS_PIE = 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/';
+const ICONOS_PIE_PERMITIDOS = new Set([
+  '1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg',
+  'CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg',
+  'HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg',
+  'LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png',
+  'THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg',
+  'VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg',
+  'egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png',
+  'hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg',
+  'mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg',
+  'rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg',
+  'yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg'
+]);
+const CARPETA_ICONOS_PIE = path.join(CARPETA_SUBIDAS, 'iconos-pie');
+fs.mkdirSync(CARPETA_ICONOS_PIE, { recursive: true });
+const descargandoIconosPieRF = new Map();
+app.get('/iconos-pie/:archivo', async (req, res) => {
+  const archivo = path.basename(req.params.archivo);
+  if (!ICONOS_PIE_PERMITIDOS.has(archivo)) return res.status(404).end();
+  const original = ORIGEN_ICONOS_PIE + archivo;
+  const destino = path.join(CARPETA_ICONOS_PIE, archivo);
+  try {
+    if (!fs.existsSync(destino)) {
+      if (typeof fetch !== 'function') return res.redirect(302, original);
+      if (!descargandoIconosPieRF.has(archivo)) {
+        descargandoIconosPieRF.set(archivo, (async () => {
+          const respuesta = await fetch(original, { signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
+          if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+          const datos = Buffer.from(await respuesta.arrayBuffer());
+          const temporal = `${destino}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+          await fs.promises.writeFile(temporal, datos);
+          await fs.promises.rename(temporal, destino);
+        })().finally(() => descargandoIconosPieRF.delete(archivo)));
+      }
+      await descargandoIconosPieRF.get(archivo);
+    }
+    res.set('Cache-Control', 'public, max-age=2592000, immutable');
+    // Un SVG de un tercero nunca debe poder ejecutar código en el dominio propio.
+    if (archivo.endsWith('.svg')) res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+    res.type(archivo.endsWith('.svg') ? 'image/svg+xml' : 'image/png');
+    res.sendFile(destino);
+  } catch (error) {
+    console.error('No se pudo guardar el ícono del pie de página; se usa la dirección original:', archivo, error?.message || error);
+    res.redirect(302, original);
+  }
+});
+
 // Las fotos subidas tienen nombres únicos y nunca cambian: el navegador las
 // puede guardar 30 días en lugar de volver a pedirlas en cada visita.
 app.use('/uploads', express.static(CARPETA_SUBIDAS, { maxAge: '30d', immutable: true }));
@@ -2543,6 +2596,31 @@ function fechaCalendarioRF(valor) {
   }
   return String(valor).slice(0, 10);
 }
+// Horarios de entrega de todo el sitio. Para entregas del MISMO día se pide
+// una anticipación mínima antes de que empiece el horario (tiempo para
+// preparar el arreglo y llevarlo). Con 3 horas: 12-4 pm se puede pedir para
+// hoy hasta las 9:00 am y 4-7 pm hasta la 1:00 pm; 8 am-12 pm nunca el mismo
+// día. Si se cambian, cambiarlos también en checkout.html, index.html y
+// carrito.html (mismos textos y la misma anticipación).
+const HORARIOS_ENTREGA = [
+  { texto: '8:00 AM - 12:00 PM', inicioMinutos: 8 * 60 },
+  { texto: '12:00 PM - 4:00 PM', inicioMinutos: 12 * 60 },
+  { texto: '4:00 PM - 7:00 PM', inicioMinutos: 16 * 60 }
+];
+const HORAS_ANTICIPACION_ENTREGA = 3;
+function minutosMexicoRF() {
+  const partes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+  const valor = tipo => Number(partes.find(p => p.type === tipo)?.value || 0);
+  return valor('hour') * 60 + valor('minute');
+}
+function horarioEntregaRF(texto) {
+  const normal = String(texto || '').replace(/\s+/g, '').toUpperCase();
+  return HORARIOS_ENTREGA.find(h => h.texto.replace(/\s+/g, '') === normal) || null;
+}
+function horarioDisponibleHoyRF(horario) {
+  return horario.inicioMinutos - minutosMexicoRF() >= HORAS_ANTICIPACION_ENTREGA * 60;
+}
+
 function horaMexicoRF() {
   return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Mexico_City', hour: '2-digit', hourCycle: 'h23' }).format(new Date()));
 }
@@ -2770,7 +2848,7 @@ function construirCorreoRecordatorioRF(recordatorio, fechaEvento, dias, nombreCl
   const cuerpo = `
     <h2 style="font-size:16px;margin:0 0 8px;">🎁 ${titulo} ${cuando}</h2>
     <p style="font-size:13px;color:#666;margin:0 0 16px;">${nombreCliente ? `Hola ${escaparHtmlServidorRF(nombreCliente)}, t` : 'T'}e recordamos que el <strong>${formatearFechaCorreo(fechaEvento)}</strong> es una fecha que guardaste en tu cuenta. ¿Ya tienes el regalo?</p>
-    <p style="font-size:12px;color:#888;margin:0 0 16px;">Para entregas el mismo día, haz tu pedido antes de las 2:00 pm.</p>
+    <p style="font-size:12px;color:#888;margin:0 0 16px;">Para entregas el mismo día, haz tu pedido antes de la 1:00 pm.</p>
     <p style="margin-top:8px;"><a href="${URL_SITIO}/" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Elegir un regalo</a></p>
   `;
   return { titulo: 'Recordatorio', asunto: `🎁 ${recordatorio.titulo} ${cuando} — Reserva Floral`, cuerpo };
@@ -3160,10 +3238,14 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fecha)) || !Number.isFinite(Date.parse(`${fecha}T12:00:00Z`)) || fecha < hoyMx) {
     return res.status(400).json({ error: 'La fecha de entrega no es válida.' });
   }
-  // Corte de las 2:00 pm para entregas del mismo día -- antes solo lo
-  // revisaba el navegador (y con la página abierta desde antes se colaba).
-  if (fecha === hoyMx && horaMexicoRF() >= 14) {
-    return res.status(400).json({ error: 'Ya pasó la hora límite (2:00 pm) para entregas de hoy. Elige otra fecha de entrega.' });
+  // Horario de entrega: solo los del sitio, y para HOY solo los que dejan la
+  // anticipación mínima (antes era un corte fijo a las 2:00 pm).
+  const horarioElegido = horarioEntregaRF(horarioEntrega);
+  if (!horarioElegido) {
+    return res.status(400).json({ error: 'Elige un horario de entrega válido.' });
+  }
+  if (fecha === hoyMx && !horarioDisponibleHoyRF(horarioElegido)) {
+    return res.status(400).json({ error: `Ese horario ya no está disponible para hoy: necesitamos al menos ${HORAS_ANTICIPACION_ENTREGA} horas para preparar y llevar tu pedido. Elige un horario más tarde u otra fecha.` });
   }
 
   const idsCarrito = carrito.map(item => Number(item.id));
@@ -3318,7 +3400,7 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       destinatarioTelefono?.trim() || null,
       tipoDomicilio?.trim() || null,
       notasEntrega?.trim() || null,
-      horarioEntrega?.trim() || null,
+      horarioElegido.texto,
       Number.isFinite(latNum) ? latNum : null,
       Number.isFinite(lngNum) ? lngNum : null,
       firma?.trim() || null,
@@ -3874,7 +3956,7 @@ const ORDEN_EJEMPLO_CORREO = {
   id: 1042, cliente_nombre: 'Ana Torres', total: 850,
   carrito: [{ nombre: 'Ramo de Rosas Rojas', cantidad: 1, precio: 650 }, { nombre: 'Caja de Chocolates', cantidad: 1, precio: 200 }],
   fecha_entrega: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-  horario_entrega: '3:00 pm - 5:00 pm',
+  horario_entrega: '12:00 PM - 4:00 PM',
   direccion_entrega: 'Calle Falsa 123, Col. Centro, Cd. Madero, Tamaulipas'
 };
 app.get('/api/admin/correos/vista-previa/:tipo', requireAuth, async (req, res) => {

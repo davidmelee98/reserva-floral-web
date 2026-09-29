@@ -704,12 +704,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <div id="pie-redes-sociales" class="flex items-center gap-3 mb-6"></div>
                     <h3 class="font-semibold text-brandDark mb-3">Métodos de pago</h3>
                     <div class="flex flex-wrap items-center gap-1.5">
-                        <span class="rf-metodo-pago" title="Visa">Visa</span>
-                        <span class="rf-metodo-pago" title="Mastercard">Mastercard</span>
-                        <span class="rf-metodo-pago" title="American Express">Amex</span>
-                        <span class="rf-metodo-pago" title="Mercado Pago">Mercado Pago</span>
-                        <span class="rf-metodo-pago" title="OXXO">OXXO</span>
-                        <span class="rf-metodo-pago" title="SPEI">SPEI</span>
+                        <img src="/iconos-pie/rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg" alt="Visa" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg" alt="Mastercard" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg" alt="American Express" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png" alt="PayPal" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png" alt="Mercado Pago" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg" alt="OXXO" class="h-4 max-w-[34px] object-contain">
+                        <img src="/iconos-pie/yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg" alt="SPEI" class="h-4 max-w-[34px] object-contain">
                     </div>
                 </div>
             </div>
@@ -732,14 +733,14 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 // configurado en el panel se ve atenuado y sin poder darle clic
                 // -- en cuanto se configure, queda activo solo.
                 const redes = [
-                    { url: numero ? `https://wa.me/${numero}` : null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M20.5 11.8a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 20.5 11.8z"/><path fill="currentColor" d="M9 8.5c.2-.4.5-.5.8-.5h.5c.2 0 .4.1.5.4l.7 1.6c.1.2 0 .5-.1.7l-.5.6c.6 1.2 1.6 2.2 2.8 2.8l.6-.5c.2-.2.5-.2.7-.1l1.6.7c.3.1.4.3.4.5v.5c0 .3-.1.6-.5.8-.6.4-1.6.5-2.9-.1-1.9-.8-3.5-2.4-4.3-4.3-.5-1.3-.4-2.3 0-2.9z"/></svg>', alt: 'WhatsApp' },
-                    { url: cfg.instagram_url || null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg>', alt: 'Instagram' },
-                    { url: cfg.facebook_url || null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true"><path fill="currentColor" d="M14.5 3H12a3.5 3.5 0 0 0-3.5 3.5V9H6.5v3h2v9h3.2v-9h2.6l.5-3h-3.1V7a1 1 0 0 1 1-1h1.8z"/></svg>', alt: 'Facebook' },
-                    { url: cfg.tiktok_url || null, img: '<svg viewBox="0 0 24 24" class="w-[18px] h-[18px]" aria-hidden="true"><path fill="currentColor" d="M15.8 3c.3 2.2 1.8 3.8 4.2 4.1v3c-1.6 0-3-.5-4.2-1.3v6.4A5.8 5.8 0 1 1 10 9.4v3.1a2.8 2.8 0 1 0 2.8 2.8V3h3z"/></svg>', alt: 'TikTok' }
+                    { url: numero ? `https://wa.me/${numero}` : null, img: '/iconos-pie/hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg', alt: 'WhatsApp' },
+                    { url: cfg.instagram_url || null, img: '/iconos-pie/1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg', alt: 'Instagram' },
+                    { url: cfg.facebook_url || null, img: '/iconos-pie/CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg', alt: 'Facebook' },
+                    { url: cfg.tiktok_url || null, img: '/iconos-pie/HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg', alt: 'TikTok' }
                 ];
                 cont.innerHTML = redes.map(r => r.url
-                    ? `<a href="${r.url}" target="_blank" rel="noopener" class="rf-red" aria-label="${r.alt}" title="${r.alt}">${r.img}</a>`
-                    : `<span class="rf-red is-inactivo" aria-label="${r.alt} (próximamente)" title="${r.alt}: próximamente">${r.img}</span>`
+                    ? `<a href="${r.url}" target="_blank" rel="noopener"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6"></a>`
+                    : `<span title="Próximamente"><img src="${r.img}" alt="${r.alt}" class="w-6 h-6 opacity-30"></span>`
                 ).join('');
             }).catch(() => {});
         })();
