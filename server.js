@@ -251,6 +251,59 @@ app.get('/uploads/tarjeta/:archivo', async (req, res) => {
   }
 });
 
+// Íconos del pie de página (redes sociales y métodos de pago). Son EXACTAMENTE
+// las mismas imágenes que antes se cargaban directo desde un servidor ajeno
+// (d1ojcbkdb9gxnh.cloudfront.net): el servidor las descarga una sola vez, byte
+// por byte, las guarda en el almacenamiento propio y desde ahí las entrega.
+// Solo se aceptan estas 11; si una descarga falla, se usa la dirección original.
+const ORIGEN_ICONOS_PIE = 'https://d1ojcbkdb9gxnh.cloudfront.net/landing-page-images/';
+const ICONOS_PIE_PERMITIDOS = new Set([
+  '1rcavSenyCbFac4Kxj9IO6pyFYcXad2Z2b29x4FO.svg',
+  'CxoHC1nu8RbqyVGiLFgQHRSXSrtby2j214GLTRtj.svg',
+  'HptjmZr1f6c2wBP7RK1GOpwdyQjxuI6qvsvpbh8j.svg',
+  'LAC71eLKtqvsgQJaiRxkHF13dxKszHiTASELVTDY.png',
+  'THNouHs4ASWWFev0HBrBLpl6rWTvKXyGDPnasKTw.svg',
+  'VyNmyibErErGs3Qpw5ObaqOpmm3Xdug2IttAP3dk.svg',
+  'egRbnRFV99VZSp6V1uMFqyMzi42ZMwmeoVnuZb00.png',
+  'hfaAy08Zz1dcNwe1CS87wgiYSzlQrUykOwtHv1Qs.svg',
+  'mLoMUNgMeOHPfSg5k4wwKU3F3u1I7vVj480HuoP0.svg',
+  'rGfx8xnX3qnPsPbD7NSHyhhusdZZrWOOn4M5USfb.svg',
+  'yjnzuguWNX5Ki30RXADCv2ZmGUdEynT3I9O8my8z.svg'
+]);
+const CARPETA_ICONOS_PIE = path.join(CARPETA_SUBIDAS, 'iconos-pie');
+fs.mkdirSync(CARPETA_ICONOS_PIE, { recursive: true });
+const descargandoIconosPieRF = new Map();
+app.get('/iconos-pie/:archivo', async (req, res) => {
+  const archivo = path.basename(req.params.archivo);
+  if (!ICONOS_PIE_PERMITIDOS.has(archivo)) return res.status(404).end();
+  const original = ORIGEN_ICONOS_PIE + archivo;
+  const destino = path.join(CARPETA_ICONOS_PIE, archivo);
+  try {
+    if (!fs.existsSync(destino)) {
+      if (typeof fetch !== 'function') return res.redirect(302, original);
+      if (!descargandoIconosPieRF.has(archivo)) {
+        descargandoIconosPieRF.set(archivo, (async () => {
+          const respuesta = await fetch(original, { signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
+          if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+          const datos = Buffer.from(await respuesta.arrayBuffer());
+          const temporal = `${destino}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+          await fs.promises.writeFile(temporal, datos);
+          await fs.promises.rename(temporal, destino);
+        })().finally(() => descargandoIconosPieRF.delete(archivo)));
+      }
+      await descargandoIconosPieRF.get(archivo);
+    }
+    res.set('Cache-Control', 'public, max-age=2592000, immutable');
+    // Un SVG de un tercero nunca debe poder ejecutar código en el dominio propio.
+    if (archivo.endsWith('.svg')) res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+    res.type(archivo.endsWith('.svg') ? 'image/svg+xml' : 'image/png');
+    res.sendFile(destino);
+  } catch (error) {
+    console.error('No se pudo guardar el ícono del pie de página; se usa la dirección original:', archivo, error?.message || error);
+    res.redirect(302, original);
+  }
+});
+
 // Las fotos subidas tienen nombres únicos y nunca cambian: el navegador las
 // puede guardar 30 días en lugar de volver a pedirlas en cada visita.
 app.use('/uploads', express.static(CARPETA_SUBIDAS, { maxAge: '30d', immutable: true }));
