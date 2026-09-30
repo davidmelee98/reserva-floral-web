@@ -60,3 +60,9 @@ a.rf-red:focus-visible { outline: 2px solid var(--rf-frambuesa); outline-offset:
 .rf-cobertura-encabezado span { font-size: 12px; color: #6F6268; white-space: nowrap; }
 .rf-cobertura-ciudades { display: flex; flex-wrap: wrap; gap: 8px; }
 .rf-cobertura-ciudades li { padding: 6px 12px; border-radius: 999px; background: var(--rf-rubor-claro); border: 1px solid var(--rf-linea); font-size: 13px; color: var(--rf-tinta); }
+
+/* Ocasiones: el título va escrito sobre la foto (igual que en categorías) */
+.rf-occasion-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.06) 45%, rgba(0,0,0,.18) 100%); pointer-events: none; }
+.rf-occasion-card span { position: absolute; z-index: 2; left: 14px; top: 12px; color: #fff; font-size: clamp(24px, 2.1vw, 36px); line-height: 1; font-weight: 700; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+/* Filtros de tendencia ocultos en los resultados de búsqueda */
+.rf-trending-tabs.rf-oculto { display: none !important; }

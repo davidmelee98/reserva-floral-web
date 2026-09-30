@@ -1392,6 +1392,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             });
 
             document.getElementById('titulo-catalogo').innerText = `Resultados para "${textoBusqueda.trim()}"`;
+            // Los filtros de "tendencia" no aplican a los resultados de búsqueda.
+            document.querySelector('.rf-trending-tabs')?.classList.add('rf-oculto');
             const contenedor = document.getElementById('contenedor-arreglos');
             contenedor.innerHTML = '';
             if (resultados.length === 0) {
@@ -1509,6 +1511,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 }
 
                 document.getElementById('titulo-catalogo').innerText = "Flores y regalos en tendencia";
+                document.querySelector('.rf-trending-tabs')?.classList.remove('rf-oculto');
                 arreglos = filtrarTrendingRF(arreglos, filtroTrendingActualRF);
                 // Mezcla ligera para que la sección de inicio no muestre siempre los mismos productos.
                 arreglos = [...arreglos].sort(() => Math.random() - 0.5).slice(0, 12);
@@ -3080,6 +3083,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     const max = rfOccTrack.scrollWidth - rfOccTrack.clientWidth - 2;
                     rfOccPrev.disabled = rfOccTrack.scrollLeft <= 2;
                     rfOccNext.disabled = rfOccTrack.scrollLeft >= max;
+                    const sinDesborde = rfOccTrack.scrollWidth <= rfOccTrack.clientWidth + 2;
+                    rfOccPrev.style.visibility = rfOccNext.style.visibility = sinDesborde ? 'hidden' : '';
                 };
                 const scrollRfOccasions = (direction) => {
                     const card = rfOccTrack.querySelector('.rf-occasion-card');
@@ -3102,6 +3107,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 const max = rfFavTrack.scrollWidth - rfFavTrack.clientWidth - 2;
                 rfFavPrev.disabled = rfFavTrack.scrollLeft <= 2;
                 rfFavNext.disabled = rfFavTrack.scrollLeft >= max;
+                // Si todos los productos caben, las flechas no se muestran.
+                const sinDesborde = rfFavTrack.scrollWidth <= rfFavTrack.clientWidth + 2;
+                rfFavPrev.style.visibility = rfFavNext.style.visibility = sinDesborde ? 'hidden' : '';
             };
             if (rfFavTrack && rfFavPrev && rfFavNext) {
                 const scrollFav = direction => {
@@ -3131,6 +3139,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     const max = rfTrack.scrollWidth - rfTrack.clientWidth - 2;
                     rfPrev.disabled = rfTrack.scrollLeft <= 2;
                     rfNext.disabled = rfTrack.scrollLeft >= max;
+                    const sinDesborde = rfTrack.scrollWidth <= rfTrack.clientWidth + 2;
+                    rfPrev.style.visibility = rfNext.style.visibility = sinDesborde ? 'hidden' : '';
                 };
                 const scrollRfCategories = (direction) => {
                     const card = rfTrack.querySelector('.rf-category-card');
@@ -4014,6 +4024,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 pistaOcasiones.innerHTML = datos.ocasiones.map(item => `
                     <a href="${escaparHtmlInicioRF(construirRuta(item.enlace))}" data-enlace-semantico="${escaparHtmlInicioRF(item.enlace)}" class="rf-occasion-card rf-occasion-link" aria-label="${escaparHtmlInicioRF(item.titulo)}">
                         <img src="${escaparHtmlInicioRF(urlTarjetaRF(item.imagen_url))}" alt="${escaparHtmlInicioRF(item.titulo)}" loading="lazy">
+                        <span>${escaparHtmlInicioRF(item.titulo)}</span>
                     </a>
                 `).join('');
             }

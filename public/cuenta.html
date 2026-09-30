@@ -25,6 +25,15 @@
         .adm-badge{ display:inline-flex; align-items:center; gap:.3rem; font-size:.68rem; font-weight:700; padding:.18rem .55rem; border-radius:999px; letter-spacing:.02em; }
     ::-webkit-scrollbar{ width:7px; height:7px; }
 ::-webkit-scrollbar-thumb{ background:#e2c2d0; border-radius:999px; }
+
+    /* Menú de Mi cuenta en celular: fila de pestañas que se desliza de lado
+       (antes ocupaba toda la primera pantalla antes del contenido). */
+    @media (max-width:1023px){
+        .cu-menu{ display:flex; gap:6px; overflow-x:auto; padding:6px !important; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+        .cu-menu::-webkit-scrollbar{ display:none; }
+        .cu-menu > *:not(.cu-nav-item){ display:none; }
+        .cu-menu .cu-nav-item{ flex:0 0 auto; white-space:nowrap; border-radius:999px; padding:8px 14px; margin:0; }
+    }
 </style>
 <style>
         /* Estilos para el Mega Menú */
@@ -234,7 +243,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
 
             <!-- Sidebar -->
-            <aside class="bg-white rounded-2xl border border-gray-100 p-3 lg:sticky lg:top-24">
+            <aside class="cu-menu bg-white rounded-2xl border border-gray-100 p-3 lg:sticky lg:top-24">
                 <div class="cu-nav-item is-activo" data-vista="perfil" onclick="cambiarVistaCuenta('perfil')">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path stroke-linecap="round" d="M4 20c0-4 4-6 8-6s8 2 8 6"></path></svg>
                     Mi perfil
@@ -479,7 +488,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         catch (e) { return valor; }
     }
     const ESTADO_COLOR = {
-        'Pendiente': 'bg-amber-50 text-amber-600', 'Confirmado': 'bg-blue-50 text-blue-600',
+        'Pendiente': 'bg-amber-50 text-amber-600', 'Recibido': 'bg-pink-50 text-pink-700', 'Confirmado': 'bg-blue-50 text-blue-600',
         'En preparación': 'bg-indigo-50 text-indigo-600', 'En camino': 'bg-purple-50 text-purple-600',
         'Entregado': 'bg-green-50 text-green-600', 'Cancelado': 'bg-gray-100 text-gray-500'
     };
@@ -501,6 +510,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     window.alternarPanel = alternarPanel;
 
     function cambiarVistaCuenta(vista) {
+        // En celular el menú es una fila de pestañas: la elegida queda a la vista.
+        setTimeout(() => document.querySelector(`.cu-menu [data-vista="${vista}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }), 0);
         ['perfil', 'pedidos', 'direcciones', 'recordatorios', 'puntos', 'cupones'].forEach(v => {
             document.getElementById('vista-' + v).classList.toggle('hidden', vista !== v);
         });
@@ -705,6 +716,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // Mis pedidos
     // =======================================================================
     const ESTADOS_TIMELINE = ['Pendiente', 'Confirmado', 'En preparación', 'En camino', 'Entregado'];
+    // Para el cliente, un pedido ya pagado que todavía no se prepara es
+    // "Recibido": "Pendiente" le hacía pensar que faltaba algo de su parte.
+    function estadoClienteRF(o) {
+        return o.estado === 'Pendiente' && o.estado_pago === 'aprobado' ? 'Recibido' : (o.estado || 'Pendiente');
+    }
 
     async function cargarMisPedidos() {
         const cont = document.getElementById('lista-mis-pedidos');
@@ -740,7 +756,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 `).join('')}
             </div>
             <div class="flex justify-between text-[9px] text-gray-400">
-                <span>Pendiente</span><span>Confirmado</span><span>Preparación</span><span>En camino</span><span>Entregado</span>
+                <span>Recibido</span><span>Confirmado</span><span>Preparación</span><span>En camino</span><span>Entregado</span>
             </div>`;
     }
     function renderMisPedidos() {
@@ -773,7 +789,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 <div class="bg-white rounded-2xl border border-gray-100 p-5">
                     <div class="flex items-center justify-between flex-wrap gap-2">
                         <div>
-                            <p class="text-sm font-semibold text-brandDark">Pedido #${o.id} <span class="adm-badge ${ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500'}">${escaparHtml(o.estado || 'Pendiente')}</span> ${o.estado_pago === 'aprobado' ? '<span class="adm-badge bg-green-50 text-green-600">✓ Pagado</span>' : o.estado_pago === 'rechazado' ? '<span class="adm-badge bg-red-50 text-red-600">Pago rechazado</span>' : '<span class="adm-badge bg-amber-50 text-amber-600">Pago pendiente</span>'}</p>
+                            <p class="text-sm font-semibold text-brandDark">Pedido #${o.id} <span class="adm-badge ${ESTADO_COLOR[estadoClienteRF(o)] || 'bg-gray-100 text-gray-500'}">${escaparHtml(estadoClienteRF(o))}</span> ${o.estado_pago === 'aprobado' ? '<span class="adm-badge bg-green-50 text-green-600">✓ Pagado</span>' : o.estado_pago === 'rechazado' ? '<span class="adm-badge bg-red-50 text-red-600">Pago rechazado</span>' : '<span class="adm-badge bg-amber-50 text-amber-600">Pago pendiente</span>'}</p>
                             <p class="text-xs text-gray-500 mt-0.5">Hecho el ${formatearFecha(o.creado_en)}</p>
                         </div>
                         <p class="text-base font-bold text-brandDark">$${formatearPrecio(o.total)}</p>
@@ -862,7 +878,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         // Estado del pedido (para quien compró sin cuenta y no tiene "Mis pedidos").
         const bloqueEstado = document.getElementById('fi-estado');
         if (datos.estado && bloqueEstado) {
-            const estadoVisible = datos.descartado ? 'Cancelado' : datos.estado;
+            const estadoVisible = datos.descartado ? 'Cancelado' : (datos.estado === 'Pendiente' && datos.estado_pago === 'aprobado' ? 'Recibido' : datos.estado);
             const pago = { aprobado: '✓ Confirmado', pendiente: 'Pendiente', rechazado: 'Rechazado', reembolsado: 'Reembolsado' }[datos.estado_pago] || 'Pendiente';
             bloqueEstado.innerHTML = `
                 <p><span class="text-gray-500">Estatus:</span> <strong class="text-brandDark">${escaparHtml(estadoVisible)}</strong></p>

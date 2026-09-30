@@ -39,6 +39,10 @@
         .co-slot:hover{ border-color:#a3284f; }
         .co-slot.is-activo{ background:#a3284f; border-color:#a3284f; color:#fff; }
         .co-slot:disabled{ opacity:.4; cursor:not-allowed; text-decoration:line-through; }
+        /* Horarios del mismo ancho: tres columnas; en celular, uno debajo de otro */
+        .co-slots{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; max-width:560px; }
+        .co-slots .co-slot{ text-align:center; white-space:nowrap; }
+        @media (max-width:639px){ .co-slots{ grid-template-columns:1fr; max-width:none; } }
         .co-slot:disabled:hover{ border-color:#d8ced1; }
         .co-sugerencia{ padding:.6rem .85rem; font-size:.82rem; cursor:pointer; border-bottom:1px solid #f1ecee; }
         .co-sugerencia:hover{ background:#fdf1f6; }
@@ -367,7 +371,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                                 Horario
                             </p>
                             <p class="text-xs text-gray-500 mb-2">Cargo por envío: $80.00 <span class="text-[9px] align-top">MXN</span></p>
-                            <div class="flex flex-wrap gap-2">
+                            <div class="co-slots">
                                 <button type="button" class="co-slot" data-horario="8:00 AM - 12:00 PM" onclick="elegirHorario(this)">8:00AM - 12:00PM</button>
                                 <button type="button" class="co-slot" data-horario="12:00 PM - 4:00 PM" onclick="elegirHorario(this)">12:00PM - 4:00PM</button>
                                 <button type="button" class="co-slot" data-horario="4:00 PM - 7:00 PM" onclick="elegirHorario(this)">4:00PM - 7:00PM</button>

@@ -694,10 +694,6 @@
                     <div id="lista-facturas-pendientes" class="space-y-2"></div>
                 </div>
 
-                <details class="adm-card p-5 mb-6" id="detalle-historial-facturas">
-                    <summary class="text-sm font-semibold text-brandDark cursor-pointer select-none">Historial de facturas ya atendidas</summary>
-                    <div id="lista-facturas-historial" class="space-y-2 mt-3"></div>
-                </details>
 
                 <div class="adm-card overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
@@ -737,7 +733,7 @@
                             <button type="button" onclick="moverMesCalendario(-1)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
                             </button>
-                            <h3 id="titulo-mes-calendario" class="text-sm font-semibold text-brandDark capitalize"></h3>
+                            <h3 id="titulo-mes-calendario" class="text-sm font-semibold text-brandDark"></h3>
                             <button type="button" onclick="moverMesCalendario(1)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                             </button>
@@ -748,6 +744,11 @@
                         <div id="grid-calendario-pedidos" class="grid grid-cols-7 gap-1"></div>
                     </div>
                 </div>
+                <!-- Consulta ocasional: al final de la sección -->
+                <details class="adm-card p-5 mt-6" id="detalle-historial-facturas">
+                    <summary class="text-sm font-semibold text-brandDark cursor-pointer select-none">Historial de facturas ya atendidas</summary>
+                    <div id="lista-facturas-historial" class="space-y-2 mt-3"></div>
+                </details>
             </section>
 
             <!-- ============ CLIENTES ============ -->
@@ -1030,7 +1031,7 @@
                     <div class="flex items-start justify-between mb-1">
                         <div>
                             <h2 class="adm-titulo text-lg font-semibold text-brandDark">Carrusel: "Ocasiones"</h2>
-                            <p class="text-xs text-gray-400 mt-0.5">Las tarjetas de solo foto (sin texto encima) más abajo en la página de inicio.</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Las tarjetas más abajo en la página de inicio. El título se escribe encima de la foto: usa fotos sin texto.</p>
                         </div>
                         <button type="button" onclick="abrirFormCarrusel('ocasiones')" class="shrink-0 bg-brandFuchsia hover:bg-pink-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition">+ Agregar tarjeta</button>
                     </div>
@@ -3262,7 +3263,8 @@
     function renderCalendarioPedidos() {
         const año = mesCalendarioActual.getFullYear();
         const mes = mesCalendarioActual.getMonth();
-        document.getElementById('titulo-mes-calendario').innerText = mesCalendarioActual.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+        const textoMes = mesCalendarioActual.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+        document.getElementById('titulo-mes-calendario').innerText = textoMes.charAt(0).toUpperCase() + textoMes.slice(1); // "Septiembre de 2026"
 
         // Agrupa los pedidos (que no estén cancelados) por su fecha de entrega, en clave AAAA-MM-DD.
         const porFecha = {};
