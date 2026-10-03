@@ -756,7 +756,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         <div id="rf-barra-hoy" class="rf-barra-hoy" style="display:none" role="status">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <span id="rf-barra-hoy-texto"></span>
-            <button type="button" id="rf-barra-hoy-accion" class="rf-barra-hoy-accion" onclick="verEntregaHoyRF()">Ver arreglos para hoy</button>
+            <button type="button" id="rf-barra-hoy-accion" class="rf-barra-hoy-accion" onclick="verEntregaHoyRF()"><span class="rf-hoy-largo">Ver arreglos para hoy</span><span class="rf-hoy-corto">Ver →</span></button>
         </div>
         <div class="h-[200px] sm:h-[240px] md:h-[280px] w-full relative">
             <img id="hero-imagen" class="w-full h-full object-cover bg-gray-100" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7" alt="">
@@ -1421,10 +1421,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (siguiente) {
                 const falta = siguiente.limite - minutos, h = Math.floor(falta / 60), m = falta % 60;
                 const tiempo = h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`;
-                texto.innerHTML = `Pide en las próximas <strong>${tiempo}</strong> y recíbelo <strong>hoy</strong> ${siguiente.horario}`;
+                // Texto completo en computadora; versión corta de una línea en celular.
+                texto.innerHTML = `<span class="rf-hoy-largo">Pide en las próximas <strong>${tiempo}</strong> y recíbelo <strong>hoy</strong> ${siguiente.horario}</span>`
+                    + `<span class="rf-hoy-corto">Llega <strong>hoy</strong> si pides en <strong>${tiempo}</strong></span>`;
                 accion.style.display = ''; if (tabHoy) tabHoy.style.display = '';
             } else {
-                texto.innerHTML = 'Pide hoy y recíbelo <strong>mañana</strong> desde las 8:00 am';
+                texto.innerHTML = '<span class="rf-hoy-largo">Pide hoy y recíbelo <strong>mañana</strong> desde las 8:00 am</span>'
+                    + '<span class="rf-hoy-corto">Pide hoy y llega <strong>mañana</strong> desde las 8 am</span>';
                 accion.style.display = 'none';
                 if (tabHoy) {
                     tabHoy.style.display = 'none';

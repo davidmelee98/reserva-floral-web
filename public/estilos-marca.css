@@ -84,7 +84,7 @@ a.rf-red:focus-visible { outline: 2px solid var(--rf-frambuesa); outline-offset:
 .rf-resenas-track::-webkit-scrollbar { display: none; }
 .rf-resena { position: relative; flex: 0 0 clamp(280px, 26vw, 360px); scroll-snap-align: start; display: flex; flex-direction: column; gap: 12px; background: #fff; border-radius: 22px; padding: 26px 24px 20px; box-shadow: 0 6px 18px rgba(120, 30, 60, .07); overflow: hidden; }
 .rf-resena-comillas { position: absolute; top: -18px; right: 14px; font-family: 'Playfair Display', serif; font-size: 120px; line-height: 1; color: var(--rf-rubor); pointer-events: none; }
-.rf-resena-estrellas { position: relative; font-size: 15px; letter-spacing: 3px; color: #E2D7DA; }
+.rf-resena-estrellas { position: relative; font-size: 15px; letter-spacing: 3px; color: #E2D7DA; text-align: center; }
 .rf-resena-estrellas .is-llena { color: var(--rf-frambuesa); }
 .rf-resena-texto { position: relative; font-family: 'Playfair Display', serif; font-size: 17.5px; line-height: 1.55; color: var(--rf-tinta); flex: 1; display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
 .rf-resena-autor { display: flex; align-items: center; gap: 10px; }
@@ -116,4 +116,43 @@ a.rf-red:focus-visible { outline: 2px solid var(--rf-frambuesa); outline-offset:
   .rf-promesa-caja { padding: 22px 18px; }
   .rf-promesa-lista { grid-template-columns: 1fr; gap: 16px; }
   .rf-promesa-item { flex-direction: row; align-items: flex-start; gap: 14px; }
+}
+
+/* ===================== Celular: versiones compactas ===================== */
+.rf-hoy-corto { display: none; }
+@media (max-width: 639px) {
+  /* Cuenta regresiva: una sola línea */
+  .rf-hoy-largo { display: none; }
+  .rf-hoy-corto { display: inline; }
+  .rf-barra-hoy { flex-wrap: nowrap; gap: 6px; padding: 7px 12px; font-size: 12.5px; }
+  #rf-barra-hoy-texto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .rf-barra-hoy-accion { white-space: nowrap; flex-shrink: 0; }
+
+  /* Nuestra promesa: etiqueta + cuadrícula 2x2 con ícono y nombre */
+  .rf-promesa-caja { padding: 14px 12px; gap: 10px; border-radius: 18px; }
+  .rf-promesa-intro { text-align: center; }
+  .rf-promesa-etiqueta { margin-bottom: 0; }
+  .rf-promesa-titulo { display: none; }
+  .rf-promesa-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .rf-promesa-item { flex-direction: row; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 12px; background: var(--rf-rubor-claro); }
+  .rf-promesa-icono { width: 32px; height: 32px; border-radius: 9px; background: #fff; }
+  .rf-promesa-icono svg { width: 19px; height: 19px; }
+  .rf-promesa-nombre { font-size: 12.5px; line-height: 1.25; }
+  .rf-promesa-texto { display: none; }
+
+  /* Reseñas: más compactas */
+  .rf-resenas { margin-left: 8px; margin-right: 8px; padding-bottom: 12px; border-radius: 22px; }
+  .rf-resenas .text-center { padding-bottom: 10px; }
+  .rf-resenas-etiqueta { font-size: 10.5px; margin-bottom: 2px; }
+  #rf-resenas-titulo { font-size: 20px; }
+  .rf-resenas-track { gap: 12px; padding: 4px 22px 18px; margin-bottom: -10px; }
+  .rf-resena { flex-basis: 78vw; max-width: 300px; gap: 8px; padding: 16px 16px 12px; border-radius: 18px; }
+  .rf-resena-comillas { font-size: 78px; top: -10px; right: 10px; }
+  .rf-resena-estrellas { font-size: 13px; }
+  .rf-resena-texto { font-size: 15px; line-height: 1.45; -webkit-line-clamp: 4; }
+  .rf-resena-inicial { width: 30px; height: 30px; font-size: 13px; }
+  .rf-resena-nombre { font-size: 13px; }
+  .rf-resena-ciudad { font-size: 12px; }
+  .rf-resena-pidio { padding-top: 9px; font-size: 12px; gap: 8px; }
+  .rf-resena-pidio img { width: 30px; height: 30px; border-radius: 8px; }
 }
