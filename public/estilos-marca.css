@@ -66,3 +66,33 @@ a.rf-red:focus-visible { outline: 2px solid var(--rf-frambuesa); outline-offset:
 .rf-occasion-card span { position: absolute; z-index: 2; left: 14px; top: 12px; color: #fff; font-size: clamp(24px, 2.1vw, 36px); line-height: 1; font-weight: 700; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
 /* Filtros de tendencia ocultos en los resultados de búsqueda */
 .rf-trending-tabs.rf-oculto { display: none !important; }
+
+/* Encabezado: enlace "Mis pedidos" */
+.rf-mis-pedidos { font-size: 14px; font-weight: 500; }
+
+/* "Entrega hoy": cuenta regresiva arriba de la portada */
+.rf-barra-hoy { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 9px 16px; background: var(--rf-rubor-claro); border-bottom: 1px solid var(--rf-linea); color: var(--rf-tinta); font-size: 13.5px; text-align: center; }
+.rf-barra-hoy svg { color: var(--rf-frambuesa); }
+.rf-barra-hoy strong { color: var(--rf-frambuesa-oscura); font-weight: 700; }
+.rf-barra-hoy-accion { color: var(--rf-frambuesa); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Reseñas de clientes */
+.rf-resenas-track { display: flex; gap: 18px; overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 2px 2px 10px; }
+.rf-resenas-track::-webkit-scrollbar { display: none; }
+.rf-resena { flex: 0 0 clamp(260px, 22vw, 320px); scroll-snap-align: start; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--rf-linea); border-radius: 18px; overflow: hidden; }
+.rf-resena-foto { display: block; aspect-ratio: 4 / 3; overflow: hidden; background: var(--rf-rubor-claro); }
+.rf-resena-foto img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
+.rf-resena-foto:hover img { transform: scale(1.04); }
+.rf-resena-cuerpo { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.rf-resena-estrellas { font-size: 16px; letter-spacing: 2px; color: #E2D7DA; }
+.rf-resena-estrellas .is-llena { color: var(--rf-frambuesa); }
+.rf-resena-texto { font-family: 'Playfair Display', serif; font-size: 15.5px; line-height: 1.5; color: var(--rf-tinta); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.rf-resena-autor { margin-top: auto; font-size: 13px; font-weight: 600; color: var(--rf-tinta); }
+.rf-resena-autor span { font-weight: 400; color: #6F6268; }
+.rf-resena-producto { font-size: 13px; font-weight: 600; color: var(--rf-frambuesa); }
+.rf-resena-producto:hover { text-decoration: underline; }
+.rf-resenas-flecha { position: absolute; top: 40%; z-index: 3; width: 42px; height: 42px; border-radius: 999px; background: #fff; color: var(--rf-tinta); box-shadow: 0 4px 14px rgba(40, 10, 25, .14); display: flex; align-items: center; justify-content: center; }
+.rf-resenas-flecha.is-anterior { left: -10px; }
+.rf-resenas-flecha.is-siguiente { right: -10px; }
+.rf-resenas-flecha:disabled { opacity: .35; cursor: default; }
+@media (hover: none), (max-width: 767px) { .rf-resenas-flecha { display: none !important; } }

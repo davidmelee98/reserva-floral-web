@@ -321,6 +321,11 @@
         .adm-config-guardar{ position:sticky; bottom:0; margin:8px -24px -24px; padding:14px 24px; background:rgba(255,255,255,.96); border-top:1px solid #F1ECEE; display:flex; justify-content:flex-end; border-radius:0 0 16px 16px; }
         @media (max-width:1023px){ .adm-config-cuerpo{ grid-template-columns:1fr; } .adm-config-indice{ display:none; } }
         @media (max-width:639px){ .adm-config-campos{ grid-template-columns:1fr; } }
+    
+        /* Editor: nombres sugeridos de tamaños */
+        .ed-tamanos-sugeridos{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:10px; font-size:12px; color:#8a7f83; }
+        .ed-tamanos-sugeridos button{ padding:4px 11px; border-radius:999px; border:1px solid #EFD3DA; background:#FFFAFB; color:#86203F; font-weight:600; }
+        .ed-tamanos-sugeridos button:hover{ background:#F8E6EA; }
     </style>
 <script>
     // Las tarjetas del catálogo usan una copia ligera de la foto (1000 px),
@@ -1037,6 +1042,41 @@
                     </div>
                     <div id="lista-carrusel-ocasiones" class="divide-y divide-gray-100 mt-4"></div>
                 </div>
+
+                <!-- Reseñas de clientes: carrusel debajo de "Ocasiones" en la tienda -->
+                <div class="adm-card p-6 mb-6">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h2 class="adm-titulo text-lg font-semibold text-brandDark">Carrusel: "Reseñas de clientes"</h2>
+                            <p class="text-xs text-gray-400 mt-0.5">Aparece debajo de "Ocasiones" en la página de inicio. Si una reseña lleva producto, se muestra su foto y al tocarla el cliente va directo a comprarlo.</p>
+                        </div>
+                        <button type="button" onclick="nuevaResenaRF()" class="shrink-0 bg-brandFuchsia hover:bg-pink-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition">+ Agregar reseña</button>
+                    </div>
+                    <div id="lista-resenas" class="divide-y divide-gray-100 mt-4"></div>
+                </div>
+
+                <div class="adm-card p-6 adm-cajon" id="cajon-resena" role="dialog" aria-modal="true" aria-label="Reseña">
+                    <button type="button" class="adm-cajon-cerrar" onclick="cerrarCajonRF()" aria-label="Cerrar"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                    <h2 id="cajon-resena-titulo" class="adm-titulo text-lg font-semibold text-brandDark">Agregar reseña</h2>
+                    <p class="text-xs text-gray-400 mt-0.5 mb-5">Escríbela tal como te la compartió el cliente.</p>
+                    <form id="form-resena" class="space-y-4">
+                        <input type="hidden" id="resena_id">
+                        <div><label class="adm-label" for="resena_nombre">Nombre del cliente</label><input type="text" id="resena_nombre" class="adm-input" maxlength="120" placeholder="Ej. Laura M." required></div>
+                        <div><label class="adm-label" for="resena_ciudad">Ciudad <span class="text-gray-400 font-normal">(opcional)</span></label><input type="text" id="resena_ciudad" class="adm-input" maxlength="120" placeholder="Ej. Tampico"></div>
+                        <div><label class="adm-label" for="resena_calificacion">Calificación</label>
+                            <select id="resena_calificacion" class="adm-input">
+                                <option value="5">★★★★★ 5 estrellas</option><option value="4">★★★★☆ 4 estrellas</option><option value="3">★★★☆☆ 3 estrellas</option><option value="2">★★☆☆☆ 2 estrellas</option><option value="1">★☆☆☆☆ 1 estrella</option>
+                            </select></div>
+                        <div><label class="adm-label" for="resena_texto">Reseña</label><textarea id="resena_texto" class="adm-input" rows="5" maxlength="600" placeholder="Lo que dijo el cliente..." required></textarea></div>
+                        <div><label class="adm-label" for="resena_producto">Producto <span class="text-gray-400 font-normal">(opcional)</span></label><select id="resena_producto" class="adm-input"></select>
+                            <p class="text-xs text-gray-400 mt-1">Se muestra su foto; al tocarla, el cliente va directo a ese producto.</p></div>
+                        <div class="flex items-center justify-between"><span class="text-sm text-brandDark">Visible en la tienda</span><label class="adm-switch"><input type="checkbox" id="resena_activa" checked><span class="adm-switch-track"></span></label></div>
+                        <div class="flex gap-2 pt-1">
+                            <button type="submit" class="flex-1 bg-brandFuchsia hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg text-sm transition">Guardar reseña</button>
+                            <button type="button" onclick="cerrarCajonRF()" class="px-4 py-2.5 rounded-lg text-sm border border-gray-200 hover:bg-gray-50">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
             </section>
 
             <!-- ============ MENÚ DEL SITIO ============ -->
@@ -1498,6 +1538,13 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" /></svg>
                 Agregar tamaño
               </button>
+              <div class="ed-tamanos-sugeridos">
+                <span>Nombres sugeridos:</span>
+                <button type="button" onclick="agregarTamanoSugeridoRF('Clásico')">Clásico</button>
+                <button type="button" onclick="agregarTamanoSugeridoRF('Deluxe')">Deluxe</button>
+                <button type="button" onclick="agregarTamanoSugeridoRF('Premium')">Premium</button>
+              </div>
+              <p class="ed-ayuda">Usar los mismos nombres en todo el catálogo ayuda al cliente a comparar y a elegir el tamaño más grande.</p>
             </div>
             <div class="ed-campo">
               <p class="ed-etiqueta">Detalles a elegir</p>
@@ -1998,7 +2045,7 @@
     async function cargarTodoElPanel() {
         // Los cupones solo los ve un administrador (el servidor tampoco se los da a un editor).
         const esAdminRF = usuarioActual && usuarioActual.rol === 'admin';
-        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), esAdminRF ? cargarCupones() : Promise.resolve(), cargarCarruseles(), cargarMenuSitio(), cargarCategoriasDisponibles(), cargarEstadosMunicipios(), cargarRecordatorios(), cargarFacturasPendientes()]);
+        await Promise.all([cargarDashboard(), cargarCatalogo(), cargarOrdenes(), cargarClientes(), cargarZonas(), esAdminRF ? cargarCupones() : Promise.resolve(), cargarCarruseles(), cargarResenasAdminRF(), cargarMenuSitio(), cargarCategoriasDisponibles(), cargarEstadosMunicipios(), cargarRecordatorios(), cargarFacturasPendientes()]);
         if (usuarioActual && usuarioActual.rol === 'admin') {
             await Promise.all([cargarUsuarios(), cargarConfiguracion(), cargarBitacora()]);
         }
@@ -2268,6 +2315,14 @@
         actualizarPreviewVivo();
     }
 
+    function agregarTamanoSugeridoRF(nombre) {
+        // Si ya existe, solo lleva al precio; si no, agrega la fila con ese nombre.
+        const existente = [...document.querySelectorAll('#lista-tamanos [data-tamano-nombre]')].find(i => i.value.trim().toLowerCase() === nombre.toLowerCase());
+        if (!existente) agregarFilaTamano(nombre, '');
+        const fila = existente ? existente.closest('[data-fila-tamano]') : document.querySelector('#lista-tamanos [data-fila-tamano]:last-child');
+        fila?.querySelector('input:not([data-tamano-nombre])')?.focus();
+    }
+    window.agregarTamanoSugeridoRF = agregarTamanoSugeridoRF;
     function agregarFilaTamano(nombre = '', precio = '') {
         const cont = document.getElementById('lista-tamanos');
         const fila = document.createElement('div');
@@ -3349,6 +3404,7 @@
                                 ${o.estado === 'Cancelado' && o.estado_pago === 'aprobado' ? '<span class="adm-badge bg-red-50 text-red-600" title="Este pedido se canceló pero su pago sigue sin reembolsarse. Al reembolsar en Mercado Pago, esta etiqueta desaparece sola.">⚠️ Reembolso pendiente</span>' : ''}
                             </div>
                             <p class="adm-dato">${icoRF('telefono')}<span>${escaparHtmlAdmin(o.cliente_telefono)}${o.email_contacto ? ` · ${escaparHtmlAdmin(o.email_contacto)}` : ''}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''}</span></p>
+                            ${o.estado_pago === 'pendiente' && o.ficha_pago_url && o.estado !== 'Cancelado' ? `<p class="adm-dato">${icoRF('reloj')}<span>Ficha de ${o.ficha_pago_metodo === 'spei' ? 'SPEI' : o.ficha_pago_metodo === 'oxxo' ? 'OXXO' : 'pago'} generada${o.ficha_pago_vence ? ` · vence ${escaparHtmlAdmin(new Date(o.ficha_pago_vence).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}` : ''} · <a href="${escaparHtmlAdmin(o.ficha_pago_url)}" target="_blank" rel="noopener" class="text-brandFuchsia font-semibold hover:underline">Ver ficha</a></span></p>` : ''}
                             <p class="adm-dato">${icoRF('ubicacion')}<span>${o.tipo_domicilio ? `<span class="text-gray-400">${escaparHtmlAdmin(o.tipo_domicilio)} ·</span> ` : ''}${escaparHtmlAdmin(o.direccion_entrega)}
                                 ${tieneMapa ? ` · <a href="https://www.openstreetmap.org/?mlat=${o.lat}&mlon=${o.lng}#map=18/${o.lat}/${o.lng}" target="_blank" class="text-brandFuchsia font-medium hover:underline">Ver ubicación en el mapa</a>` : ''}
                             </span></p>
@@ -4396,6 +4452,104 @@
 
     let carruselesTodos = [];
     let carruselImagenPendiente = '';
+
+    // ---------------- Reseñas de clientes ----------------
+    let resenasAdmin = [];
+    async function cargarResenasAdminRF() {
+        try {
+            resenasAdmin = await jsonOError(await fetch('/api/admin/resenas'));
+            renderResenasAdminRF();
+        } catch (error) {
+            const cont = document.getElementById('lista-resenas');
+            if (cont) cont.innerHTML = `<p class="text-sm text-red-500 py-4">${escaparHtmlAdmin(error.message)}</p>`;
+        }
+    }
+    function renderResenasAdminRF() {
+        const cont = document.getElementById('lista-resenas');
+        if (!cont) return;
+        if (!resenasAdmin.length) { cont.innerHTML = '<p class="text-sm text-gray-400 text-center py-6">Todavía no hay reseñas -- agrega la primera con el botón de arriba.</p>'; return; }
+        cont.innerHTML = resenasAdmin.map((r, i) => `
+            <div class="flex items-center gap-3 py-3">
+                ${r.producto_imagen ? `<img src="${escaparHtmlAdmin(r.producto_imagen)}" alt="" class="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0">` : '<div class="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 shrink-0 flex items-center justify-center text-gray-300 text-lg">“</div>'}
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-brandDark truncate">${escaparHtmlAdmin(r.nombre_cliente)}${r.ciudad ? `<span class="text-gray-400 font-normal"> · ${escaparHtmlAdmin(r.ciudad)}</span>` : ''} <span class="text-brandFuchsia">${'★'.repeat(r.calificacion)}</span><span class="text-gray-300">${'★'.repeat(5 - r.calificacion)}</span></p>
+                    <p class="text-xs text-gray-500 truncate">“${escaparHtmlAdmin(r.texto)}”${r.producto_nombre ? ` · <span class="text-gray-400">${escaparHtmlAdmin(r.producto_nombre)}</span>` : ''}</p>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" onclick="moverResenaRF(${r.id}, 'arriba')" class="w-7 h-7 rounded-md text-gray-400 hover:bg-gray-50 disabled:opacity-30" ${i === 0 ? 'disabled' : ''} aria-label="Subir">▲</button>
+                    <button type="button" onclick="moverResenaRF(${r.id}, 'abajo')" class="w-7 h-7 rounded-md text-gray-400 hover:bg-gray-50 disabled:opacity-30" ${i === resenasAdmin.length - 1 ? 'disabled' : ''} aria-label="Bajar">▼</button>
+                    <label class="adm-switch mx-1" title="Visible en la tienda"><input type="checkbox" ${r.activo ? 'checked' : ''} onchange="alternarResenaRF(${r.id}, this.checked)"><span class="adm-switch-track"></span></label>
+                    <button type="button" onclick="editarResenaRF(${r.id})" class="text-xs font-semibold text-brandDark hover:text-brandFuchsia px-1.5">Editar</button>
+                    <button type="button" onclick="borrarResenaRF(${r.id})" class="text-xs font-semibold text-red-500 hover:text-red-600 px-1.5">Borrar</button>
+                </div>
+            </div>`).join('');
+    }
+    function llenarProductosResenaRF(seleccionado) {
+        const sel = document.getElementById('resena_producto');
+        const productos = [...catalogo].sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+        sel.innerHTML = '<option value="">Sin producto</option>' + productos.map(p => `<option value="${p.id}" ${Number(seleccionado) === p.id ? 'selected' : ''}>${escaparHtmlAdmin(p.nombre)}</option>`).join('');
+    }
+    function nuevaResenaRF() {
+        document.getElementById('form-resena').reset();
+        document.getElementById('resena_id').value = '';
+        document.getElementById('resena_activa').checked = true;
+        document.getElementById('cajon-resena-titulo').innerText = 'Agregar reseña';
+        llenarProductosResenaRF(null);
+        abrirCajonRF('cajon-resena');
+    }
+    function editarResenaRF(id) {
+        const r = resenasAdmin.find(x => x.id === id);
+        if (!r) return;
+        document.getElementById('resena_id').value = r.id;
+        document.getElementById('resena_nombre').value = r.nombre_cliente || '';
+        document.getElementById('resena_ciudad').value = r.ciudad || '';
+        document.getElementById('resena_calificacion').value = String(r.calificacion);
+        document.getElementById('resena_texto').value = r.texto || '';
+        document.getElementById('resena_activa').checked = !!r.activo;
+        document.getElementById('cajon-resena-titulo').innerText = 'Editar reseña';
+        llenarProductosResenaRF(r.producto_id);
+        abrirCajonRF('cajon-resena');
+    }
+    async function alternarResenaRF(id, activo) {
+        try {
+            await jsonOError(await fetch(`/api/admin/resenas/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activo }) }));
+            const r = resenasAdmin.find(x => x.id === id); if (r) r.activo = activo;
+            mostrarToast(activo ? 'La reseña ya se ve en la tienda.' : 'La reseña quedó oculta.');
+        } catch (error) { mostrarToast(error.message, 'error'); cargarResenasAdminRF(); }
+    }
+    async function moverResenaRF(id, mover) {
+        try {
+            await jsonOError(await fetch(`/api/admin/resenas/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mover }) }));
+            await cargarResenasAdminRF();
+        } catch (error) { mostrarToast(error.message, 'error'); }
+    }
+    async function borrarResenaRF(id) {
+        if (!(await pedirConfirmacionAdmin('Eliminar reseña', 'La reseña dejará de verse en la tienda y no se puede recuperar.'))) return;
+        try {
+            await jsonOError(await fetch(`/api/admin/resenas/${id}`, { method: 'DELETE' }));
+            mostrarToast('Reseña eliminada.');
+            await cargarResenasAdminRF();
+        } catch (error) { mostrarToast(error.message, 'error'); }
+    }
+    Object.assign(window, { nuevaResenaRF, editarResenaRF, alternarResenaRF, moverResenaRF, borrarResenaRF });
+    document.getElementById('form-resena')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('resena_id').value;
+        const datos = {
+            nombre_cliente: document.getElementById('resena_nombre').value,
+            ciudad: document.getElementById('resena_ciudad').value,
+            calificacion: Number(document.getElementById('resena_calificacion').value),
+            texto: document.getElementById('resena_texto').value,
+            producto_id: document.getElementById('resena_producto').value || null,
+            activo: document.getElementById('resena_activa').checked
+        };
+        try {
+            await jsonOError(await fetch(id ? `/api/admin/resenas/${id}` : '/api/admin/resenas', { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) }));
+            mostrarToast('Reseña guardada.');
+            cerrarCajonRF();
+            await cargarResenasAdminRF();
+        } catch (error) { mostrarToast(error.message, 'error'); }
+    });
 
     async function cargarCarruseles() {
         try {

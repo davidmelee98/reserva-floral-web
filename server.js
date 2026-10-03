@@ -130,6 +130,15 @@ const limitadorPagos = rateLimit({
 });
 // Límite general de respaldo para toda la API, generoso para no estorbar el
 // uso normal del sitio (catálogo, carrito, etc. hacen varias peticiones).
+// Consultar un pedido sin cuenta: pocos intentos, para que nadie pueda ir
+// probando números de pedido con un correo.
+const limitadorConsultaPedido = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Espera unos minutos e intenta de nuevo.' }
+});
 const limitadorGeneral = rateLimit({
   windowMs: 5 * 60 * 1000,
   limit: 400,
@@ -754,6 +763,25 @@ async function inicializarDB() {
     'ALTER TABLE recordatorios_cliente ADD COLUMN IF NOT EXISTS ultimo_aviso_para DATE',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS descartado BOOLEAN DEFAULT false',
     'CREATE TABLE IF NOT EXISTS correos_bajas (email VARCHAR(150) PRIMARY KEY, origen VARCHAR(20), creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
+    // Ficha de pago (OXXO/SPEI): antes solo se entregaba al navegador en el
+    // momento del pago y nunca se guardaba -- si el cliente cerraba la página,
+    // ya no había forma de recuperarla.
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS ficha_pago_url TEXT',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS ficha_pago_metodo VARCHAR(20)',
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS ficha_pago_vence TIMESTAMP',
+    // Reseñas de clientes que se muestran en la página de inicio (se capturan
+    // desde el panel, en "Página de inicio").
+    `CREATE TABLE IF NOT EXISTS resenas (
+      id SERIAL PRIMARY KEY,
+      nombre_cliente VARCHAR(120) NOT NULL,
+      ciudad VARCHAR(120),
+      calificacion INTEGER NOT NULL DEFAULT 5 CHECK (calificacion BETWEEN 1 AND 5),
+      texto TEXT NOT NULL,
+      producto_id INTEGER REFERENCES arreglos_florales(id) ON DELETE SET NULL,
+      activo BOOLEAN DEFAULT true,
+      orden INTEGER DEFAULT 0,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
     'ALTER TABLE cupones ADD COLUMN IF NOT EXISTS un_uso_por_cliente BOOLEAN DEFAULT false',
     // Índices para las búsquedas frecuentes sobre pedidos: sin ellos, cada
     // búsqueda recorre la tabla completa (se nota cuando hay miles de pedidos).
@@ -1754,6 +1782,122 @@ app.get('/api/cuenta/vincular-pedidos', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Reseñas de clientes (carrusel de la página de inicio). Se capturan desde el
+// panel; cada una puede llevar un producto, que se muestra con su foto y lleva
+// directo a ese producto.
+// ---------------------------------------------------------------------------
+function datosResenaRF(body) {
+  const nombre = String(body.nombre_cliente || '').trim().slice(0, 120);
+  const texto = String(body.texto || '').trim().slice(0, 600);
+  const calificacion = Math.round(Number(body.calificacion));
+  if (!nombre || !texto) return { error: 'Escribe el nombre del cliente y su reseña.' };
+  if (!(calificacion >= 1 && calificacion <= 5)) return { error: 'La calificación debe ser de 1 a 5 estrellas.' };
+  const productoId = body.producto_id ? Number(body.producto_id) : null;
+  return { nombre, texto, calificacion, ciudad: String(body.ciudad || '').trim().slice(0, 120) || null, productoId: Number.isInteger(productoId) && productoId > 0 ? productoId : null, activo: body.activo !== false };
+}
+app.get('/api/resenas', async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT r.id, r.nombre_cliente, r.ciudad, r.calificacion, r.texto, r.producto_id,
+        a.nombre AS producto_nombre, a.imagen_url AS producto_imagen
+      FROM resenas r LEFT JOIN arreglos_florales a ON a.id = r.producto_id
+      WHERE r.activo = true ORDER BY r.orden ASC, r.id DESC LIMIT 30`);
+    res.json(r.rows);
+  } catch (error) {
+    console.error('GET /api/resenas:', error);
+    res.status(500).json({ error: 'No se pudieron cargar las reseñas.' });
+  }
+});
+app.get('/api/admin/resenas', requireAuth, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT r.*, a.nombre AS producto_nombre, a.imagen_url AS producto_imagen
+      FROM resenas r LEFT JOIN arreglos_florales a ON a.id = r.producto_id ORDER BY r.orden ASC, r.id DESC`);
+    res.json(r.rows);
+  } catch (error) {
+    console.error('GET /api/admin/resenas:', error);
+    res.status(500).json({ error: 'No se pudieron cargar las reseñas.' });
+  }
+});
+app.post('/api/admin/resenas', requireAuth, async (req, res) => {
+  const d = datosResenaRF(req.body || {});
+  if (d.error) return res.status(400).json({ error: d.error });
+  try {
+    const r = await pool.query(`INSERT INTO resenas (nombre_cliente, ciudad, calificacion, texto, producto_id, activo, orden)
+      VALUES ($1,$2,$3,$4,$5,$6, COALESCE((SELECT MAX(orden) + 1 FROM resenas), 0)) RETURNING *`, [d.nombre, d.ciudad, d.calificacion, d.texto, d.productoId, d.activo]);
+    await registrarBitacora(req, 'Agregó una reseña', d.nombre);
+    res.status(201).json(r.rows[0]);
+  } catch (error) {
+    console.error('POST /api/admin/resenas:', error);
+    res.status(500).json({ error: 'No se pudo guardar la reseña.' });
+  }
+});
+app.put('/api/admin/resenas/:id', requireAuth, async (req, res) => {
+  const d = datosResenaRF(req.body || {});
+  if (d.error) return res.status(400).json({ error: d.error });
+  try {
+    const r = await pool.query(`UPDATE resenas SET nombre_cliente=$1, ciudad=$2, calificacion=$3, texto=$4, producto_id=$5, activo=$6 WHERE id=$7 RETURNING *`,
+      [d.nombre, d.ciudad, d.calificacion, d.texto, d.productoId, d.activo, Number(req.params.id)]);
+    if (!r.rowCount) return res.status(404).json({ error: 'Reseña no encontrada.' });
+    res.json(r.rows[0]);
+  } catch (error) {
+    console.error('PUT /api/admin/resenas/:id:', error);
+    res.status(500).json({ error: 'No se pudo guardar la reseña.' });
+  }
+});
+app.patch('/api/admin/resenas/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (typeof req.body?.activo === 'boolean') await pool.query('UPDATE resenas SET activo=$1 WHERE id=$2', [req.body.activo, id]);
+    if (req.body?.mover === 'arriba' || req.body?.mover === 'abajo') {
+      const lista = (await pool.query('SELECT id FROM resenas ORDER BY orden ASC, id DESC')).rows.map(x => x.id);
+      const i = lista.indexOf(id), j = req.body.mover === 'arriba' ? i - 1 : i + 1;
+      if (i >= 0 && j >= 0 && j < lista.length) {
+        [lista[i], lista[j]] = [lista[j], lista[i]];
+        for (let k = 0; k < lista.length; k++) await pool.query('UPDATE resenas SET orden=$1 WHERE id=$2', [k, lista[k]]);
+      }
+    }
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('PATCH /api/admin/resenas/:id:', error);
+    res.status(500).json({ error: 'No se pudo actualizar la reseña.' });
+  }
+});
+app.delete('/api/admin/resenas/:id', requireAuth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM resenas WHERE id=$1', [Number(req.params.id)]);
+    await registrarBitacora(req, 'Eliminó una reseña', `ID ${req.params.id}`);
+    res.json({ exito: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/resenas/:id:', error);
+    res.status(500).json({ error: 'No se pudo eliminar la reseña.' });
+  }
+});
+
+// ---- Consultar un pedido sin cuenta: número de pedido + correo con el que se compró ----
+// Devuelve el enlace de seguimiento (el mismo del correo de confirmación).
+app.post('/api/pedidos/consultar', limitadorConsultaPedido, async (req, res) => {
+  const id = Number(String(req.body?.pedido || '').replace(/[^0-9]/g, ''));
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const noEncontrado = () => res.status(404).json({ error: 'No encontramos un pedido con esos datos. Revisa el número y el correo con el que compraste.' });
+  if (!Number.isInteger(id) || id <= 0 || !email.includes('@')) return noEncontrado();
+  try {
+    const r = await pool.query('SELECT id, token_invitado, cliente_cuenta_id FROM ordenes WHERE id=$1 AND LOWER(email_contacto)=$2', [id, email]);
+    const orden = r.rows[0];
+    if (!orden) return noEncontrado();
+    let token = orden.token_invitado;
+    if (!token) {
+      if (orden.cliente_cuenta_id) return res.status(409).json({ error: 'Este pedido está en una cuenta. Inicia sesión para verlo en Mis pedidos.' });
+      // Pedidos anteriores sin clave: se genera ahora.
+      token = crypto.randomBytes(24).toString('hex');
+      await pool.query('UPDATE ordenes SET token_invitado=$1 WHERE id=$2 AND token_invitado IS NULL', [token, id]);
+    }
+    res.json({ url: `/cuenta?pedido=${id}&token=${token}` });
+  } catch (error) {
+    console.error('POST /api/pedidos/consultar:', error);
+    res.status(500).json({ error: 'No se pudo consultar el pedido. Intenta de nuevo.' });
+  }
+});
+
 // ---- Factura para quien compró SIN cuenta (con la clave secreta del pedido) ----
 function tokenValidoRF(token) {
   return typeof token === 'string' && /^[a-f0-9]{48}$/.test(token);
@@ -1766,7 +1910,7 @@ app.get('/api/pedidos/:id/factura-invitado', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0 || !tokenValidoRF(req.query.token)) return res.status(404).json({ error: 'No se encontró ese pedido.' });
   try {
-    const r = await pool.query('SELECT id, estado, estado_pago, total, fecha_entrega, horario_entrega, factura_estado, descartado FROM ordenes WHERE id=$1 AND token_invitado=$2', [id, req.query.token]);
+    const r = await pool.query('SELECT id, estado, estado_pago, total, fecha_entrega, horario_entrega, factura_estado, descartado, ficha_pago_metodo, ficha_pago_vence, (ficha_pago_url IS NOT NULL OR mp_payment_id IS NOT NULL) AS puede_tener_ficha FROM ordenes WHERE id=$1 AND token_invitado=$2', [id, req.query.token]);
     if (r.rowCount === 0) return res.status(404).json({ error: 'No se encontró ese pedido.' });
     res.json(r.rows[0]);
   } catch (error) {
@@ -2770,6 +2914,11 @@ function construirCorreoConfirmacion(orden) {
     <p style="font-size:13px;margin:4px 0;"><strong>Total:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${escaparHtmlServidorRF(orden.direccion_entrega)}</p>
+    ${orden.estado_pago !== 'aprobado' && orden.ficha_pago_url ? `<div style="background:#fbf3e4;border-radius:12px;padding:14px 16px;margin:16px 0 0;">
+      <p style="font-size:14px;font-weight:600;color:#7a4f12;margin:0 0 4px;">Falta tu pago ${orden.ficha_pago_metodo === 'oxxo' ? 'en OXXO' : orden.ficha_pago_metodo === 'spei' ? 'por transferencia SPEI' : ''}</p>
+      <p style="font-size:13px;color:#7a4f12;margin:0 0 12px;">Tu pedido se prepara en cuanto se confirme el pago${orden.ficha_pago_vence ? `. Tu ficha vence el ${escaparHtmlServidorRF(new Date(orden.ficha_pago_vence).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }))}` : ''}.</p>
+      <a href="${escaparHtmlServidorRF(orden.ficha_pago_url)}" style="display:inline-block;background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:600;">Ver mi ficha de pago</a>
+    </div>` : ''}
     ${orden.token_invitado ? `<p style="font-size:12px;color:#888;margin:16px 0 0;"><a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#a3284f;">Consulta el estado de tu pedido o solicita tu factura aquí</a>.</p>` : ''}
   `;
   return { titulo: 'Confirmación de pedido', asunto: `Recibimos tu pedido #${orden.id} — Reserva Floral`, cuerpo };
@@ -3422,6 +3571,12 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       await client.query('UPDATE arreglos_florales SET stock = stock - $1 WHERE id = $2', [info.cantidad, id]);
     }
 
+    // Si la cuenta todavía no tiene teléfono (por ejemplo, entró con Google,
+    // que no lo comparte), se guarda el que escribió en el paso 1.
+    const clienteConSesion = req.session && req.session.clienteId ? req.session.clienteId : null;
+    if (clienteConSesion) {
+      await client.query("UPDATE clientes_cuenta SET telefono=$1 WHERE id=$2 AND (telefono IS NULL OR TRIM(telefono)='')", [telefono.trim(), clienteConSesion]);
+    }
     await client.query('COMMIT');
     res.status(201).json({ exito: true, orden: result.rows[0] });
     // El correo se manda después de responder -- si Resend tarda o falla, no
@@ -3495,6 +3650,63 @@ app.get('/api/mapas/estado', (req, res) => {
 
 // Recibe el resultado del Payment Brick (tarjeta ya tokenizada, u OXXO/SPEI)
 // y crea el pago de verdad contra la API de Mercado Pago.
+// Datos de la ficha de pago (OXXO/SPEI) dentro de la respuesta de Mercado Pago.
+function fichaDePagoRF(pago) {
+  const url = pago?.transaction_details?.external_resource_url || pago?.point_of_interaction?.transaction_data?.ticket_url || null;
+  if (!url) return null;
+  const metodo = pago.payment_method_id === 'oxxo' ? 'oxxo' : (['clabe', 'spei', 'bank_transfer'].includes(pago.payment_method_id) || pago.payment_type_id === 'bank_transfer' ? 'spei' : (pago.payment_method_id || null));
+  return { url, metodo, vence: pago.date_of_expiration ? new Date(pago.date_of_expiration) : null };
+}
+async function guardarFichaPagoRF(ordenId, ficha) {
+  if (!ficha) return;
+  await pool.query('UPDATE ordenes SET ficha_pago_url=$1, ficha_pago_metodo=$2, ficha_pago_vence=$3 WHERE id=$4', [ficha.url, ficha.metodo, ficha.vence, ordenId]);
+}
+// Devuelve la ficha de un pedido. Si es un pedido anterior a que se guardara,
+// la recupera de Mercado Pago (con el id del pago) y la deja guardada.
+async function obtenerFichaPagoRF(orden) {
+  if (orden.ficha_pago_url) return { url: orden.ficha_pago_url, metodo: orden.ficha_pago_metodo, vence: orden.ficha_pago_vence };
+  if (!mpClient || !orden.mp_payment_id) return null;
+  try {
+    const pago = await new Payment(mpClient).get({ id: orden.mp_payment_id });
+    const ficha = fichaDePagoRF(pago);
+    if (ficha) await guardarFichaPagoRF(orden.id, ficha);
+    return ficha;
+  } catch (error) {
+    console.error('No se pudo recuperar la ficha de pago del pedido', orden.id, error?.message || error);
+    return null;
+  }
+}
+async function responderFichaPagoRF(orden, res) {
+  if (!orden) return res.status(404).json({ error: 'Pedido no encontrado.' });
+  if (orden.estado_pago === 'aprobado') return res.status(409).json({ error: 'Este pedido ya está pagado.' });
+  if (orden.estado === 'Cancelado') return res.status(409).json({ error: 'Este pedido se canceló porque el pago no llegó a tiempo. Puedes hacerlo de nuevo desde la tienda.' });
+  const ficha = await obtenerFichaPagoRF(orden);
+  if (!ficha) return res.status(404).json({ error: 'Este pedido no tiene una ficha de pago de OXXO o SPEI.' });
+  res.json({ url: ficha.url, metodo: ficha.metodo, vence: ficha.vence, vencida: !!(ficha.vence && new Date(ficha.vence) < new Date()) });
+}
+app.get('/api/cuenta/pedidos/:id/ficha-pago', requireClienteAuth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM ordenes WHERE id=$1 AND cliente_cuenta_id=$2', [Number(req.params.id), req.session.clienteId]);
+    await responderFichaPagoRF(r.rows[0], res);
+  } catch (error) {
+    console.error('GET /api/cuenta/pedidos/:id/ficha-pago:', error);
+    res.status(500).json({ error: 'No se pudo obtener la ficha de pago.' });
+  }
+});
+// Para quien compró sin cuenta: con la clave secreta de su pedido (la misma
+// del enlace "Consulta el estado de tu pedido" de su correo).
+app.get('/api/pedidos/:id/ficha-pago', async (req, res) => {
+  const token = String(req.query.token || '');
+  if (!/^[a-f0-9]{48}$/.test(token)) return res.status(404).json({ error: 'Pedido no encontrado.' });
+  try {
+    const r = await pool.query('SELECT * FROM ordenes WHERE id=$1 AND token_invitado=$2', [Number(req.params.id), token]);
+    await responderFichaPagoRF(r.rows[0], res);
+  } catch (error) {
+    console.error('GET /api/pedidos/:id/ficha-pago:', error);
+    res.status(500).json({ error: 'No se pudo obtener la ficha de pago.' });
+  }
+});
+
 app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {
   if (!mpClient) return res.status(503).json({ error: 'El cobro con tarjeta todavía no está configurado.' });
   const ordenId = Number(req.body?.ordenId);
@@ -3539,6 +3751,9 @@ app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {
 
     const estadoPago = { approved: 'aprobado', pending: 'pendiente', in_process: 'pendiente', rejected: 'rechazado', cancelled: 'rechazado' }[pago.status] || 'pendiente';
     await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3', [estadoPago, String(pago.id), orden.id]);
+    // La ficha se guarda ANTES del correo de confirmación, para que el correo
+    // la incluya (así la conserva también quien compró sin cuenta).
+    await guardarFichaPagoRF(orden.id, fichaDePagoRF(pago));
     if (estadoPago !== 'rechazado') {
       await enviarConfirmacionUnaVezRF(orden.id);
       marcarCarritoRecuperadoRF(orden.email_contacto);
@@ -3592,6 +3807,7 @@ app.post('/api/pagos/webhook', async (req, res) => {
     const yaEstabaAprobado = anterior.rows[0]?.estado_pago === 'aprobado';
 
     const actualizada = await pool.query('UPDATE ordenes SET estado_pago=$1, mp_payment_id=$2 WHERE id=$3 RETURNING *', [estadoPago, String(pago.id), ordenId]);
+    if (estadoPago === 'pendiente' && !actualizada.rows[0]?.ficha_pago_url) await guardarFichaPagoRF(ordenId, fichaDePagoRF(pago));
     if (estadoPago === 'aprobado' && !yaEstabaAprobado) {
       await enviarConfirmacionUnaVezRF(ordenId);
       marcarCarritoRecuperadoRF(actualizada.rows[0]?.email_contacto);

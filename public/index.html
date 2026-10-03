@@ -611,6 +611,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <button type="button" onclick="alternarBusquedaMovil()" class="md:hidden flex items-center justify-center hover:text-gray-200" aria-label="Buscar" title="Buscar">
                         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="6.8"></circle><path stroke-linecap="round" d="m16.2 16.2 4.1 4.1"></path></svg>
                     </button>
+                    <a href="/cuenta#pedidos" class="rf-mis-pedidos hidden md:flex items-center gap-1.5 hover:text-gray-200" title="Mis pedidos">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+                        <span>Mis pedidos</span>
+                    </a>
                     <div class="relative" id="cuenta-widget">
                         <button type="button" id="btn-cuenta" onclick="alternarMenuCuenta(event)" class="flex items-center gap-1 cursor-pointer hover:text-gray-200">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
@@ -748,6 +752,12 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
     <!-- Hero Banner con Buscador (solo se ve en el inicio, no en una categoría) -->
     <div id="rf-inicio-hero" class="relative mb-10 sm:mb-16 md:mb-8">
+        <!-- Cuenta regresiva para recibir hoy (horas límite: 10:00 am y 2:00 pm) -->
+        <div id="rf-barra-hoy" class="rf-barra-hoy" style="display:none" role="status">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span id="rf-barra-hoy-texto"></span>
+            <button type="button" id="rf-barra-hoy-accion" class="rf-barra-hoy-accion" onclick="verEntregaHoyRF()">Ver arreglos para hoy</button>
+        </div>
         <div class="h-[200px] sm:h-[240px] md:h-[280px] w-full relative">
             <img id="hero-imagen" class="w-full h-full object-cover bg-gray-100" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7" alt="">
             <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
@@ -837,6 +847,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
             <div class="rf-trending-tabs" role="tablist" aria-label="Categorías de productos">
                 <button type="button" class="rf-trending-tab is-active" data-filter="best" role="tab" aria-selected="true">Más vendidos</button>
+                <button type="button" class="rf-trending-tab rf-tab-hoy" data-filter="hoy" role="tab" aria-selected="false">Entrega hoy</button>
                 <button type="button" class="rf-trending-tab" data-filter="flores" role="tab" aria-selected="false">Flores</button>
                 <button type="button" class="rf-trending-tab" data-filter="globos" role="tab" aria-selected="false">Globos</button>
                 <button type="button" class="rf-trending-tab" data-filter="regalos" role="tab" aria-selected="false">Regalos</button>
@@ -897,6 +908,18 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             <button type="button" class="rf-occasion-arrow rf-occasion-next" aria-label="Ver más ocasiones">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
+        </div>
+    </section>
+
+    <!-- Reseñas de clientes (se capturan en el panel: Página de inicio) -->
+    <section id="rf-resenas" class="rf-resenas w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" style="display:none" aria-labelledby="rf-resenas-titulo">
+        <div class="text-center py-8">
+            <h2 id="rf-resenas-titulo" class="rf-titulo-seccion text-2xl md:text-3xl font-semibold text-brandDark">Lo que dicen nuestros clientes</h2>
+        </div>
+        <div class="relative">
+            <button type="button" id="rf-resenas-anterior" class="rf-resenas-flecha is-anterior" aria-label="Reseñas anteriores"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
+            <div id="rf-resenas-track" class="rf-resenas-track"></div>
+            <button type="button" id="rf-resenas-siguiente" class="rf-resenas-flecha is-siguiente" aria-label="Más reseñas"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
         </div>
     </section>
     </div>
@@ -1332,11 +1355,92 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     return arreglos.filter(a => normal(a.subcategoria) === 'joyeria' || normal(a.subsubcategoria) === 'joyeria');
                 case 'premium':
                     return arreglos.filter(a => normal(a.subcategoria).includes('premium') || normal(a.subsubcategoria).includes('premium'));
+                case 'hoy':
+                    // Se entregan el mismo día (sin días de anticipación) y hay existencias.
+                    return arreglos.filter(a => Number(a.tiempo_entrega_dias || 0) === 0 && (a.stock === null || a.stock === undefined || Number(a.stock) > 0));
                 case 'desde249':
                     return arreglos.filter(a => Number(a.precio) >= 249);
                 case 'best':
                 default:
                     return arreglos;
+            }
+        }
+
+        // ---------------- "Entrega hoy" ----------------
+        // Mismas horas límite que el pago y el servidor: 12-4 pm hasta las
+        // 10:00 am y 4-7 pm hasta las 2:00 pm (hora de México).
+        function actualizarBarraHoyRF() {
+            const barra = document.getElementById('rf-barra-hoy');
+            if (!barra) return;
+            const partes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+            const minutos = Number(partes.find(p => p.type === 'hour')?.value || 0) * 60 + Number(partes.find(p => p.type === 'minute')?.value || 0);
+            const siguiente = [{ limite: 10 * 60, horario: 'de 12:00 a 4:00 pm' }, { limite: 14 * 60, horario: 'de 4:00 a 7:00 pm' }].find(l => minutos < l.limite);
+            const texto = document.getElementById('rf-barra-hoy-texto');
+            const accion = document.getElementById('rf-barra-hoy-accion');
+            const tabHoy = document.querySelector('.rf-trending-tab[data-filter="hoy"]');
+            if (siguiente) {
+                const falta = siguiente.limite - minutos, h = Math.floor(falta / 60), m = falta % 60;
+                const tiempo = h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`;
+                texto.innerHTML = `Pide en las próximas <strong>${tiempo}</strong> y recíbelo <strong>hoy</strong> ${siguiente.horario}`;
+                accion.style.display = ''; if (tabHoy) tabHoy.style.display = '';
+            } else {
+                texto.innerHTML = 'Pide hoy y recíbelo <strong>mañana</strong> desde las 8:00 am';
+                accion.style.display = 'none';
+                if (tabHoy) {
+                    tabHoy.style.display = 'none';
+                    if (filtroTrendingActualRF === 'hoy') document.querySelector('.rf-trending-tab[data-filter="best"]')?.click();
+                }
+            }
+            barra.style.display = '';
+        }
+        function verEntregaHoyRF() {
+            const tab = document.querySelector('.rf-trending-tab[data-filter="hoy"]');
+            if (tab && tab.style.display !== 'none') tab.click();
+            document.getElementById('titulo-catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        window.verEntregaHoyRF = verEntregaHoyRF;
+
+        // ---------------- Reseñas de clientes (se capturan en el panel) ----------------
+        // Las reseñas las escribe una persona en el panel: todo texto se escapa.
+        function escaparResenaRF(valor) {
+            return String(valor ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+        async function cargarResenasRF() {
+            const seccion = document.getElementById('rf-resenas');
+            const track = document.getElementById('rf-resenas-track');
+            if (!seccion || !track) return;
+            try {
+                const resenas = await fetch('/api/resenas').then(r => r.ok ? r.json() : []);
+                if (!Array.isArray(resenas) || !resenas.length) { seccion.style.display = 'none'; return; }
+                track.innerHTML = resenas.map(r => {
+                    const enlace = r.producto_id ? `/producto/${Number(r.producto_id)}` : '';
+                    const estrellas = [1, 2, 3, 4, 5].map(n => `<span class="${n <= r.calificacion ? 'is-llena' : ''}">★</span>`).join('');
+                    return `
+                    <article class="rf-resena">
+                        ${enlace && r.producto_imagen ? `<a href="${enlace}" class="rf-resena-foto" aria-label="Ver ${escaparResenaRF(r.producto_nombre || 'producto')}"><img src="${escaparResenaRF(urlTarjetaRF(r.producto_imagen))}" alt="${escaparResenaRF(r.producto_nombre || '')}" loading="lazy"></a>` : ''}
+                        <div class="rf-resena-cuerpo">
+                            <div class="rf-resena-estrellas" role="img" aria-label="${Number(r.calificacion)} de 5 estrellas">${estrellas}</div>
+                            <p class="rf-resena-texto">“${escaparResenaRF(r.texto)}”</p>
+                            <p class="rf-resena-autor">${escaparResenaRF(r.nombre_cliente)}${r.ciudad ? `<span> · ${escaparResenaRF(r.ciudad)}</span>` : ''}</p>
+                            ${enlace && r.producto_nombre ? `<a href="${enlace}" class="rf-resena-producto">${escaparResenaRF(r.producto_nombre)} →</a>` : ''}
+                        </div>
+                    </article>`;
+                }).join('');
+                seccion.style.display = '';
+                const anterior = document.getElementById('rf-resenas-anterior'), siguiente = document.getElementById('rf-resenas-siguiente');
+                const actualizar = () => {
+                    const max = track.scrollWidth - track.clientWidth - 2;
+                    anterior.disabled = track.scrollLeft <= 2; siguiente.disabled = track.scrollLeft >= max;
+                    const sinDesborde = track.scrollWidth <= track.clientWidth + 2;
+                    anterior.style.visibility = siguiente.style.visibility = sinDesborde ? 'hidden' : '';
+                };
+                anterior.onclick = () => track.scrollBy({ left: -Math.max(track.clientWidth * 0.85, 280), behavior: 'smooth' });
+                siguiente.onclick = () => track.scrollBy({ left: Math.max(track.clientWidth * 0.85, 280), behavior: 'smooth' });
+                track.addEventListener('scroll', actualizar, { passive: true });
+                window.addEventListener('resize', actualizar);
+                requestAnimationFrame(actualizar);
+            } catch (error) {
+                seccion.style.display = 'none';
             }
         }
 
@@ -3201,6 +3305,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     cargarInventario();
                 });
             });
+            // "Entrega hoy": cuenta regresiva (se actualiza sola) y dirección /?entrega=hoy
+            actualizarBarraHoyRF();
+            setInterval(actualizarBarraHoyRF, 30000);
+            if (new URLSearchParams(window.location.search).get('entrega') === 'hoy') setTimeout(verEntregaHoyRF, 400);
+            cargarResenasRF();
         });
 
         abrirProductoDesdeRuta();
@@ -3739,7 +3848,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             texto.innerText = '¡Hola, Invitado!';
             menu.innerHTML = `
                 <button type="button" onclick="document.getElementById('menu-cuenta').classList.add('hidden'); abrirModalCuenta('login');" class="w-full text-left px-4 py-2 text-sm text-brandDark hover:bg-gray-50">Iniciar sesión</button>
-                <button type="button" onclick="document.getElementById('menu-cuenta').classList.add('hidden'); abrirModalCuenta('registro');" class="w-full text-left px-4 py-2 text-sm text-brandDark hover:bg-gray-50">Crear una cuenta</button>
+                <button type="button" onclick="document.getElementById('menu-cuenta').classList.add('hidden'); abrirModalCuenta('registro');" class="w-full text-left px-4 py-2 text-sm text-brandDark hover:bg-gray-50">Crear una cuenta</button><a href="/cuenta#consultar" class="block px-4 py-2 text-sm text-brandDark hover:bg-gray-50 border-t border-gray-100 mt-1">Consultar mi pedido</a>
             `;
         }
     }
@@ -3761,6 +3870,11 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         modal.classList.remove('hidden'); modal.classList.add('flex');
     }
     window.abrirModalCuenta = abrirModalCuenta;
+    // Enlaces /?cuenta=entrar y /?cuenta=registro (por ejemplo, desde "Mi cuenta" sin sesión)
+    document.addEventListener('DOMContentLoaded', () => {
+        const pedido = new URLSearchParams(window.location.search).get('cuenta');
+        if (pedido === 'entrar' || pedido === 'registro') setTimeout(() => abrirModalCuenta(pedido === 'registro' ? 'registro' : 'login'), 300);
+    });
     function cerrarModalCuenta() {
         const modal = document.getElementById('modal-cuenta');
         modal.classList.add('hidden'); modal.classList.remove('flex');

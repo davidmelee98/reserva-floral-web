@@ -34,6 +34,24 @@
         .cu-menu > *:not(.cu-nav-item){ display:none; }
         .cu-menu .cu-nav-item{ flex:0 0 auto; white-space:nowrap; border-radius:999px; padding:8px 14px; margin:0; }
     }
+
+    /* Aviso de pago pendiente con su ficha (OXXO / SPEI) */
+    .cu-ficha{ display:flex; align-items:center; justify-content:space-between; gap:12px 16px; flex-wrap:wrap; margin-top:14px; padding:12px 14px; border-radius:12px; background:#FBF3E4; }
+    .cu-ficha-titulo{ font-size:13.5px; font-weight:600; color:#7A4F12; }
+    .cu-ficha-texto{ font-size:12.5px; color:#7A4F12; opacity:.9; margin-top:2px; }
+    .cu-ficha-boton{ flex-shrink:0; padding:8px 16px; border-radius:999px; background:#A3284F; color:#fff; font-size:13px; font-weight:600; transition:background-color .15s ease; }
+    .cu-ficha-boton:hover{ background:#86203F; }
+
+    /* Consultar un pedido sin cuenta */
+    .cu-consulta{ margin-top:28px; padding:20px; border-radius:16px; background:#fff; border:1px solid #EFD3DA; text-align:left; }
+    .cu-consulta-titulo{ font-family:'Playfair Display', serif; font-size:17px; font-weight:600; color:#3A2130; }
+    .cu-consulta-texto{ font-size:13px; color:#6F6268; margin:4px 0 14px; }
+    .cu-consulta-campos{ display:flex; flex-direction:column; gap:10px; }
+    .cu-consulta-input{ width:100%; padding:10px 14px; border:1px solid #E9E2E4; border-radius:10px; font-size:14px; }
+    .cu-consulta-input:focus{ outline:none; border-color:#A3284F; box-shadow:0 0 0 3px rgba(163,40,79,.12); }
+    .cu-consulta-boton{ padding:10px 18px; border-radius:999px; background:#A3284F; color:#fff; font-weight:600; font-size:14px; }
+    .cu-consulta-boton:hover{ background:#86203F; }
+    .cu-consulta-boton:disabled{ opacity:.6; }
 </style>
 <style>
         /* Estilos para el Mega Menú */
@@ -150,6 +168,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                     <button type="button" onclick="alternarBusquedaMovil()" class="md:hidden flex items-center justify-center hover:text-gray-200" aria-label="Buscar" title="Buscar">
                         <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="6.8"></circle><path stroke-linecap="round" d="m16.2 16.2 4.1 4.1"></path></svg>
                     </button>
+                    <a href="/cuenta#pedidos" class="rf-mis-pedidos hidden md:flex items-center gap-1.5 hover:text-gray-200" title="Mis pedidos">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+                        <span>Mis pedidos</span>
+                    </a>
                     <div class="relative" id="cuenta-widget">
                         <button type="button" id="btn-cuenta" onclick="alternarMenuCuenta(event)" class="flex items-center gap-1 cursor-pointer hover:text-gray-200">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
@@ -204,7 +226,21 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     <!-- Se muestra si no hay sesión -->
     <div id="sin-sesion" class="hidden max-w-md mx-auto text-center py-24 px-4">
         <p class="text-lg font-semibold text-brandDark">Necesitas iniciar sesión para ver tu cuenta.</p>
-        <a href="/" class="inline-block mt-5 bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-3 rounded-full text-sm transition">Volver al inicio</a>
+        <!-- Para quien compró sin cuenta: número de pedido + correo -->
+        <form id="form-consultar-pedido" class="cu-consulta" novalidate>
+            <p class="cu-consulta-titulo">¿Compraste sin cuenta? Consulta tu pedido</p>
+            <p class="cu-consulta-texto">Escribe el número de pedido y el correo con el que compraste. El número viene en tu correo de confirmación.</p>
+            <div class="cu-consulta-campos">
+                <input type="text" id="consulta-pedido" inputmode="numeric" placeholder="Número de pedido (ej. 1042)" class="cu-consulta-input" aria-label="Número de pedido" required>
+                <input type="email" id="consulta-email" placeholder="Correo con el que compraste" class="cu-consulta-input" aria-label="Correo" required>
+                <button type="submit" class="cu-consulta-boton">Consultar</button>
+            </div>
+            <p id="consulta-error" class="hidden text-xs text-red-600 mt-2"></p>
+        </form>
+        <div class="flex flex-wrap justify-center gap-3 mt-5">
+            <a href="/?cuenta=entrar" class="inline-block bg-brandFuchsia hover:bg-brandLightPink text-white font-semibold px-6 py-3 rounded-full text-sm transition">Iniciar sesión</a>
+            <a href="/?cuenta=registro" class="inline-block border border-brandFuchsia text-brandFuchsia hover:bg-pink-50 font-semibold px-6 py-3 rounded-full text-sm transition">Crear cuenta</a>
+        </div>
     </div>
 
     <!-- Factura para quien compró SIN cuenta: se llega aquí desde el enlace
@@ -320,7 +356,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                         <h1 class="text-xl font-semibold text-brandDark">Mis pedidos</h1>
                         <select id="filtro-mis-pedidos" onchange="renderMisPedidos()" class="cta-input !w-auto text-xs">
                             <option value="">Todos los estados</option>
-                            <option value="Pendiente">Pendiente</option>
+                            <option value="Pendiente">Pendiente</option><option value="Recibido">Recibido</option>
                             <option value="Confirmado">Confirmado</option>
                             <option value="En preparación">En preparación</option>
                             <option value="En camino">En camino</option>
@@ -718,6 +754,71 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     const ESTADOS_TIMELINE = ['Pendiente', 'Confirmado', 'En preparación', 'En camino', 'Entregado'];
     // Para el cliente, un pedido ya pagado que todavía no se prepara es
     // "Recibido": "Pendiente" le hacía pensar que faltaba algo de su parte.
+    // ---------- Ficha de pago (OXXO / SPEI) ----------
+    // Antes solo se veía en la página de confirmación: si el cliente la cerraba,
+    // ya no había forma de recuperarla.
+    function textoMetodoFichaRF(metodo) {
+        return metodo === 'oxxo' ? 'en OXXO' : metodo === 'spei' ? 'por transferencia SPEI' : '';
+    }
+    function textoVenceFichaRF(vence) {
+        if (!vence) return '';
+        const fecha = new Date(vence);
+        const texto = fecha.toLocaleString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' });
+        return fecha < new Date() ? `Tu ficha venció el ${texto}. Escríbenos por WhatsApp y te ayudamos a completar tu pago.` : `Tu ficha vence el ${texto}.`;
+    }
+    function bloqueFichaPagoRF(o) {
+        if (o.estado_pago !== 'pendiente' || o.estado === 'Cancelado' || o.descartado) return '';
+        if (!o.ficha_pago_url && !o.ficha_pago_metodo && !o.mp_payment_id) return '';
+        return `<div class="cu-ficha">
+            <div class="min-w-0">
+                <p class="cu-ficha-titulo">Falta tu pago ${textoMetodoFichaRF(o.ficha_pago_metodo)}</p>
+                <p class="cu-ficha-texto">${escaparHtml(textoVenceFichaRF(o.ficha_pago_vence) || 'Tu pedido se prepara en cuanto se confirme el pago.')}</p>
+            </div>
+            <button type="button" onclick="abrirFichaPagoRF(${o.id})" class="cu-ficha-boton">Ver ficha de pago</button>
+        </div>`;
+    }
+    // Con cuenta usa la ruta de "Mis pedidos"; sin cuenta, la clave secreta del pedido.
+    async function abrirFichaPagoRF(id, token) {
+        const ventana = window.open('', '_blank');
+        try {
+            const ruta = token ? `/api/pedidos/${id}/ficha-pago?token=${encodeURIComponent(token)}` : `/api/cuenta/pedidos/${id}/ficha-pago`;
+            const r = await fetch(ruta);
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.url) throw new Error(d.error || 'No se pudo abrir la ficha de pago.');
+            if (ventana) ventana.location.href = d.url; else window.location.href = d.url;
+        } catch (error) {
+            if (ventana) ventana.close();
+            mostrarNotificacionRF(error.message, 'error');
+        }
+    }
+    window.abrirFichaPagoRF = abrirFichaPagoRF;
+
+    // Consultar un pedido sin cuenta (número + correo)
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('form-consultar-pedido');
+        if (!form) return;
+        if (window.location.hash === '#consultar') setTimeout(() => { form.scrollIntoView({ block: 'center' }); document.getElementById('consulta-pedido').focus(); }, 300);
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const error = document.getElementById('consulta-error');
+            const boton = form.querySelector('button[type=submit]');
+            error.classList.add('hidden');
+            const pedido = document.getElementById('consulta-pedido').value.trim();
+            const email = document.getElementById('consulta-email').value.trim();
+            if (!pedido || !email) { error.innerText = 'Escribe el número de pedido y tu correo.'; error.classList.remove('hidden'); return; }
+            boton.disabled = true; boton.innerText = 'Buscando...';
+            try {
+                const r = await fetch('/api/pedidos/consultar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pedido, email }) });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok || !d.url) throw new Error(d.error || 'No se pudo consultar el pedido.');
+                window.location.href = d.url;
+            } catch (err) {
+                error.innerText = err.message; error.classList.remove('hidden');
+                boton.disabled = false; boton.innerText = 'Consultar';
+            }
+        });
+    });
+
     function estadoClienteRF(o) {
         return o.estado === 'Pendiente' && o.estado_pago === 'aprobado' ? 'Recibido' : (o.estado || 'Pendiente');
     }
@@ -736,7 +837,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     function pedidosFiltrados() {
         const filtro = document.getElementById('filtro-mis-pedidos')?.value || '';
         if (!filtro) return misPedidos;
-        return misPedidos.filter(o => o.estado === filtro);
+        return misPedidos.filter(o => estadoClienteRF(o) === filtro);
     }
     function renderTimelinePedido(estado) {
         if (estado === 'Cancelado') {
@@ -818,6 +919,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                             <div class="flex justify-between"><span>Envío</span><span>$${formatearPrecio(envio)}</span></div>
                         </div>
                     </details>
+                    ${bloqueFichaPagoRF(o)}
 
                     <div class="flex gap-4 mt-4 pt-3 border-t border-gray-100 flex-wrap items-center">
                         <button type="button" onclick="volverAPedir(${o.id})" class="text-brandFuchsia text-xs font-semibold hover:underline">Volver a pedir</button>
@@ -884,7 +986,15 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 <p><span class="text-gray-500">Estatus:</span> <strong class="text-brandDark">${escaparHtml(estadoVisible)}</strong></p>
                 <p><span class="text-gray-500">Pago:</span> ${escaparHtml(pago)}</p>
                 ${datos.fecha_entrega ? `<p><span class="text-gray-500">Entrega:</span> ${escaparHtml(formatearFecha(datos.fecha_entrega))}${datos.horario_entrega ? ' · ' + escaparHtml(datos.horario_entrega) : ''}</p>` : ''}
-                ${datos.total !== undefined ? `<p><span class="text-gray-500">Total:</span> $${formatearPrecio(datos.total)}</p>` : ''}`;
+                ${datos.total !== undefined ? `<p><span class="text-gray-500">Total:</span> $${formatearPrecio(datos.total)}</p>` : ''}
+                ${datos.estado_pago === 'pendiente' && datos.estado !== 'Cancelado' && !datos.descartado && datos.puede_tener_ficha ? `
+                <div class="cu-ficha mt-3">
+                    <div class="min-w-0">
+                        <p class="cu-ficha-titulo">Falta tu pago ${textoMetodoFichaRF(datos.ficha_pago_metodo)}</p>
+                        <p class="cu-ficha-texto">${escaparHtml(textoVenceFichaRF(datos.ficha_pago_vence) || 'Tu pedido se prepara en cuanto se confirme el pago.')}</p>
+                    </div>
+                    <button type="button" onclick="abrirFichaPagoRF(${Number(facturaInvitado.id)}, '${escaparHtml(facturaInvitado.token)}')" class="cu-ficha-boton">Ver ficha de pago</button>
+                </div>` : ''}`;
             bloqueEstado.classList.remove('hidden');
         }
         if (datos.estado === 'Cancelado') { mensaje.innerText = 'Este pedido está cancelado, no se puede facturar.'; return; }
