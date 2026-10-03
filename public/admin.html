@@ -719,7 +719,7 @@
                         <div class="px-6 py-3 border-b border-gray-100 flex flex-wrap gap-2 bg-gray-50/60">
                             <div class="relative flex-1 min-w-[180px]">
                                 <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 114 10.5a6.5 6.5 0 0113 0z" /></svg>
-                                <input type="text" id="filtro-pedido-busqueda" placeholder="Buscar por cliente o teléfono..." class="adm-input !pl-9">
+                                <input type="text" id="filtro-pedido-busqueda" placeholder="Buscar por cliente, teléfono o folio..." class="adm-input !pl-9">
                             </div>
                             <select id="filtro-pedido-estado" class="adm-input !w-auto text-xs">
                                 <option value="">Todos los estados</option>
@@ -2070,7 +2070,7 @@
                 <div class="py-2.5 flex items-center justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-brandDark truncate">${escaparHtmlAdmin(o.cliente_nombre)}</p>
-                        <p class="text-[11px] text-gray-400">${formatearFechaAdmin(o.creado_en)} · Pedido #${o.id}</p>
+                        <p class="text-[11px] text-gray-400">${formatearFechaAdmin(o.creado_en)} · Pedido ${o.folio || '#' + o.id}</p>
                     </div>
                     <div class="text-right shrink-0">
                         <p class="text-sm font-semibold text-brandDark">$${formatearPrecioAdmin(o.total)}</p>
@@ -3173,7 +3173,7 @@
                     ${grupos[h].map(o => `
                         <button type="button" class="adm-hoy-item ${o.estado === 'Entregado' ? 'is-entregado' : ''}" onclick="irAPedidoRF(${o.id})">
                             <span class="min-w-0">
-                                <span class="block text-sm font-medium text-brandDark truncate">${escaparHtmlAdmin(o.cliente_nombre)} <span class="text-gray-400 font-normal">#${o.id}</span></span>
+                                <span class="block text-sm font-medium text-brandDark truncate">${escaparHtmlAdmin(o.cliente_nombre)} <span class="text-gray-400 font-normal">${escaparHtmlAdmin(o.folio || '#' + o.id)}</span></span>
                                 <span class="block text-xs text-gray-500 truncate">${escaparHtmlAdmin(o.direccion_entrega || '')}</span>
                             </span>
                             <span class="adm-badge ${ESTADO_COLOR[o.estado] || 'bg-gray-100 text-gray-500'} shrink-0">${escaparHtmlAdmin(o.estado)}</span>
@@ -3268,6 +3268,11 @@
         const ventas = recientes.filter(o => o.estado === 'Entregado').reduce((s, o) => s + Number(o.total || 0), 0);
         document.getElementById('stat-pedidos-ventas').innerText = '$' + formatearPrecioAdmin(ventas);
     }
+    // Folio que ven clientes y equipo (los pedidos anteriores conservan su número).
+    function folioPedidoAdminRF(id) {
+        const o = ordenes.find(x => x.id === id);
+        return o?.folio || '#' + id;
+    }
     function ordenesFiltradas() {
         const texto = document.getElementById('filtro-pedido-busqueda').value.trim().toLowerCase();
         const estado = document.getElementById('filtro-pedido-estado').value;
@@ -3280,7 +3285,8 @@
             if (texto) {
                 const enNombre = String(o.cliente_nombre || '').toLowerCase().includes(texto);
                 const enTelefono = String(o.cliente_telefono || '').includes(texto);
-                if (!enNombre && !enTelefono) return false;
+                const enFolio = String(o.folio || '').toLowerCase().includes(texto.replace(/^#/, '')) || String(o.id) === texto.replace(/^#/, '');
+                if (!enNombre && !enTelefono && !enFolio) return false;
             }
             return true;
         });
@@ -3397,7 +3403,7 @@
                             </div>
                             <div class="flex items-center gap-2 flex-wrap mt-2">
                                 <p class="font-semibold text-brandDark text-[15px]">${escaparHtmlAdmin(o.cliente_nombre)}</p>
-                                <span class="text-[11px] text-gray-400">Pedido #${o.id} · ${formatearFechaAdmin(o.creado_en)}</span>
+                                <span class="text-[11px] text-gray-400">Pedido ${o.folio || '#' + o.id} · ${formatearFechaAdmin(o.creado_en)}</span>
                                 <span class="adm-badge ${colorEstado}">${escaparHtmlAdmin(o.estado || 'Pendiente')}</span>
                                 <span class="adm-badge ${colorEstadoPago}">${etiquetaEstadoPago}</span>
                                 ${o.descartado ? '<span class="adm-badge bg-gray-100 text-gray-500" title="El cliente corrigió sus datos antes de pagar y se generó un pedido nuevo">Descartado</span>' : ''}
@@ -3406,7 +3412,7 @@
                             <p class="adm-dato">${icoRF('telefono')}<span>${escaparHtmlAdmin(o.cliente_telefono)}${o.email_contacto ? ` · ${escaparHtmlAdmin(o.email_contacto)}` : ''}${o.destinatario_telefono ? ` · Destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}` : ''}</span></p>
                             ${o.estado_pago === 'pendiente' && o.ficha_pago_url && o.estado !== 'Cancelado' ? `<p class="adm-dato">${icoRF('reloj')}<span>Ficha de ${o.ficha_pago_metodo === 'spei' ? 'SPEI' : o.ficha_pago_metodo === 'oxxo' ? 'OXXO' : 'pago'} generada${o.ficha_pago_vence ? ` · vence ${escaparHtmlAdmin(new Date(o.ficha_pago_vence).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}` : ''} · <a href="${escaparHtmlAdmin(o.ficha_pago_url)}" target="_blank" rel="noopener" class="text-brandFuchsia font-semibold hover:underline">Ver ficha</a></span></p>` : ''}
                             <p class="adm-dato">${icoRF('ubicacion')}<span>${o.tipo_domicilio ? `<span class="text-gray-400">${escaparHtmlAdmin(o.tipo_domicilio)} ·</span> ` : ''}${escaparHtmlAdmin(o.direccion_entrega)}
-                                ${tieneMapa ? ` · <a href="https://www.openstreetmap.org/?mlat=${o.lat}&mlon=${o.lng}#map=18/${o.lat}/${o.lng}" target="_blank" class="text-brandFuchsia font-medium hover:underline">Ver ubicación en el mapa</a>` : ''}
+                                ${tieneMapa ? ` · <a href="https://www.google.com/maps/search/?api=1&query=${o.lat},${o.lng}" target="_blank" rel="noopener" class="text-brandFuchsia font-medium hover:underline">Ver ubicación en Google Maps</a>` : (o.direccion_entrega ? ` · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.direccion_entrega)}" target="_blank" rel="noopener" class="text-brandFuchsia font-medium hover:underline">Buscar en Google Maps</a>` : '')}
                             </span></p>
                             ${o.notas_entrega ? `<p class="adm-dato">${icoRF('lapiz')}<span>Notas: ${escaparHtmlAdmin(o.notas_entrega)}</span></p>` : ''}
                             ${o.dedicatoria ? `<p class="adm-dato italic">${icoRF('corazon')}<span>"${escaparHtmlAdmin(o.dedicatoria)}" ${o.es_anonimo ? '<span class="text-gray-400">(anónimo)</span>' : (o.firma ? `<span class="text-gray-400">— ${escaparHtmlAdmin(o.firma)}</span>` : '')}</span></p>` : ''}
@@ -3453,14 +3459,14 @@
         // Cancelar un pedido que YA se pagó implica devolver el dinero -- se
         // pide confirmar para que no se olvide el reembolso.
         if (estado === 'Cancelado' && pedido && pedido.estado_pago === 'aprobado') {
-            const ok = confirm(`El pedido #${id} ya está PAGADO ($${Number(pedido.total || 0).toFixed(2)}).\n\nAl cancelarlo, recuerda hacer el reembolso desde tu cuenta de Mercado Pago. Al cliente le avisaremos por correo que recibirá su reembolso.\n\n¿Cancelar el pedido?`);
+            const ok = confirm(`El pedido ${folioPedidoAdminRF(id)} ya está PAGADO ($${Number(pedido.total || 0).toFixed(2)}).\n\nAl cancelarlo, recuerda hacer el reembolso desde tu cuenta de Mercado Pago. Al cliente le avisaremos por correo que recibirá su reembolso.\n\n¿Cancelar el pedido?`);
             if (!ok) { renderListaPedidos(); return; } // regresa el selector a su estado anterior
         }
         try {
             await jsonOError(await fetch(`/api/admin/ordenes/${id}/estado`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) }));
             const o = ordenes.find(x => x.id === id);
             if (o) o.estado = estado;
-            mostrarToast(`Pedido #${id} actualizado a "${estado}" — se le avisó al cliente por correo.`);
+            mostrarToast(`Pedido ${folioPedidoAdminRF(id)} actualizado a "${estado}" — se le avisó al cliente por correo.`);
             renderStatsPedidos(); renderListaPedidos(); actualizarBadgePedidos(); renderHoyRF();
         } catch (error) {
             mostrarToast(error.message, 'error');
@@ -3523,7 +3529,15 @@
     // Abre una ventana con una nota de entrega lista para imprimir (para
     // dársela al repartidor): datos del destinatario, dirección, horario,
     // dedicatoria y los artículos del pedido -- sin datos de pago de por medio.
-    function imprimirNotaEntrega(id) {
+    // Clave de Google Maps (la misma del pago) para la imagen del mapa en la nota.
+    let claveMapasPanelRF;
+    async function obtenerClaveMapasPanelRF() {
+        if (claveMapasPanelRF !== undefined) return claveMapasPanelRF;
+        try { claveMapasPanelRF = (await fetch('/api/mapas/estado').then(r => r.json())).apiKey || null; }
+        catch (_) { claveMapasPanelRF = null; }
+        return claveMapasPanelRF;
+    }
+    async function imprimirNotaEntrega(id) {
         const o = ordenes.find(x => x.id === id);
         if (!o) return;
         const items = Array.isArray(o.carrito) ? o.carrito : (typeof o.carrito === 'string' ? JSON.parse(o.carrito || '[]') : []);
@@ -3533,8 +3547,39 @@
         }).join('');
         const ventana = window.open('', '_blank', 'width=480,height=700');
         if (!ventana) { mostrarToast('Permite las ventanas emergentes para poder imprimir.', 'error'); return; }
+        // Ubicación: imagen del mapa con el pin de Reserva Floral (Google no permite
+        // pines propios en sus enlaces, pero sí en la imagen) + QR con la ruta.
+        const lat = Number(o.lat), lng = Number(o.lng);
+        const tieneUbicacion = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+        let bloqueUbicacion = '';
+        // Pedidos sin coordenadas (los anteriores al mapa): se usa la dirección escrita.
+        const destino = tieneUbicacion ? `${lat},${lng}` : (o.direccion_entrega ? encodeURIComponent(o.direccion_entrega) : '');
+        if (destino) {
+            const clave = await obtenerClaveMapasPanelRF();
+            const urlRuta = `https://www.google.com/maps/dir/?api=1&destination=${destino}`;
+            const pin = encodeURIComponent(`${window.location.origin}/marcador-mapa-chico.png`);
+            const urlImagen = clave ? `https://maps.googleapis.com/maps/api/staticmap?center=${destino}&zoom=16&size=372x190&scale=2&markers=anchor:bottom%7Cicon:${pin}%7C${destino}&key=${encodeURIComponent(clave)}` : '';
+            let qrSvg = '';
+            try {
+                const r = await fetch(`/api/admin/qr.svg?texto=${encodeURIComponent(urlRuta)}`);
+                if (r.ok) qrSvg = await r.text();
+            } catch (_) { /* sin QR, queda el enlace escrito */ }
+            bloqueUbicacion = `
+                <div class="bloque">
+                    <h2>Ubicación</h2>
+                    ${urlImagen ? `<img src="${urlImagen}" alt="Mapa de la entrega" class="mapa" onerror="this.remove()">` : ''}
+                    <div class="acceso-mapa">
+                        ${qrSvg.trim().startsWith('<svg') ? `<div class="qr" role="img" aria-label="Código QR de la ubicación">${qrSvg}</div>` : ''}
+                        <div>
+                            <p><strong>Escanea para abrir la ruta en Google Maps</strong></p>
+                            ${tieneUbicacion ? '' : '<p class="aviso-ubicacion">Ubicación calculada con la dirección escrita (este pedido no tiene punto marcado en el mapa).</p>'}
+                            <p class="enlace"><a href="${urlRuta}">${urlRuta}</a></p>
+                        </div>
+                    </div>
+                </div>`;
+        }
         ventana.document.write(`
-            <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Nota de entrega - Pedido #${o.id}</title>
+            <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Nota de entrega - Pedido ${o.folio || '#' + o.id}</title>
             <style>
                 body{ font-family: Arial, Helvetica, sans-serif; color:#222; padding:24px; max-width:420px; margin:0 auto; }
                 h1{ font-size:18px; margin:0 0 4px; }
@@ -3544,10 +3589,17 @@
                 .bloque p{ margin:2px 0; font-size:14px; }
                 table{ width:100%; border-collapse:collapse; font-size:13px; }
                 .dedicatoria{ font-style:italic; }
+                .mapa{ display:block; width:100%; border-radius:6px; margin:4px 0 10px; }
+                .acceso-mapa{ display:flex; align-items:center; gap:12px; }
+                .qr{ width:96px; height:96px; flex-shrink:0; }
+                .qr svg{ display:block; width:100%; height:100%; }
+                .enlace{ font-size:10px !important; word-break:break-all; color:#666; }
+                .enlace a{ color:#666; }
+                .aviso-ubicacion{ font-size:11px !important; color:#8a6d1f; }
                 @media print { button{ display:none; } }
             </style></head><body>
                 <h1>Reserva Floral</h1>
-                <p class="sub">Nota de entrega -- Pedido #${o.id} -- ${formatearFechaAdmin(o.creado_en)}</p>
+                <p class="sub">Nota de entrega -- Pedido ${o.folio || '#' + o.id} -- ${formatearFechaAdmin(o.creado_en)}</p>
                 <div class="bloque">
                     <h2>Entregar a</h2>
                     <p><strong>${escaparHtmlAdmin(o.cliente_nombre)}</strong></p>
@@ -3555,6 +3607,7 @@
                     ${o.destinatario_telefono ? `<p>Tel. destinatario: ${escaparHtmlAdmin(o.destinatario_telefono)}</p>` : ''}
                     ${o.notas_entrega ? `<p>Notas: ${escaparHtmlAdmin(o.notas_entrega)}</p>` : ''}
                 </div>
+                ${bloqueUbicacion}
                 <div class="bloque">
                     <h2>Horario</h2>
                     <p>${formatearFechaAdmin(o.fecha_entrega)}${o.horario_entrega ? ` -- ${escaparHtmlAdmin(o.horario_entrega)}` : ''}</p>
@@ -3576,7 +3629,7 @@
     function exportarPedidosCSV() {
         const lista = ordenesFiltradas();
         if (lista.length === 0) { mostrarToast('No hay pedidos que exportar con el filtro actual.', 'error'); return; }
-        const encabezados = ['ID', 'Cliente', 'Teléfono', 'Correo', 'Dirección', 'Fecha de entrega', 'Horario', 'Estado', 'Estado de pago', 'Subtotal', 'Envío', 'Total', 'Creado'];
+        const encabezados = ['Folio', 'Cliente', 'Teléfono', 'Correo', 'Dirección', 'Fecha de entrega', 'Horario', 'Estado', 'Estado de pago', 'Subtotal', 'Envío', 'Total', 'Creado'];
         const escaparCelda = (valor) => {
             const texto = String(valor ?? '').replace(/"/g, '""');
             return `"${texto}"`;
@@ -3585,7 +3638,7 @@
             const envio = Number(o.envio || 0);
             const subtotal = Number(o.total || 0) - envio;
             return [
-                o.id, o.cliente_nombre, o.cliente_telefono, o.email_contacto || '', o.direccion_entrega,
+                o.folio || o.id, o.cliente_nombre, o.cliente_telefono, o.email_contacto || '', o.direccion_entrega,
                 o.fecha_entrega ? String(o.fecha_entrega).slice(0, 10).split('-').reverse().join('/') : '', o.horario_entrega || '',
                 o.estado || 'Pendiente', o.estado_pago || 'pendiente', subtotal.toFixed(2), envio.toFixed(2), Number(o.total || 0).toFixed(2),
                 o.creado_en ? new Date(o.creado_en).toLocaleString('es-MX') : ''
@@ -3714,7 +3767,7 @@
             cont.innerHTML = solicitudes.map(o => `
                 <div class="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2.5 text-xs">
                     <div class="min-w-0">
-                        <p class="font-medium text-brandDark">Pedido #${o.id} · ${escaparHtmlAdmin(o.factura_razon_social)}</p>
+                        <p class="font-medium text-brandDark">Pedido ${o.folio || '#' + o.id} · ${escaparHtmlAdmin(o.factura_razon_social)}</p>
                         <p class="text-gray-500">RFC ${escaparHtmlAdmin(o.factura_rfc)} · CP ${escaparHtmlAdmin(o.factura_cp)} · Uso ${escaparHtmlAdmin(o.factura_uso_cfdi)}</p>
                     </div>
                     <label class="shrink-0 cursor-pointer bg-gray-100 hover:bg-gray-200 text-brandDark font-semibold px-3 py-1.5 rounded-full">
@@ -3795,7 +3848,7 @@
             cont.innerHTML = historial.length ? historial.map(o => `
                 <div class="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2.5 text-xs">
                     <div class="min-w-0">
-                        <p class="font-medium text-brandDark">Pedido #${o.id} · ${escaparHtmlAdmin(o.factura_razon_social)}</p>
+                        <p class="font-medium text-brandDark">Pedido ${o.folio || '#' + o.id} · ${escaparHtmlAdmin(o.factura_razon_social)}</p>
                         <p class="text-gray-500">RFC ${escaparHtmlAdmin(o.factura_rfc)} · atendida el ${new Date(o.factura_atendida_en).toLocaleDateString('es-MX')}</p>
                     </div>
                     <a href="/api/admin/ordenes/${o.id}/factura" class="shrink-0 text-brandFuchsia font-semibold hover:underline">Ver archivo</a>

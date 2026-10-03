@@ -741,13 +741,6 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 // Ya sabemos tu correo por tu cuenta -- no hace falta pedirlo de nuevo.
                 if (bloqueCorreo) bloqueCorreo.classList.add('hidden');
                 if (sesionCliente.email) document.getElementById('p1-email').value = sesionCliente.email;
-                // El teléfono de la cuenta (si tiene) se escribe solo en el paso 1.
-                fetch('/api/cuenta/perfil').then(r => r.ok ? r.json() : null).then(perfil => {
-                    const campo = document.getElementById('p1-telefono');
-                    if (!perfil?.telefono || !campo || campo.value) return;
-                    const digitos = String(perfil.telefono).replace(/\D/g, '');
-                    campo.value = digitos.length > 10 ? digitos.slice(-10) : digitos;
-                }).catch(() => {});
                 cargarDireccionesGuardadas();
                 // Con sesión, el campo de correo está oculto y nunca se 'sale'
                 // de él -- se registra el carrito aquí, para que también le
@@ -1996,6 +1989,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // PASO 5: crear el pedido y cobrar (Payment Brick embebido en la página)
     // =======================================================================
     let ordenCreadaId = null;
+    let ordenCreadaFolio = null;
     let datosResumenPedido = null;
 
     function construirPayloadOrden() {
@@ -2043,6 +2037,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             if (sesionCliente) await guardarDireccionSiEsNueva();
 
             ordenCreadaId = datos.orden.id;
+            ordenCreadaFolio = datos.orden.folio || null;
             const totalServidor = Number(datos.orden.total);
             if (Number.isFinite(totalServidor)) {
                 if (Math.abs(totalServidor - totalAPagar()) > 0.009) {
@@ -2053,6 +2048,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             }
             datosResumenPedido = {
                 id: ordenCreadaId,
+                folio: ordenCreadaFolio,
                 telefono: estado.telefono,
                 email: estado.email,
                 destinatario: estado.destinatario.nombre,

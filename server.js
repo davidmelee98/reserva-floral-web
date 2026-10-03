@@ -766,6 +766,10 @@ async function inicializarDB() {
     // Ficha de pago (OXXO/SPEI): antes solo se entregaba al navegador en el
     // momento del pago y nunca se guardaba -- si el cliente cerraba la página,
     // ya no había forma de recuperarla.
+    // Folio público del pedido (ej. RF-7K3M9Q): letras y números al azar para no
+    // revelar cuántos pedidos hay. El id numérico sigue siendo el interno.
+    'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS folio VARCHAR(12)',
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_ordenes_folio ON ordenes(folio) WHERE folio IS NOT NULL',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS ficha_pago_url TEXT',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS ficha_pago_metodo VARCHAR(20)',
     'ALTER TABLE ordenes ADD COLUMN IF NOT EXISTS ficha_pago_vence TIMESTAMP',
@@ -798,6 +802,7 @@ async function inicializarDB() {
   for (const query of alterQueries) {
     await pool.query(query);
   }
+  await asignarFoliosFaltantesRF();
 
   // Semilla de zonas de cobertura: mismas ciudades que ya se usaban a mano en
   // el panel, para que los productos existentes (cuyo campo "cobertura" ya
@@ -1528,8 +1533,8 @@ app.patch('/api/cuenta/pedidos/:id/cancelar', requireClienteAuth, async (req, re
     await client.query('COMMIT');
     reabastecidos.forEach(p => avisarRestockRF(p.id, p.nombre));
     // Se te avisa, para que no prepares un pedido que el cliente ya canceló.
-    avisarAdminsRF(`El cliente canceló el pedido #${id}`,
-      `<h2 style="font-size:16px;margin:0 0 8px;">El cliente canceló su pedido #${id}</h2>
+    avisarAdminsRF(`El cliente canceló el pedido ${folioRF(resultado.rows[0])}`,
+      `<h2 style="font-size:16px;margin:0 0 8px;">El cliente canceló su pedido ${folioRF(resultado.rows[0])}</h2>
        <p style="font-size:13px;color:#666;">${escaparHtmlServidorRF(resultado.rows[0].cliente_nombre || 'El cliente')} lo canceló desde su cuenta antes de pagarlo. No hay nada que reembolsar; el stock ya regresó al inventario.</p>`);
     res.json(resultado.rows[0]);
   } catch (error) {
@@ -1553,7 +1558,7 @@ const RFC_REGEX = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
 // que le llega en el correo de confirmación). `condicion` es el filtro SQL
 // que prueba que la persona es dueña del pedido.
 async function procesarSolicitudFacturaRF(req, res, condicion, valorCondicion) {
-  const id = Number(req.params.id);
+  const id = await idPedidoDesdeParamRF(req.params.id);
   const { rfc, razonSocial, usoCfdi, codigoPostal, email } = req.body || {};
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido.' });
   if (!rfc?.trim() || !RFC_REGEX.test(rfc.trim().toUpperCase())) {
@@ -1573,7 +1578,7 @@ async function procesarSolicitudFacturaRF(req, res, condicion, valorCondicion) {
       [rfc.trim().toUpperCase(), razonSocial.trim(), usoCfdi.trim(), codigoPostal.trim(), email.trim(), id, valorCondicion]
     );
     if (resultado.rowCount === 0) {
-      const existe = await pool.query(`SELECT factura_estado, estado FROM ordenes WHERE id=$1 AND ${condicion.replace('$7', '$2')}`, [id, valorCondicion]);
+      const existe = await pool.query(`SELECT factura_estado, estado, folio FROM ordenes WHERE id=$1 AND ${condicion.replace('$7', '$2')}`, [id, valorCondicion]);
       if (existe.rowCount === 0) return res.status(404).json({ error: 'No se encontró ese pedido.' });
       if (existe.rows[0].estado === 'Cancelado') return res.status(409).json({ error: 'Este pedido está cancelado, no se puede facturar.' });
       return res.status(409).json({ error: 'Ya hay una solicitud de factura para este pedido.' });
@@ -1586,14 +1591,14 @@ async function procesarSolicitudFacturaRF(req, res, condicion, valorCondicion) {
         if (admins.rows.length) {
           const cuerpo = `
             <h2 style="font-size:16px;margin:0 0 8px;">🧾 Nueva solicitud de factura</h2>
-            <p style="font-size:13px;color:#666;">El pedido <strong>#${id}</strong> tiene una solicitud de factura nueva, pendiente de subir.</p>
+            <p style="font-size:13px;color:#666;">El pedido <strong>${folioRF({ id, folio: existe.rows[0]?.folio })}</strong> tiene una solicitud de factura nueva, pendiente de subir.</p>
             <p style="font-size:13px;margin:4px 0;"><strong>RFC:</strong> ${escaparHtmlServidorRF(rfc.trim().toUpperCase())}</p>
             <p style="font-size:13px;margin:4px 0;"><strong>Razón social:</strong> ${escaparHtmlServidorRF(razonSocial.trim())}</p>
             <p style="margin-top:16px;"><a href="${URL_SITIO}/admin" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver en el panel</a></p>
           `;
           const htmlCorreo = await plantillaBaseCorreo('Nueva solicitud de factura', cuerpo);
           await Promise.all(admins.rows.map(a => resendClient.emails.send({
-            from: CORREO_REMITENTE, to: a.email, subject: `Nueva solicitud de factura — Pedido #${id}`,
+            from: CORREO_REMITENTE, to: a.email, subject: `Nueva solicitud de factura — Pedido ${folioRF({ id, folio: existe.rows[0]?.folio })}`,
             html: htmlCorreo
           }).catch(err => console.error('No se pudo avisar al admin de la solicitud de factura:', err?.message || err))));
         }
@@ -1876,12 +1881,12 @@ app.delete('/api/admin/resenas/:id', requireAuth, async (req, res) => {
 // ---- Consultar un pedido sin cuenta: número de pedido + correo con el que se compró ----
 // Devuelve el enlace de seguimiento (el mismo del correo de confirmación).
 app.post('/api/pedidos/consultar', limitadorConsultaPedido, async (req, res) => {
-  const id = Number(String(req.body?.pedido || '').replace(/[^0-9]/g, ''));
+  const id = await idPedidoDesdeParamRF(req.body?.pedido);
   const email = String(req.body?.email || '').trim().toLowerCase();
   const noEncontrado = () => res.status(404).json({ error: 'No encontramos un pedido con esos datos. Revisa el número y el correo con el que compraste.' });
   if (!Number.isInteger(id) || id <= 0 || !email.includes('@')) return noEncontrado();
   try {
-    const r = await pool.query('SELECT id, token_invitado, cliente_cuenta_id FROM ordenes WHERE id=$1 AND LOWER(email_contacto)=$2', [id, email]);
+    const r = await pool.query('SELECT id, folio, token_invitado, cliente_cuenta_id FROM ordenes WHERE id=$1 AND LOWER(email_contacto)=$2', [id, email]);
     const orden = r.rows[0];
     if (!orden) return noEncontrado();
     let token = orden.token_invitado;
@@ -1891,7 +1896,7 @@ app.post('/api/pedidos/consultar', limitadorConsultaPedido, async (req, res) => 
       token = crypto.randomBytes(24).toString('hex');
       await pool.query('UPDATE ordenes SET token_invitado=$1 WHERE id=$2 AND token_invitado IS NULL', [token, id]);
     }
-    res.json({ url: `/cuenta?pedido=${id}&token=${token}` });
+    res.json({ url: `/cuenta?pedido=${encodeURIComponent(orden.folio || id)}&token=${token}` });
   } catch (error) {
     console.error('POST /api/pedidos/consultar:', error);
     res.status(500).json({ error: 'No se pudo consultar el pedido. Intenta de nuevo.' });
@@ -1907,10 +1912,10 @@ app.post('/api/pedidos/:id/factura-invitado', (req, res) => {
   return procesarSolicitudFacturaRF(req, res, 'token_invitado=$7', req.body.token);
 });
 app.get('/api/pedidos/:id/factura-invitado', async (req, res) => {
-  const id = Number(req.params.id);
+  const id = await idPedidoDesdeParamRF(req.params.id);
   if (!Number.isInteger(id) || id <= 0 || !tokenValidoRF(req.query.token)) return res.status(404).json({ error: 'No se encontró ese pedido.' });
   try {
-    const r = await pool.query('SELECT id, estado, estado_pago, total, fecha_entrega, horario_entrega, factura_estado, descartado, ficha_pago_metodo, ficha_pago_vence, (ficha_pago_url IS NOT NULL OR mp_payment_id IS NOT NULL) AS puede_tener_ficha FROM ordenes WHERE id=$1 AND token_invitado=$2', [id, req.query.token]);
+    const r = await pool.query('SELECT id, folio, estado, estado_pago, total, fecha_entrega, horario_entrega, factura_estado, descartado, ficha_pago_metodo, ficha_pago_vence, (ficha_pago_url IS NOT NULL OR mp_payment_id IS NOT NULL) AS puede_tener_ficha FROM ordenes WHERE id=$1 AND token_invitado=$2', [id, req.query.token]);
     if (r.rowCount === 0) return res.status(404).json({ error: 'No se encontró ese pedido.' });
     res.json(r.rows[0]);
   } catch (error) {
@@ -1919,7 +1924,7 @@ app.get('/api/pedidos/:id/factura-invitado', async (req, res) => {
   }
 });
 app.get('/api/pedidos/:id/factura-invitado/archivo', async (req, res) => {
-  const id = Number(req.params.id);
+  const id = await idPedidoDesdeParamRF(req.params.id);
   if (!Number.isInteger(id) || id <= 0 || !tokenValidoRF(req.query.token)) return res.status(404).json({ error: 'No se encontró esa factura.' });
   try {
     const r = await pool.query(`SELECT id, factura_archivo_url FROM ordenes WHERE id=$1 AND token_invitado=$2 AND factura_estado='lista'`, [id, req.query.token]);
@@ -2086,11 +2091,11 @@ const VALOR_PUNTO_EN_PESOS = 0.1; // 3000 puntos = $300 MXN de descuento
 app.get('/api/cuenta/puntos', requireClienteAuth, async (req, res) => {
   try {
     const resultado = await pool.query(
-      `SELECT id, creado_en, total, envio FROM ordenes WHERE cliente_cuenta_id=$1 AND estado='Entregado' ORDER BY creado_en ASC`,
+      `SELECT id, folio, creado_en, total, envio FROM ordenes WHERE cliente_cuenta_id=$1 AND estado='Entregado' ORDER BY creado_en ASC`,
       [req.session.clienteId]
     );
     const historial = resultado.rows.map(o => ({
-      orden_id: o.id,
+      orden_id: o.id, folio: o.folio,
       fecha: o.creado_en,
       puntos: Math.max(0, Math.round(Number(o.total) - Number(o.envio || 0)))
     }));
@@ -2740,6 +2745,54 @@ function fechaCalendarioRF(valor) {
   }
   return String(valor).slice(0, 10);
 }
+// ---------------------------------------------------------------------------
+// Folio público del pedido: "RF-" + 6 caracteres al azar, sin los que se
+// confunden (0/O, 1/I/L). ~887 millones de combinaciones.
+// ---------------------------------------------------------------------------
+const ALFABETO_FOLIO = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+function generarFolioRF() {
+  let folio = '';
+  for (let i = 0; i < 6; i++) folio += ALFABETO_FOLIO[crypto.randomInt(ALFABETO_FOLIO.length)];
+  return 'RF-' + folio;
+}
+async function folioNuevoRF(db) {
+  for (let intento = 0; intento < 8; intento++) {
+    const folio = generarFolioRF();
+    const r = await db.query('SELECT 1 FROM ordenes WHERE folio=$1', [folio]);
+    if (!r.rowCount) return folio;
+  }
+  throw new Error('No se pudo generar un folio único.');
+}
+// Cómo se muestra un pedido (los anteriores al folio conservan su número).
+function folioRF(orden) {
+  return orden?.folio || (orden?.id ? `${folioRF(orden)}` : '');
+}
+// Acepta el folio (con o sin "RF-", en mayúsculas o minúsculas) o el número
+// interno -- así siguen funcionando los enlaces de correos anteriores.
+async function idPedidoDesdeParamRF(valor) {
+  const texto = String(valor || '').trim().toUpperCase().replace(/^#/, '');
+  if (/^\d+$/.test(texto)) return Number(texto);
+  const folio = 'RF-' + texto.replace(/^RF-?/, '');
+  if (!/^RF-[2-9A-HJKMNP-Z]{6}$/.test(folio)) return null;
+  const r = await pool.query('SELECT id FROM ordenes WHERE folio=$1', [folio]);
+  return r.rows[0]?.id || null;
+}
+// Pedidos que se hicieron antes del folio: se les asigna uno al arrancar.
+async function asignarFoliosFaltantesRF() {
+  try {
+    const r = await pool.query('SELECT id FROM ordenes WHERE folio IS NULL ORDER BY id');
+    for (const { id } of r.rows) {
+      for (let intento = 0; intento < 5; intento++) {
+        try { await pool.query('UPDATE ordenes SET folio=$1 WHERE id=$2 AND folio IS NULL', [generarFolioRF(), id]); break; }
+        catch (error) { if (error.code !== '23505') throw error; }
+      }
+    }
+    if (r.rowCount) console.log(`Folios asignados a ${r.rowCount} pedido(s) anteriores.`);
+  } catch (error) {
+    console.error('No se pudieron asignar los folios:', error?.message || error);
+  }
+}
+
 // Horarios de entrega de todo el sitio, cada uno con su HORA LÍMITE para
 // pedirlo el mismo día (hora de México; se puede pedir ANTES de esa hora):
 //   8:00 AM - 12:00 PM -> nunca el mismo día
@@ -2909,7 +2962,7 @@ function construirCorreoConfirmacion(orden) {
     </tr>`).join('');
   const cuerpo = `
     <h2 style="font-size:16px;margin:0 0 8px;">¡Gracias por tu pedido, ${escaparHtmlServidorRF(orden.cliente_nombre)}!</h2>
-    <p style="font-size:13px;color:#666;margin:0 0 16px;">Tu pedido <strong>#${orden.id}</strong> fue registrado correctamente.</p>
+    <p style="font-size:13px;color:#666;margin:0 0 16px;">Tu pedido <strong>${folioRF(orden)}</strong> fue registrado correctamente.</p>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">${filas}</table>
     <p style="font-size:13px;margin:4px 0;"><strong>Total:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
@@ -2919,19 +2972,19 @@ function construirCorreoConfirmacion(orden) {
       <p style="font-size:13px;color:#7a4f12;margin:0 0 12px;">Tu pedido se prepara en cuanto se confirme el pago${orden.ficha_pago_vence ? `. Tu ficha vence el ${escaparHtmlServidorRF(new Date(orden.ficha_pago_vence).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }))}` : ''}.</p>
       <a href="${escaparHtmlServidorRF(orden.ficha_pago_url)}" style="display:inline-block;background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:600;">Ver mi ficha de pago</a>
     </div>` : ''}
-    ${orden.token_invitado ? `<p style="font-size:12px;color:#888;margin:16px 0 0;"><a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#a3284f;">Consulta el estado de tu pedido o solicita tu factura aquí</a>.</p>` : ''}
+    ${orden.token_invitado ? `<p style="font-size:12px;color:#888;margin:16px 0 0;"><a href="${URL_SITIO}/cuenta?pedido=${orden.folio || orden.id}&token=${orden.token_invitado}" style="color:#a3284f;">Consulta el estado de tu pedido o solicita tu factura aquí</a>.</p>` : ''}
   `;
-  return { titulo: 'Confirmación de pedido', asunto: `Recibimos tu pedido #${orden.id} — Reserva Floral`, cuerpo };
+  return { titulo: 'Confirmación de pedido', asunto: `Recibimos tu pedido ${folioRF(orden)} — Reserva Floral`, cuerpo };
 }
 
 function construirCorreoPagoConfirmado(orden) {
   const cuerpo = `
     <h2 style="font-size:16px;margin:0 0 8px;">✓ Tu pago fue confirmado</h2>
-    <p style="font-size:13px;color:#666;margin:0 0 16px;">El pago de tu pedido <strong>#${orden.id}</strong> ya se acreditó. Empezaremos a prepararlo para la entrega.</p>
+    <p style="font-size:13px;color:#666;margin:0 0 16px;">El pago de tu pedido <strong>${folioRF(orden)}</strong> ya se acreditó. Empezaremos a prepararlo para la entrega.</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Total pagado:</strong> $${Number(orden.total).toFixed(2)} MXN</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
   `;
-  return { titulo: 'Pago confirmado', asunto: `Tu pago fue confirmado — Pedido #${orden.id}`, cuerpo };
+  return { titulo: 'Pago confirmado', asunto: `Tu pago fue confirmado — Pedido ${folioRF(orden)}`, cuerpo };
 }
 
 // Le avisa al cliente cuando el negocio cambia el estado de su pedido (ej. a
@@ -2948,13 +3001,13 @@ function construirCorreoEstadoActualizado(orden, estadoNuevo) {
   const cuerpo = `
     <h2 style="font-size:16px;margin:0 0 8px;">${mensaje.titulo}</h2>
     <p style="font-size:13px;color:#666;margin:0 0 16px;">${mensaje.texto}</p>
-    <p style="font-size:13px;margin:4px 0;"><strong>Pedido:</strong> #${orden.id}</p>
+    <p style="font-size:13px;margin:4px 0;"><strong>Pedido:</strong> ${folioRF(orden)}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Entrega:</strong> ${formatearFechaCorreo(orden.fecha_entrega)}${orden.horario_entrega ? ` · ${escaparHtmlServidorRF(orden.horario_entrega)}` : ''}</p>
     <p style="font-size:13px;margin:4px 0;"><strong>Dirección:</strong> ${escaparHtmlServidorRF(orden.direccion_entrega || '')}</p>
     ${estadoNuevo === 'Cancelado' && orden.estado_pago === 'aprobado' ? `<p style="font-size:13px;color:#3a3a3a;background:#f7eef2;border-radius:10px;padding:10px 12px;margin:14px 0 0;">Como ya habías pagado, te reembolsaremos <strong>$${Number(orden.total || 0).toFixed(2)}</strong> en el mismo método de pago que usaste. Dependiendo de tu banco, puede tardar algunos días en reflejarse.</p>` : ''}
-    ${!orden.cliente_cuenta_id && orden.token_invitado ? `<p style="margin-top:16px;"><a href="${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}" style="color:#a3284f;font-size:13px;">Ver mi pedido</a></p>` : ''}
+    ${!orden.cliente_cuenta_id && orden.token_invitado ? `<p style="margin-top:16px;"><a href="${URL_SITIO}/cuenta?pedido=${orden.folio || orden.id}&token=${orden.token_invitado}" style="color:#a3284f;font-size:13px;">Ver mi pedido</a></p>` : ''}
   `;
-  return { titulo: mensaje.titulo, asunto: `${mensaje.asunto} — Pedido #${orden.id}`, cuerpo };
+  return { titulo: mensaje.titulo, asunto: `${mensaje.asunto} — Pedido ${folioRF(orden)}`, cuerpo };
 }
 
 function construirCorreoCarritoAbandonado(carritoAbandonado) {
@@ -3106,14 +3159,14 @@ async function enviarCorreoCancelacionPorPagoRF(orden) {
   if (!orden || !resendClient || !orden.email_contacto || !(await correoTipoActivoRF('correo_estado_actualizado_activo'))) return;
   try {
     const cuerpo = `
-      <h2 style="font-size:16px;margin:0 0 8px;">Tu pedido #${orden.id} se canceló</h2>
+      <h2 style="font-size:16px;margin:0 0 8px;">Tu pedido ${folioRF(orden)} se canceló</h2>
       <p style="font-size:13px;color:#666;margin:0 0 16px;">No recibimos el pago de tu pedido a tiempo, así que lo cancelamos para liberar los productos. No se te hizo ningún cargo por este pedido.</p>
       <p style="font-size:13px;color:#666;margin:0 0 16px;">Si todavía quieres enviarlo, puedes volver a hacerlo cuando gustes.</p>
       <p style="margin-top:8px;"><a href="${URL_SITIO}/" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Volver a la tienda</a></p>
     `;
     await resendClient.emails.send({
       from: CORREO_REMITENTE, to: orden.email_contacto,
-      subject: `Tu pedido #${orden.id} se canceló — Reserva Floral`,
+      subject: `Tu pedido ${folioRF(orden)} se canceló — Reserva Floral`,
       html: await plantillaBaseCorreo('Pedido cancelado', cuerpo)
     });
   } catch (error) {
@@ -3539,8 +3592,8 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       INSERT INTO ordenes
         (cliente_nombre, cliente_telefono, direccion_entrega, fecha_entrega, dedicatoria, carrito, total,
          destinatario_telefono, tipo_domicilio, notas_entrega, horario_entrega, lat, lng, firma, es_anonimo, envio, cliente_cuenta_id, email_contacto,
-         cupon_codigo, descuento, token_invitado)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+         cupon_codigo, descuento, token_invitado, folio)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
       RETURNING *
     `, [
       cliente.trim(), telefono.trim(), direccion.trim(), fecha,
@@ -3562,7 +3615,8 @@ app.post('/api/ordenes', limitadorPedidos, async (req, res) => {
       descuento,
       // Clave secreta del pedido: permite a quien compró SIN cuenta pedir y
       // descargar su factura desde el enlace de su correo de confirmación.
-      crypto.randomBytes(24).toString('hex')
+      crypto.randomBytes(24).toString('hex'),
+      await folioNuevoRF(client)
     ]);
 
     // Ya que el pedido se registró bien, se descuenta el stock de verdad --
@@ -3643,6 +3697,21 @@ app.get('/api/pagos/estado', (req, res) => {
 // Mientras no esté configurada, el checkout sigue funcionando: solo se piden
 // los datos de la dirección a mano, sin buscador ni mapa.
 // ---------------------------------------------------------------------------
+// Código QR (SVG) para la nota del repartidor: abre Google Maps con la ruta a
+// la dirección de entrega. Se genera aquí mismo (librería "qrcode"), sin
+// depender de servicios externos. Solo acepta enlaces de Google Maps.
+app.get('/api/admin/qr.svg', requireAuth, async (req, res) => {
+  const texto = String(req.query.texto || '');
+  if (!texto.startsWith('https://www.google.com/maps/') || texto.length > 700) return res.status(400).end();
+  try {
+    const svg = await require('qrcode').toString(texto, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#2A2226', light: '#FFFFFF' } });
+    res.set('Cache-Control', 'private, max-age=86400').type('image/svg+xml').send(svg);
+  } catch (error) {
+    console.error('GET /api/admin/qr.svg:', error?.message || error);
+    res.status(500).end();
+  }
+});
+
 app.get('/api/mapas/estado', (req, res) => {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY || null;
   res.json({ disponible: Boolean(apiKey), apiKey });
@@ -3699,7 +3768,7 @@ app.get('/api/pedidos/:id/ficha-pago', async (req, res) => {
   const token = String(req.query.token || '');
   if (!/^[a-f0-9]{48}$/.test(token)) return res.status(404).json({ error: 'Pedido no encontrado.' });
   try {
-    const r = await pool.query('SELECT * FROM ordenes WHERE id=$1 AND token_invitado=$2', [Number(req.params.id), token]);
+    const r = await pool.query('SELECT * FROM ordenes WHERE id=$1 AND token_invitado=$2', [await idPedidoDesdeParamRF(req.params.id), token]);
     await responderFichaPagoRF(r.rows[0], res);
   } catch (error) {
     console.error('GET /api/pedidos/:id/ficha-pago:', error);
@@ -3736,7 +3805,7 @@ app.post('/api/pagos/procesar-pago', limitadorPagos, async (req, res) => {
       body: {
         transaction_amount: montoReal,
         token: token || undefined,
-        description: `Pedido Reserva Floral #${orden.id}`,
+        description: `Pedido Reserva Floral ${folioRF(orden)}`,
         installments: installments ? Number(installments) : 1,
         payment_method_id,
         issuer_id: issuer_id || undefined,
@@ -3818,9 +3887,9 @@ app.post('/api/pagos/webhook', async (req, res) => {
       if (actualizada.rows[0]?.estado === 'Cancelado') {
         await pool.query('INSERT INTO pedido_notas (orden_id, autor, nota) VALUES ($1, $2, $3)',
           [ordenId, 'Sistema', '⚠️ Se recibió el PAGO de este pedido después de que se canceló. Revisa si hay existencia para entregarlo o reembólsalo desde Mercado Pago.']);
-        avisarAdminsRF(`⚠️ Pago recibido de un pedido cancelado (#${ordenId})`,
+        avisarAdminsRF(`⚠️ Pago recibido de un pedido cancelado (${folioRF(actualizada.rows[0] || { id: ordenId })})`,
           `<h2 style="font-size:16px;margin:0 0 8px;">Llegó el pago de un pedido ya cancelado</h2>
-           <p style="font-size:13px;color:#666;">El pedido <strong>#${ordenId}</strong> se había cancelado (por ejemplo, porque su pago en OXXO no llegó a tiempo), pero Mercado Pago acaba de confirmar su pago de <strong>$${Number(actualizada.rows[0]?.total || 0).toFixed(2)}</strong>. Revisa si hay existencia para entregarlo o reembólsalo desde Mercado Pago.</p>`);
+           <p style="font-size:13px;color:#666;">El pedido <strong>${folioRF(actualizada.rows[0] || { id: ordenId })}</strong> se había cancelado (por ejemplo, porque su pago en OXXO no llegó a tiempo), pero Mercado Pago acaba de confirmar su pago de <strong>$${Number(actualizada.rows[0]?.total || 0).toFixed(2)}</strong>. Revisa si hay existencia para entregarlo o reembólsalo desde Mercado Pago.</p>`);
       }
     }
   } catch (error) {
@@ -3995,7 +4064,7 @@ app.patch('/api/admin/ordenes/:id/estado', requireAuth, async (req, res) => {
     await client.query('COMMIT');
     reabastecidos.forEach(p => avisarRestockRF(p.id, p.nombre));
     await enviarCorreoEstadoActualizado(result.rows[0], estado);
-    await registrarBitacora(req, 'Cambió el estado de un pedido', `Pedido #${id} → ${estado}`);
+    await registrarBitacora(req, 'Cambió el estado de un pedido', `Pedido ${folioRF(result.rows[0])} → ${estado}`);
     res.json(result.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');
@@ -4102,11 +4171,11 @@ app.post('/api/admin/ordenes/:id/factura', requireAuth, (req, res) => {
       if (resendClient && orden.factura_email) {
         const cuerpo = `
           <h2 style="font-size:16px;margin:0 0 8px;">🧾 Tu factura ya está lista</h2>
-          <p style="font-size:13px;color:#666;">La factura de tu pedido <strong>#${orden.id}</strong> ya está disponible. Puedes descargarla desde "Mis pedidos" en tu cuenta.</p>
-          <p style="margin-top:16px;"><a href="${orden.cliente_cuenta_id ? `${URL_SITIO}/cuenta#pedidos` : `${URL_SITIO}/cuenta?pedido=${orden.id}&token=${orden.token_invitado}`}" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver mi factura</a></p>
+          <p style="font-size:13px;color:#666;">La factura de tu pedido <strong>${folioRF(orden)}</strong> ya está disponible. Puedes descargarla desde "Mis pedidos" en tu cuenta.</p>
+          <p style="margin-top:16px;"><a href="${orden.cliente_cuenta_id ? `${URL_SITIO}/cuenta#pedidos` : `${URL_SITIO}/cuenta?pedido=${orden.folio || orden.id}&token=${orden.token_invitado}`}" style="background:#a3284f;color:#fff;padding:10px 20px;border-radius:999px;text-decoration:none;font-size:13px;">Ver mi factura</a></p>
         `;
         resendClient.emails.send({
-          from: CORREO_REMITENTE, to: orden.factura_email, subject: `Tu factura está lista — Pedido #${orden.id}`,
+          from: CORREO_REMITENTE, to: orden.factura_email, subject: `Tu factura está lista — Pedido ${folioRF(orden)}`,
           html: await plantillaBaseCorreo('Tu factura está lista', cuerpo)
         }).catch(err => console.error('No se pudo avisar que la factura esta lista:', err?.message || err));
       }

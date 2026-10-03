@@ -10,7 +10,6 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png?v=2">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="/estilos-tailwind.css">
     <link rel="stylesheet" href="/estilos-marca.css">
     <style>
@@ -229,9 +228,9 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         <!-- Para quien compró sin cuenta: número de pedido + correo -->
         <form id="form-consultar-pedido" class="cu-consulta" novalidate>
             <p class="cu-consulta-titulo">¿Compraste sin cuenta? Consulta tu pedido</p>
-            <p class="cu-consulta-texto">Escribe el número de pedido y el correo con el que compraste. El número viene en tu correo de confirmación.</p>
+            <p class="cu-consulta-texto">Escribe el folio de tu pedido y el correo con el que compraste. El folio viene en tu correo de confirmación.</p>
             <div class="cu-consulta-campos">
-                <input type="text" id="consulta-pedido" inputmode="numeric" placeholder="Número de pedido (ej. 1042)" class="cu-consulta-input" aria-label="Número de pedido" required>
+                <input type="text" id="consulta-pedido" inputmode="numeric" placeholder="Folio del pedido (ej. RF-7K3M9Q)" class="cu-consulta-input" aria-label="Folio del pedido" required>
                 <input type="email" id="consulta-email" placeholder="Correo con el que compraste" class="cu-consulta-input" aria-label="Correo" required>
                 <button type="submit" class="cu-consulta-boton">Consultar</button>
             </div>
@@ -572,7 +571,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         const pedidoFactura = parametros.get('pedido');
         const tokenFactura = parametros.get('token');
         if (pedidoFactura && tokenFactura) {
-            facturaInvitado = { id: Number(pedidoFactura), token: tokenFactura };
+            facturaInvitado = { id: String(pedidoFactura || "").trim(), token: tokenFactura };
             document.getElementById('factura-invitado').classList.remove('hidden');
             renderWidgetCuenta();
             try {
@@ -805,7 +804,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             error.classList.add('hidden');
             const pedido = document.getElementById('consulta-pedido').value.trim();
             const email = document.getElementById('consulta-email').value.trim();
-            if (!pedido || !email) { error.innerText = 'Escribe el número de pedido y tu correo.'; error.classList.remove('hidden'); return; }
+            if (!pedido || !email) { error.innerText = 'Escribe el folio de tu pedido y tu correo.'; error.classList.remove('hidden'); return; }
             boton.disabled = true; boton.innerText = 'Buscando...';
             try {
                 const r = await fetch('/api/pedidos/consultar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pedido, email }) });
@@ -890,7 +889,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 <div class="bg-white rounded-2xl border border-gray-100 p-5">
                     <div class="flex items-center justify-between flex-wrap gap-2">
                         <div>
-                            <p class="text-sm font-semibold text-brandDark">Pedido #${o.id} <span class="adm-badge ${ESTADO_COLOR[estadoClienteRF(o)] || 'bg-gray-100 text-gray-500'}">${escaparHtml(estadoClienteRF(o))}</span> ${o.estado_pago === 'aprobado' ? '<span class="adm-badge bg-green-50 text-green-600">✓ Pagado</span>' : o.estado_pago === 'rechazado' ? '<span class="adm-badge bg-red-50 text-red-600">Pago rechazado</span>' : '<span class="adm-badge bg-amber-50 text-amber-600">Pago pendiente</span>'}</p>
+                            <p class="text-sm font-semibold text-brandDark">Pedido ${escaparHtml(o.folio || '#' + o.id)} <span class="adm-badge ${ESTADO_COLOR[estadoClienteRF(o)] || 'bg-gray-100 text-gray-500'}">${escaparHtml(estadoClienteRF(o))}</span> ${o.estado_pago === 'aprobado' ? '<span class="adm-badge bg-green-50 text-green-600">✓ Pagado</span>' : o.estado_pago === 'rechazado' ? '<span class="adm-badge bg-red-50 text-red-600">Pago rechazado</span>' : '<span class="adm-badge bg-amber-50 text-amber-600">Pago pendiente</span>'}</p>
                             <p class="text-xs text-gray-500 mt-0.5">Hecho el ${formatearFecha(o.creado_en)}</p>
                         </div>
                         <p class="text-base font-bold text-brandDark">$${formatearPrecio(o.total)}</p>
@@ -971,12 +970,13 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     // Si se llegó con el enlace del correo (sin cuenta), aquí va el pedido y su clave.
     let facturaInvitado = null;
     function renderFacturaInvitadoRF(datos) {
-        document.getElementById('fi-numero').innerText = '#' + facturaInvitado.id;
+        document.getElementById('fi-numero').innerText = /^RF-/i.test(facturaInvitado.id) ? facturaInvitado.id.toUpperCase() : '#' + facturaInvitado.id;
         const mensaje = document.getElementById('fi-mensaje');
         const btnSolicitar = document.getElementById('fi-btn-solicitar');
         const btnDescargar = document.getElementById('fi-btn-descargar');
         btnSolicitar.classList.add('hidden'); btnDescargar.classList.add('hidden');
         if (!datos) { mensaje.innerText = 'No encontramos este pedido. Revisa que el enlace esté completo.'; return; }
+        if (datos.folio) document.getElementById('fi-numero').innerText = datos.folio;
         // Estado del pedido (para quien compró sin cuenta y no tiene "Mis pedidos").
         const bloqueEstado = document.getElementById('fi-estado');
         if (datos.estado && bloqueEstado) {
@@ -993,7 +993,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                         <p class="cu-ficha-titulo">Falta tu pago ${textoMetodoFichaRF(datos.ficha_pago_metodo)}</p>
                         <p class="cu-ficha-texto">${escaparHtml(textoVenceFichaRF(datos.ficha_pago_vence) || 'Tu pedido se prepara en cuanto se confirme el pago.')}</p>
                     </div>
-                    <button type="button" onclick="abrirFichaPagoRF(${Number(facturaInvitado.id)}, '${escaparHtml(facturaInvitado.token)}')" class="cu-ficha-boton">Ver ficha de pago</button>
+                    <button type="button" onclick="abrirFichaPagoRF('${escaparHtml(facturaInvitado.id)}', '${escaparHtml(facturaInvitado.token)}')" class="cu-ficha-boton">Ver ficha de pago</button>
                 </div>` : ''}`;
             bloqueEstado.classList.remove('hidden');
         }
@@ -1243,13 +1243,54 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
     });
 
-    // Buscador de direcciones (mismo enfoque que en el checkout: OpenStreetMap).
+    // Buscador de direcciones con Google Maps -- el MISMO método que el pago, para
+    // que las direcciones guardadas desde la cuenta tengan las mismas
+    // coordenadas que las del pago (antes usaba OpenStreetMap).
+    let googleMapsDisponible = false;
+    let promesaGoogleMaps = null;
+    let sessionTokenDireccionCuenta = null;
+    function definirCargadorGoogleMaps(apiKey) {
+        (g => { var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window; b = b[c] || (b[c] = {}); var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams, u = () => h || (h = new Promise(async (f, n) => { await (a = m.createElement("script")); e.set("libraries", [...r] + ""); for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]); e.set("callback", c + ".maps." + q); a.src = `https://maps.${c}apis.com/maps/api/js?` + e; d[q] = f; a.onerror = () => h = n(Error(p + " could not load.")); a.nonce = m.querySelector("script[nonce]")?.nonce || ""; m.head.append(a); })); d[l] ? console.warn(p + " only loads once. Ignoring:", g) : d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)) })({ key: apiKey, v: "weekly" });
+    }
+    async function inicializarGoogleMaps() {
+        if (promesaGoogleMaps) return promesaGoogleMaps;
+        promesaGoogleMaps = (async () => {
+            try {
+                const datos = await (await fetch('/api/mapas/estado')).json();
+                if (!datos.disponible || !datos.apiKey) { googleMapsDisponible = false; return; }
+                definirCargadorGoogleMaps(datos.apiKey);
+                await google.maps.importLibrary('places');
+                googleMapsDisponible = true;
+            } catch (error) {
+                console.error('No se pudo cargar Google Maps', error);
+                googleMapsDisponible = false;
+            }
+        })();
+        return promesaGoogleMaps;
+    }
+    function mapearComponentesGoogle(componentes) {
+        const buscar = (tipos) => {
+            for (const tipo of tipos) {
+                const encontrado = componentes.find(x => x.types.includes(tipo));
+                if (encontrado) return encontrado.longText;
+            }
+            return '';
+        };
+        return {
+            calle: buscar(['route']),
+            numero: buscar(['street_number']),
+            colonia: buscar(['sublocality_level_1', 'sublocality', 'neighborhood']),
+            cp: buscar(['postal_code']),
+            estado: buscar(['administrative_area_level_1']),
+            ciudad: buscar(['locality', 'administrative_area_level_2'])
+        };
+    }
     let debounceBusquedaDir = null;
     document.getElementById('dir-buscar').addEventListener('input', (e) => {
         clearTimeout(debounceBusquedaDir);
         const q = e.target.value.trim();
         if (q.length < 4) { document.getElementById('dir-sugerencias').classList.add('hidden'); return; }
-        debounceBusquedaDir = setTimeout(() => buscarDireccionCuenta(q), 450);
+        debounceBusquedaDir = setTimeout(() => buscarDireccionCuenta(q), 350);
     });
     document.addEventListener('click', (e) => {
         if (!e.target.closest('#dir-buscar') && !e.target.closest('#dir-sugerencias')) {
@@ -1257,39 +1298,46 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
         }
     });
     async function buscarDireccionCuenta(q) {
+        await inicializarGoogleMaps();
+        if (!googleMapsDisponible) return;
         try {
-            const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=mx&q=${encodeURIComponent(q)}`;
-            const r = await fetch(url, { headers: { 'Accept-Language': 'es' } });
-            const resultados = await r.json();
+            const { AutocompleteSuggestion, AutocompleteSessionToken } = await google.maps.importLibrary('places');
+            if (!sessionTokenDireccionCuenta) sessionTokenDireccionCuenta = new AutocompleteSessionToken();
+            const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions({ input: q, sessionToken: sessionTokenDireccionCuenta, includedRegionCodes: ['mx'], language: 'es' });
             const cont = document.getElementById('dir-sugerencias');
-            if (!resultados.length) { cont.classList.add('hidden'); return; }
-            window._sugerenciasDireccionCuenta = resultados;
-            cont.innerHTML = resultados.map((res, i) => `<div class="co-sugerencia" onclick="seleccionarDireccionCuenta(${i})">${escaparHtml(res.display_name)}</div>`).join('');
+            if (!suggestions.length) { cont.classList.add('hidden'); return; }
+            window._sugerenciasDireccionCuenta = suggestions;
+            cont.innerHTML = suggestions.map((s, i) => `<div class="co-sugerencia" onclick="seleccionarDireccionCuenta(${i})">${escaparHtml(s.placePrediction.text.text)}</div>`).join('');
             cont.classList.remove('hidden');
-        } catch (error) { console.error('Error buscando dirección', error); }
+        } catch (error) {
+            console.error('Error buscando dirección', error);
+        }
     }
     async function seleccionarDireccionCuenta(i) {
-        const r = window._sugerenciasDireccionCuenta[i];
-        if (!r) return;
+        const s = window._sugerenciasDireccionCuenta?.[i];
+        if (!s) return;
         const textoEscrito = document.getElementById('dir-buscar').value;
-        document.getElementById('dir-buscar').value = r.display_name;
+        document.getElementById('dir-buscar').value = s.placePrediction.text.text;
         document.getElementById('dir-sugerencias').classList.add('hidden');
-        document.getElementById('form-direccion').dataset.lat = r.lat;
-        document.getElementById('form-direccion').dataset.lng = r.lon;
-        let addr = r.address || {};
         try {
-            const urlInversa = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=${r.lat}&lon=${r.lon}`;
-            const inversa = await (await fetch(urlInversa, { headers: { 'Accept-Language': 'es' } })).json();
-            if (inversa && inversa.address) addr = { ...addr, ...Object.fromEntries(Object.entries(inversa.address).filter(([, v]) => v)) };
-        } catch (error) { /* seguimos con lo que ya teníamos */ }
-        document.getElementById('dir-calle').value = addr.road || addr.pedestrian || addr.residential || '';
-        let numero = addr.house_number || '';
-        if (!numero) { const m = textoEscrito.match(/\b(\d{1,5})\b/); if (m) numero = m[1]; }
-        document.getElementById('dir-numero').value = numero;
-        document.getElementById('dir-colonia').value = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || addr.residential || '';
-        document.getElementById('dir-cp').value = addr.postcode || '';
-        document.getElementById('dir-estado').value = addr.state || '';
-        document.getElementById('dir-ciudad').value = addr.city || addr.town || addr.village || addr.municipality || '';
+            const place = s.placePrediction.toPlace();
+            await place.fetchFields({ fields: ['addressComponents', 'location'] });
+            sessionTokenDireccionCuenta = null;
+            const form = document.getElementById('form-direccion');
+            form.dataset.lat = place.location.lat();
+            form.dataset.lng = place.location.lng();
+            const addr = mapearComponentesGoogle(place.addressComponents || []);
+            let numero = addr.numero;
+            if (!numero) { const m = textoEscrito.match(/\b(\d{1,5})\b/); if (m) numero = m[1]; }
+            document.getElementById('dir-calle').value = addr.calle;
+            document.getElementById('dir-numero').value = numero;
+            document.getElementById('dir-colonia').value = addr.colonia;
+            document.getElementById('dir-cp').value = addr.cp;
+            document.getElementById('dir-estado').value = addr.estado;
+            document.getElementById('dir-ciudad').value = addr.ciudad;
+        } catch (error) {
+            console.error('No se pudo obtener el detalle de la dirección', error);
+        }
     }
     window.seleccionarDireccionCuenta = seleccionarDireccionCuenta;
 
@@ -1388,7 +1436,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
             const hist = document.getElementById('historial-puntos');
             hist.innerHTML = datos.historial.length ? [...datos.historial].reverse().map(h => `
                 <div class="flex items-center justify-between py-2 text-sm">
-                    <span class="text-gray-600">Pedido #${h.orden_id} · ${formatearFecha(h.fecha)}</span>
+                    <span class="text-gray-600">Pedido ${escaparHtml(h.folio || '#' + h.orden_id)} · ${formatearFecha(h.fecha)}</span>
                     <span class="font-semibold text-brandDark">+${h.puntos} pts</span>
                 </div>`).join('') : '<p class="text-sm text-gray-400 py-2">Todavía no tienes puntos registrados.</p>';
         } catch (error) {
