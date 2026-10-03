@@ -76,23 +76,44 @@ a.rf-red:focus-visible { outline: 2px solid var(--rf-frambuesa); outline-offset:
 .rf-barra-hoy strong { color: var(--rf-frambuesa-oscura); font-weight: 700; }
 .rf-barra-hoy-accion { color: var(--rf-frambuesa); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
-/* Reseñas de clientes */
-.rf-resenas-track { display: flex; gap: 18px; overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 2px 2px 10px; }
+/* Reseñas de clientes: franja rubor; lo protagonista es la reseña */
+.rf-resenas { width: auto !important; margin-left: clamp(8px, 2vw, 24px); margin-right: clamp(8px, 2vw, 24px); padding-top: 6px; padding-bottom: 26px; border-radius: 28px; background: linear-gradient(180deg, var(--rf-rubor-claro) 0%, var(--rf-rubor) 100%); }
+.rf-resenas-etiqueta { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--rf-frambuesa); margin-bottom: 6px; }
+/* La fila deja espacio alrededor para que la sombra de las tarjetas no se corte */
+.rf-resenas-track { display: flex; gap: 18px; overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x mandatory; scroll-padding-left: 22px; scrollbar-width: none; padding: 10px 22px 30px; margin: 0 -22px -18px; }
 .rf-resenas-track::-webkit-scrollbar { display: none; }
-.rf-resena { flex: 0 0 clamp(260px, 22vw, 320px); scroll-snap-align: start; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--rf-linea); border-radius: 18px; overflow: hidden; }
-.rf-resena-foto { display: block; aspect-ratio: 4 / 3; overflow: hidden; background: var(--rf-rubor-claro); }
-.rf-resena-foto img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
-.rf-resena-foto:hover img { transform: scale(1.04); }
-.rf-resena-cuerpo { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.rf-resena-estrellas { font-size: 16px; letter-spacing: 2px; color: #E2D7DA; }
+.rf-resena { position: relative; flex: 0 0 clamp(280px, 26vw, 360px); scroll-snap-align: start; display: flex; flex-direction: column; gap: 12px; background: #fff; border-radius: 22px; padding: 26px 24px 20px; box-shadow: 0 6px 18px rgba(120, 30, 60, .07); overflow: hidden; }
+.rf-resena-comillas { position: absolute; top: -18px; right: 14px; font-family: 'Playfair Display', serif; font-size: 120px; line-height: 1; color: var(--rf-rubor); pointer-events: none; }
+.rf-resena-estrellas { position: relative; font-size: 15px; letter-spacing: 3px; color: #E2D7DA; }
 .rf-resena-estrellas .is-llena { color: var(--rf-frambuesa); }
-.rf-resena-texto { font-family: 'Playfair Display', serif; font-size: 15.5px; line-height: 1.5; color: var(--rf-tinta); display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
-.rf-resena-autor { margin-top: auto; font-size: 13px; font-weight: 600; color: var(--rf-tinta); }
-.rf-resena-autor span { font-weight: 400; color: #6F6268; }
-.rf-resena-producto { font-size: 13px; font-weight: 600; color: var(--rf-frambuesa); }
-.rf-resena-producto:hover { text-decoration: underline; }
-.rf-resenas-flecha { position: absolute; top: 40%; z-index: 3; width: 42px; height: 42px; border-radius: 999px; background: #fff; color: var(--rf-tinta); box-shadow: 0 4px 14px rgba(40, 10, 25, .14); display: flex; align-items: center; justify-content: center; }
-.rf-resenas-flecha.is-anterior { left: -10px; }
-.rf-resenas-flecha.is-siguiente { right: -10px; }
+.rf-resena-texto { position: relative; font-family: 'Playfair Display', serif; font-size: 17.5px; line-height: 1.55; color: var(--rf-tinta); flex: 1; display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+.rf-resena-autor { display: flex; align-items: center; gap: 10px; }
+.rf-resena-inicial { width: 38px; height: 38px; border-radius: 999px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--rf-frambuesa); color: #fff; font-weight: 700; font-size: 15px; }
+.rf-resena-nombre { font-size: 14px; font-weight: 600; color: var(--rf-tinta); }
+.rf-resena-ciudad { font-size: 12.5px; color: #6F6268; }
+.rf-resena-pidio { display: flex; align-items: center; gap: 10px; margin-top: 2px; padding-top: 12px; border-top: 1px solid #F4ECEE; font-size: 12.5px; color: #6F6268; }
+.rf-resena-pidio img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+.rf-resena-pidio strong { color: var(--rf-frambuesa); font-weight: 600; }
+.rf-resena-pidio:hover strong { text-decoration: underline; }
+.rf-resenas-flecha { position: absolute; top: 42%; z-index: 3; width: 42px; height: 42px; border-radius: 999px; background: #fff; color: var(--rf-tinta); box-shadow: 0 4px 14px rgba(40, 10, 25, .14); display: flex; align-items: center; justify-content: center; }
+.rf-resenas-flecha.is-anterior { left: -21px; }
+.rf-resenas-flecha.is-siguiente { right: -21px; }
 .rf-resenas-flecha:disabled { opacity: .35; cursor: default; }
 @media (hover: none), (max-width: 767px) { .rf-resenas-flecha { display: none !important; } }
+
+/* "Nuestra promesa": título a la izquierda, cuatro promesas a la derecha */
+.rf-promesa-caja { display: grid; grid-template-columns: minmax(220px, 1fr) 2.4fr; gap: 28px 40px; align-items: center; padding: 28px 32px; border: 1px solid var(--rf-linea); border-radius: 24px; background: #fff; }
+.rf-promesa-etiqueta { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--rf-frambuesa); margin-bottom: 6px; }
+.rf-promesa-titulo { font-family: 'Playfair Display', serif; font-size: clamp(22px, 2vw, 28px); line-height: 1.2; font-weight: 600; color: var(--rf-tinta); }
+.rf-promesa-lista { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+.rf-promesa-item { display: flex; flex-direction: column; gap: 10px; }
+.rf-promesa-icono { flex-shrink: 0; width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: var(--rf-rubor-claro); color: var(--rf-frambuesa); }
+.rf-promesa-icono svg { width: 24px; height: 24px; }
+.rf-promesa-nombre { font-size: 15px; font-weight: 600; color: var(--rf-tinta); }
+.rf-promesa-texto { font-size: 13px; line-height: 1.5; color: #6F6268; margin-top: 2px; }
+@media (max-width: 1100px) { .rf-promesa-caja { grid-template-columns: 1fr; } .rf-promesa-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .rf-promesa-caja { padding: 22px 18px; }
+  .rf-promesa-lista { grid-template-columns: 1fr; gap: 16px; }
+  .rf-promesa-item { flex-direction: row; align-items: flex-start; gap: 14px; }
+}

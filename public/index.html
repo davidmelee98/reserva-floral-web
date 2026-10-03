@@ -806,7 +806,7 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     </div>
 
     <!-- Carrusel de productos por categoría -->
-    <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-20 border-t border-gray-200 pt-12">
+    <main id="seccion-catalogo" class="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-8 border-t border-gray-200 pt-12">
         <nav id="rf-breadcrumb-categoria" class="hidden text-sm text-gray-500 mb-4 flex-wrap items-center gap-1"></nav>
 
         <!-- Vista de categoría: solo se ve cuando la URL trae un filtro real
@@ -873,8 +873,47 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
     <!-- Categorías Principales + Ocasiones (solo en el inicio) -->
     <div id="rf-inicio-carruseles">
-    <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" aria-label="Categorías destacadas">
-        <div class="text-center py-8">
+    <!-- Nuestra promesa: lo que cumplimos en cada pedido -->
+    <section class="rf-promesa w-full mx-auto px-4 sm:px-6 lg:px-8 mb-8 sm:mb-10" aria-labelledby="rf-promesa-titulo">
+        <div class="rf-promesa-caja">
+            <div class="rf-promesa-intro">
+                <p class="rf-promesa-etiqueta">Nuestra promesa</p>
+                <h2 id="rf-promesa-titulo" class="rf-promesa-titulo">Cada entrega, cuidada como si fuera nuestra</h2>
+            </div>
+            <ul class="rf-promesa-lista">
+                <li class="rf-promesa-item">
+                    <span class="rf-promesa-icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></span>
+                    <div>
+                        <p class="rf-promesa-nombre">Llega hoy mismo</p>
+                        <p class="rf-promesa-texto">Pide antes de las 2:00 pm y muchos de nuestros arreglos se entregan el mismo día.</p>
+                    </div>
+                </li>
+                <li class="rf-promesa-item">
+                    <span class="rf-promesa-icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h3M8 17h6"/></svg></span>
+                    <div>
+                        <p class="rf-promesa-nombre">Tú eliges la hora</p>
+                        <p class="rf-promesa-texto">Tres horarios de entrega: de 8 a 12, de 12 a 4 o de 4 a 7.</p>
+                    </div>
+                </li>
+                <li class="rf-promesa-item">
+                    <span class="rf-promesa-icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5h16v11H4z"/><path d="m4 7 8 6 8-6"/></svg></span>
+                    <div>
+                        <p class="rf-promesa-nombre">Con tu dedicatoria</p>
+                        <p class="rf-promesa-texto">Escribe tu mensaje y lo entregamos junto con tu regalo, firmado o anónimo.</p>
+                    </div>
+                </li>
+                <li class="rf-promesa-item">
+                    <span class="rf-promesa-icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5.5c0 4.2 2.9 7.6 7 9.5 4.1-1.9 7-5.3 7-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg></span>
+                    <div>
+                        <p class="rf-promesa-nombre">Pago seguro</p>
+                        <p class="rf-promesa-texto">Con tarjeta, OXXO o transferencia, y sigues tu pedido en todo momento.</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </section>
+    <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-8 sm:mb-10" aria-label="Categorías destacadas">
+        <div class="text-center pt-1 pb-4 sm:pb-5">
             <h2 class="rf-titulo-seccion text-2xl md:text-3xl font-semibold text-brandDark">Entregas el mismo día, de lunes a domingo, a todo México</h2>
         </div>
 
@@ -893,8 +932,8 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
 
 
     <!-- Ocasiones -->
-    <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" aria-label="Ocasiones">
-        <div class="text-center py-8">
+    <section class="rf-home-categories w-full mx-auto px-4 sm:px-6 lg:px-8 mb-8 sm:mb-10" aria-label="Ocasiones">
+        <div class="text-center pt-1 pb-4 sm:pb-5">
             <h2 class="rf-titulo-seccion text-2xl md:text-3xl font-semibold text-brandDark">Ocasiones</h2>
         </div>
 
@@ -912,9 +951,10 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
     </section>
 
     <!-- Reseñas de clientes (se capturan en el panel: Página de inicio) -->
-    <section id="rf-resenas" class="rf-resenas w-full mx-auto px-4 sm:px-6 lg:px-8 mb-16" style="display:none" aria-labelledby="rf-resenas-titulo">
-        <div class="text-center py-8">
-            <h2 id="rf-resenas-titulo" class="rf-titulo-seccion text-2xl md:text-3xl font-semibold text-brandDark">Lo que dicen nuestros clientes</h2>
+    <section id="rf-resenas" class="rf-resenas w-full mx-auto px-4 sm:px-6 lg:px-8 mb-10" style="display:none" aria-labelledby="rf-resenas-titulo">
+        <div class="text-center pt-1 pb-4 sm:pb-5">
+            <p class="rf-resenas-etiqueta">Reseñas de clientes</p>
+            <h2 id="rf-resenas-titulo" class="rf-titulo-seccion text-2xl md:text-3xl font-semibold text-brandDark">Palabras que nos hacen florecer</h2>
         </div>
         <div class="relative">
             <button type="button" id="rf-resenas-anterior" class="rf-resenas-flecha is-anterior" aria-label="Reseñas anteriores"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg></button>
@@ -1413,17 +1453,28 @@ body.rf-mobile-menu-open > header{position:fixed !important;top:0;left:0;right:0
                 const resenas = await fetch('/api/resenas').then(r => r.ok ? r.json() : []);
                 if (!Array.isArray(resenas) || !resenas.length) { seccion.style.display = 'none'; return; }
                 track.innerHTML = resenas.map(r => {
+                    // Lo importante es la reseña; el producto es un detalle al pie
+                    // (su miniatura y su nombre siguen llevando a comprarlo).
                     const enlace = r.producto_id ? `/producto/${Number(r.producto_id)}` : '';
                     const estrellas = [1, 2, 3, 4, 5].map(n => `<span class="${n <= r.calificacion ? 'is-llena' : ''}">★</span>`).join('');
+                    const inicial = String(r.nombre_cliente || '?').trim().charAt(0).toUpperCase();
                     return `
                     <article class="rf-resena">
-                        ${enlace && r.producto_imagen ? `<a href="${enlace}" class="rf-resena-foto" aria-label="Ver ${escaparResenaRF(r.producto_nombre || 'producto')}"><img src="${escaparResenaRF(urlTarjetaRF(r.producto_imagen))}" alt="${escaparResenaRF(r.producto_nombre || '')}" loading="lazy"></a>` : ''}
-                        <div class="rf-resena-cuerpo">
-                            <div class="rf-resena-estrellas" role="img" aria-label="${Number(r.calificacion)} de 5 estrellas">${estrellas}</div>
-                            <p class="rf-resena-texto">“${escaparResenaRF(r.texto)}”</p>
-                            <p class="rf-resena-autor">${escaparResenaRF(r.nombre_cliente)}${r.ciudad ? `<span> · ${escaparResenaRF(r.ciudad)}</span>` : ''}</p>
-                            ${enlace && r.producto_nombre ? `<a href="${enlace}" class="rf-resena-producto">${escaparResenaRF(r.producto_nombre)} →</a>` : ''}
+                        <span class="rf-resena-comillas" aria-hidden="true">“</span>
+                        <div class="rf-resena-estrellas" role="img" aria-label="${Number(r.calificacion)} de 5 estrellas">${estrellas}</div>
+                        <p class="rf-resena-texto">${escaparResenaRF(r.texto)}</p>
+                        <div class="rf-resena-autor">
+                            <span class="rf-resena-inicial" aria-hidden="true">${escaparResenaRF(inicial)}</span>
+                            <div class="min-w-0">
+                                <p class="rf-resena-nombre">${escaparResenaRF(r.nombre_cliente)}</p>
+                                ${r.ciudad ? `<p class="rf-resena-ciudad">${escaparResenaRF(r.ciudad)}</p>` : ''}
+                            </div>
                         </div>
+                        ${enlace && r.producto_nombre ? `
+                        <a href="${enlace}" class="rf-resena-pidio">
+                            ${r.producto_imagen ? `<img src="${escaparResenaRF(urlTarjetaRF(r.producto_imagen))}" alt="" loading="lazy">` : ''}
+                            <span>Pidió: <strong>${escaparResenaRF(r.producto_nombre)}</strong></span>
+                        </a>` : ''}
                     </article>`;
                 }).join('');
                 seccion.style.display = '';
